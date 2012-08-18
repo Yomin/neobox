@@ -25,7 +25,6 @@
 #include <poll.h>
 #include <string.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -35,7 +34,6 @@
 
 #define BYTES_PER_CMD   16
 #define MIN_PIXEL       100
-#define DELAY           250000
 #define NAME            "tspd"
 #define MSB             (1<<(sizeof(int)*8-1))
 #define SMSB            (1<<(sizeof(int)*8-2))
@@ -51,8 +49,7 @@
 #endif
 
 struct pollfd *pfds;
-int sock_count, fd_active, msg;
-int paused, action_required;
+int sock_count, fd_active;
 
 struct chain_socket
 {
@@ -173,34 +170,6 @@ void del_socket(int fd, int pos)
     pfds = realloc(pfds, sizeof(struct pollfd)*(sock_count+2));
 }
 
-void set_pause()
-{
-    paused = 1;
-    struct itimerval timerval;
-    timerval.it_interval.tv_sec = 0;
-    timerval.it_interval.tv_usec = 0;
-    timerval.it_value.tv_sec = 0;
-    timerval.it_value.tv_usec = DELAY;
-    while(setitimer(ITIMER_REAL, &timerval, 0) < 0)
-    {
-        DEBUG(perror("Failed to set timer"));
-        sleep(1);
-    }
-}
-
-void sigalarm(int signal)
-{
-    if(action_required)
-    {
-        action_required = 0;
-        set_pause();
-        if(fd_active >= 0)
-            write(fd_active, &msg, sizeof(int));
-    }
-    else
-        paused = 0;
-}
-
 int main(int argc, char* argv[])
 {
     if(argc != 2)
@@ -278,11 +247,7 @@ int main(int argc, char* argv[])
     unsigned char buf[BYTES_PER_CMD];
     int pressed = 0;
     int y = 0, x = 0;
-    paused = 0;
-    action_required = 0;
     sock_count = 0;
-    
-    signal(SIGALRM, sigalarm);
     
     while(1)
     {
@@ -300,41 +265,21 @@ int main(int argc, char* argv[])
                     case 0x00:
                         if(pressed)
                         {
-                            DEBUG(printf(" released (%i,%i)", y, x));
+                            DEBUG(printf(" released (%i,%i)\n", y, x));
                             pressed = 0;
-                            msg = x | y << NIBBLE | MSB;
-                            if(!paused)
-                            {
-                                set_pause();
-                                if(fd_active >= 0)
-                                    write(fd_active, &msg, sizeof(int));
-                            }
-                            else
-                            {
-                                DEBUG(printf(" paused"));
-                                action_required = 1;
-                            }
-                            DEBUG(printf("\n"));
+                            int msg = x | y << NIBBLE | MSB;
+                            if(fd_active >= 0)
+                                write(fd_active, &msg, sizeof(int));
                         }
                         break;
                     case 0x01:
                         if(!pressed)
                         {
-                            DEBUG(printf(" pressed (%i,%i)", y, x));
+                            DEBUG(printf(" pressed (%i,%i)\n", y, x));
                             pressed = 1;
-                            msg = x | y << NIBBLE;
-                            if(!paused)
-                            {
-                                set_pause();
-                                if(fd_active >= 0)
-                                    write(fd_active, &msg, sizeof(int));
-                            }
-                            else
-                            {
-                                DEBUG(printf(" paused"));
-                                action_required = 1;
-                            }
-                            DEBUG(printf("\n"));
+                            int msg = x | y << NIBBLE;
+                            if(fd_active >= 0)
+                                write(fd_active, &msg, sizeof(int));
                         }
                         break;
                     default:
@@ -348,10 +293,9 @@ int main(int argc, char* argv[])
             else if(buf[8] == 0x03 && buf[9] == 0x00 && buf[10] == 0x01 && buf[11] == 0x00)
             {
                 x = buf[13]*256+buf[12]-MIN_PIXEL;
-                if(pressed && !paused)
+                if(pressed)
                 {
-                    set_pause();
-                    msg = x | y << NIBBLE | SMSB;
+                    int msg = x | y << NIBBLE | SMSB;
                     DEBUG(printf("Move (%i,%i)\n", y, x));
                     if(fd_active >= 0)
                         write(fd_active, &msg, sizeof(int));

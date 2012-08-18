@@ -27,9 +27,11 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "tkbio_layout_default.h"
 
@@ -41,7 +43,9 @@
 
 #define RPCNAME     "tspd"
 #define SCREENMAX   830
-#define DENSITY     1
+#define DENSITY     1       // pixel
+#define INCREASE    33      // percent
+#define DELAY       100000  // us
 
 #define MSB         (1<<(sizeof(int)*8-1))
 #define SMSB        (1<<(sizeof(int)*8-2))
@@ -74,11 +78,12 @@ struct tkbio_parser
 
 struct tkbio_global
 {
-    int id, format;
+    int id, format, pause;
     int fd_rpc, fd_sc;
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
+    void (*custom_signal_handler)(int signal);
 } tkbio;
 
 int tkbio_hash(const char *name)
@@ -87,6 +92,19 @@ int tkbio_hash(const char *name)
     while(*name)
         h += *(name++);
     return h;
+}
+
+void tkbio_set_signal_handler(void handler(int signal))
+{
+    tkbio.custom_signal_handler = handler;
+}
+
+void tkbio_signal_handler(int signal)
+{
+    if(signal == SIGALRM)
+        tkbio.pause = 0;
+    else if(tkbio.custom_signal_handler)
+        tkbio.custom_signal_handler(signal);
 }
 
 int tkbio_init_custom(const char *name, struct tkbio_config config)
@@ -172,6 +190,11 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     write(tkbio.fd_rpc, &tkbio.id, sizeof(int));
     tkbio.id &= ~MSB;
     
+    // else
+    tkbio.pause = 0;
+    tkbio.custom_signal_handler = 0;
+    signal(SIGALRM, tkbio_signal_handler);
+    
     // return screen descriptor for manual polling
     return tkbio.fd_sc;
 }
@@ -198,6 +221,21 @@ void tkbio_finish()
     close(tkbio.fd_sc);
     if(tkbio.fb.copy)
         free(tkbio.fb.copy);
+}
+
+void tkbio_set_pause()
+{
+    tkbio.pause = 1;
+    struct itimerval timerval;
+    timerval.it_interval.tv_sec = 0;
+    timerval.it_interval.tv_usec = 0;
+    timerval.it_value.tv_sec = 0;
+    timerval.it_value.tv_usec = DELAY;
+    while(setitimer(ITIMER_REAL, &timerval, 0) < 0)
+    {
+        DEBUG(perror("Failed to set timer"));
+        sleep(1);
+    }
 }
 
 void tkbio_color32to16(char* dst, const char* src)
@@ -244,7 +282,14 @@ struct tkbio_charelem tkbio_handle_event()
     
     struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
     struct tkbio_charelem ret = (struct tkbio_charelem) {{0, 0, 0, 0}};
-    int mapY, mapX, fbHeight, fbWidth;
+    
+    int mx = msg & ((1<<NIBBLE)-1);
+    int my = ((msg & ~MSB) & ~SMSB) >> NIBBLE;
+    
+    if(mx >= SCREENMAX || my >= SCREENMAX)
+        return ret;
+    
+    int fbHeight, fbWidth;
     
     if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
     {
@@ -257,16 +302,29 @@ struct tkbio_charelem tkbio_handle_event()
         fbWidth = map->width;
     }
     
-    int mx = msg & ((1<<NIBBLE)-1);
-    int my = ((msg & ~MSB) & ~SMSB) >> NIBBLE;
+    int width     = tkbio.fb.vinfo.xres/fbWidth;
+    int height    = tkbio.fb.vinfo.yres/fbHeight;
+    int scrWidth  = SCREENMAX/fbWidth;
+    int scrHeight = SCREENMAX/fbHeight;
     
-    if(mx >= SCREENMAX || my >= SCREENMAX)
-        return ret;
+    int y, x;
     
-    int x = mx / (SCREENMAX/fbWidth);
-    int y = (SCREENMAX - my) / (SCREENMAX/fbHeight);
-    int width  = tkbio.fb.vinfo.xres/fbWidth;
-    int height = tkbio.fb.vinfo.yres/fbHeight;
+    if(tkbio.parser.pressed
+        && mx >= scrWidth*tkbio.parser.x - scrWidth*(INCREASE/100.0)
+        && mx <= scrWidth*(tkbio.parser.x+1) + scrWidth*(INCREASE/100.0)
+        && (SCREENMAX - my) >= scrHeight*tkbio.parser.y - scrHeight*(INCREASE/100.0)
+        && (SCREENMAX - my) <= scrHeight*(tkbio.parser.y+1) + scrHeight*(INCREASE/100.0))
+    {
+        x = tkbio.parser.x;
+        y = tkbio.parser.y;
+    }
+    else
+    {
+        x = mx / (SCREENMAX/fbWidth);
+        y = (SCREENMAX - my) / (SCREENMAX/fbHeight);
+    }
+    
+    int mapY, mapX;
     
     if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
     {
@@ -281,12 +339,12 @@ struct tkbio_charelem tkbio_handle_event()
     
     struct tkbio_mapelem *elem = (struct tkbio_mapelem*) &map->map[mapY*map->width+mapX];
     
-    char *base = tkbio.fb.ptr + height*y*tkbio.fb.finfo.line_length + width*x*tkbio.fb.bpp;
     char color[4];
     
     if(msg & SMSB) // moved
     {
-        if(tkbio.parser.pressed && (tkbio.parser.y != y || tkbio.parser.x != x))
+        if(tkbio.parser.pressed && !tkbio.pause &&
+          (tkbio.parser.y != y || tkbio.parser.x != x))
         {
             DEBUG(printf("Move (%i,%i)\n", mapY, mapX));
             char *prevBase = tkbio.fb.ptr
@@ -306,8 +364,7 @@ struct tkbio_charelem tkbio_handle_event()
             goto pressed;
         }
     }
-    
-    if(msg & MSB) // released
+    else if(msg & MSB) // released
     {
         if(tkbio.parser.pressed)
         {
@@ -343,6 +400,9 @@ struct tkbio_charelem tkbio_handle_event()
                     tkbio.parser.toggle ^= elem->elem.c[0];
                     break;
             }
+            
+            char *base = tkbio.fb.ptr + height*tkbio.parser.y*tkbio.fb.finfo.line_length
+                         + width*tkbio.parser.x*tkbio.fb.bpp;
             
             switch(tkbio.fb.status)
             {
@@ -380,6 +440,10 @@ pressed:
                         break;
                     }
                 default:
+                {
+                    char *base = tkbio.fb.ptr + height*y*tkbio.fb.finfo.line_length
+                         + width*x*tkbio.fb.bpp;
+                    
                     if(tkbio.fb.bpp == 2)
                         tkbio_color32to16(color, tkbio.layout.colors[(int)elem->color>>4]);
                     else
@@ -414,11 +478,14 @@ pressed:
                         tkbio_fill_rect(height, width, base, color, 0);
                         tkbio.fb.status = FB_STATUS_FILL;
                     }
+                }
             }
             
             tkbio.parser.y = y;
             tkbio.parser.x = x;
             tkbio.parser.pressed = 1;
+            
+            tkbio_set_pause();
         }
     }
     return ret;

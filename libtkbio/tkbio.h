@@ -55,5 +55,7 @@ void tkbio_finish();
 int tkbio_run(tkbio_handler *h, void *state);
 struct tkbio_charelem tkbio_handle_event();
 
+void tkbio_set_signal_handler(void handler(int signal));
+
 #endif
 
