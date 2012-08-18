@@ -21,6 +21,9 @@
  */
 
 #include "tkbio.h"
+#include "tkbio_def.h"
+#include "tkbio_fb.h"
+
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -35,56 +38,7 @@
 
 #include "tkbio_layout_default.h"
 
-#ifdef NDEBUG
-#   define DEBUG
-#else
-#   define DEBUG(x) x
-#endif
-
-#define RPCNAME     "tspd"
-#define SCREENMAX   830
-#define DENSITY     1       // pixel
-#define INCREASE    33      // percent
-#define DELAY       100000  // us
-
-#define MSB         (1<<(sizeof(int)*8-1))
-#define SMSB        (1<<(sizeof(int)*8-2))
-#define NIBBLE      ((sizeof(int)/2)*8)
-
-#define FB_STATUS_NOP  0
-#define FB_STATUS_COPY 1
-#define FB_STATUS_FILL 2
-
-struct tkbio_fb
-{
-    int fd;
-    struct fb_var_screeninfo vinfo;
-    struct fb_fix_screeninfo finfo;
-    int size, bpp;
-    char *ptr;
-    int copySize;
-    char *copy, copyColor[4];
-    int status; // last button nop/copy/fill
-};
-
-struct tkbio_parser
-{
-    int pressed; // button currently pressed
-    int y, x;    // last pressed pos
-    int map;
-    int hold;
-    char toggle;
-};
-
-struct tkbio_global
-{
-    int id, format, pause;
-    int fd_rpc, fd_sc;
-    struct tkbio_fb fb;
-    struct tkbio_layout layout;
-    struct tkbio_parser parser;
-    void (*custom_signal_handler)(int signal);
-} tkbio;
+struct tkbio_global tkbio;
 
 int tkbio_hash(const char *name)
 {
@@ -195,6 +149,23 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     tkbio.custom_signal_handler = 0;
     signal(SIGALRM, tkbio_signal_handler);
     
+    // print initial screen
+    struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
+    struct tkbio_mapelem *elem;
+    int y, x, fy, fx, fheight = map->height, fwidth = map->width;
+    tkbio_layout_to_fb_sizes(&fheight, &fwidth, 0, 0);
+    for(y=0; y<map->height; y++)
+        for(x=0; x<map->width; x++)
+        {
+            fy = y; fx = x;
+            tkbio_layout_to_fb_cords(&fy, &fx, map->height);
+            elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
+            if(!(elem->type & TKBIO_LAYOUT_OPTION_COPY))
+                tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
+            if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, DENSITY, 0);
+        }
+    
     // return screen descriptor for manual polling
     return tkbio.fd_sc;
 }
@@ -238,43 +209,6 @@ void tkbio_set_pause()
     }
 }
 
-void tkbio_color32to16(char* dst, const char* src)
-{
-    dst[0] = (src[0] & ~7)>>0 | src[2]>>5;
-    dst[1] = (src[2] & ~7)<<3 | (src[1] & ~7)>>2;
-}
-
-void tkbio_fill_rect(int height, int width, char *base, char *color, char *ptr_dst)
-{
-    int i, j, k;
-    char *ptr_src = base;
-    for(i=0; i<height; i+=DENSITY, ptr_src = base)
-    {
-        for(j=0; j<width; j+=DENSITY)
-        {
-            for(k=0; k<tkbio.fb.bpp; k++)
-            {
-                if(color)
-                {
-                    if(ptr_dst)
-                    {
-                        *ptr_dst = *ptr_src;
-                        ptr_dst++;
-                    }
-                    *ptr_src = color[k];
-                }
-                else
-                {
-                    *ptr_src = *ptr_dst;
-                    ptr_dst++;
-                }
-                ptr_src++;
-            }
-        }
-        base += DENSITY*tkbio.fb.finfo.line_length;
-    }
-}
-
 struct tkbio_charelem tkbio_handle_event()
 {
     int msg;
@@ -289,23 +223,8 @@ struct tkbio_charelem tkbio_handle_event()
     if(mx >= SCREENMAX || my >= SCREENMAX)
         return ret;
     
-    int fbHeight, fbWidth;
-    
-    if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
-    {
-        fbHeight = map->width;
-        fbWidth = map->height;
-    }
-    else
-    {
-        fbHeight = map->height;
-        fbWidth = map->width;
-    }
-    
-    int width     = tkbio.fb.vinfo.xres/fbWidth;
-    int height    = tkbio.fb.vinfo.yres/fbHeight;
-    int scrWidth  = SCREENMAX/fbWidth;
-    int scrHeight = SCREENMAX/fbHeight;
+    int width = map->width, height = map->height, scrWidth, scrHeight;
+    tkbio_layout_to_fb_sizes(&height, &width, &scrHeight, &scrWidth);
     
     int y, x;
     
@@ -320,26 +239,13 @@ struct tkbio_charelem tkbio_handle_event()
     }
     else
     {
-        x = mx / (SCREENMAX/fbWidth);
-        y = (SCREENMAX - my) / (SCREENMAX/fbHeight);
+        x = mx / scrWidth;
+        y = (SCREENMAX - my) / scrHeight;
     }
     
-    int mapY, mapX;
-    
-    if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
-    {
-        mapY = map->height-x-1;
-        mapX = y;
-    }
-    else
-    {
-        mapY = y;
-        mapX = x;
-    }
-    
+    int mapY = y, mapX = x;
+    tkbio_fb_to_layout_cords(&mapY, &mapX, map->height);
     struct tkbio_mapelem *elem = (struct tkbio_mapelem*) &map->map[mapY*map->width+mapX];
-    
-    char color[4];
     
     if(msg & SMSB) // moved
     {
@@ -347,18 +253,17 @@ struct tkbio_charelem tkbio_handle_event()
           (tkbio.parser.y != y || tkbio.parser.x != x))
         {
             DEBUG(printf("Move (%i,%i)\n", mapY, mapX));
-            char *prevBase = tkbio.fb.ptr
-                + height*tkbio.parser.y*tkbio.fb.finfo.line_length
-                + width*tkbio.parser.x*tkbio.fb.bpp;
             switch(tkbio.fb.status)
             {
                 case FB_STATUS_NOP:
                     break;
                 case FB_STATUS_COPY:
-                    tkbio_fill_rect(height, width, prevBase, 0, tkbio.fb.copy);
+                    tkbio_fb_fill_rect(tkbio.parser.y*height, tkbio.parser.x*width,
+                        height, width, DENSITY, tkbio.fb.copy);
                     break;
                 case FB_STATUS_FILL:
-                    tkbio_fill_rect(height, width, prevBase, tkbio.fb.copyColor, 0);
+                    tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
+                        height, width, tkbio.fb.copyColor, DENSITY, 0);
                     break;
             }
             goto pressed;
@@ -401,23 +306,18 @@ struct tkbio_charelem tkbio_handle_event()
                     break;
             }
             
-            char *base = tkbio.fb.ptr + height*tkbio.parser.y*tkbio.fb.finfo.line_length
-                         + width*tkbio.parser.x*tkbio.fb.bpp;
-            
             switch(tkbio.fb.status)
             {
                 case FB_STATUS_NOP:
                     break;
                 case FB_STATUS_COPY:
                     if(tkbio.fb.copy)
-                        tkbio_fill_rect(height, width, base, 0, tkbio.fb.copy);
+                        tkbio_fb_fill_rect(tkbio.parser.y*height, tkbio.parser.x*width,
+                            height, width, DENSITY, tkbio.fb.copy);
                     break;
                 case FB_STATUS_FILL:
-                    if(tkbio.fb.bpp == 2)
-                        tkbio_color32to16(color, tkbio.layout.colors[(int)elem->color&15]);
-                    else
-                        memcpy(color, tkbio.layout.colors[(int)elem->color&15], 4);
-                    tkbio_fill_rect(height, width, base, color, 0);
+                    tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
+                        height, width, elem->color & 15, DENSITY, 0);
                     break;
             }
             
@@ -441,14 +341,6 @@ pressed:
                     }
                 default:
                 {
-                    char *base = tkbio.fb.ptr + height*y*tkbio.fb.finfo.line_length
-                         + width*x*tkbio.fb.bpp;
-                    
-                    if(tkbio.fb.bpp == 2)
-                        tkbio_color32to16(color, tkbio.layout.colors[(int)elem->color>>4]);
-                    else
-                        memcpy(color, tkbio.layout.colors[(int)elem->color>>4], 4);
-                    
                     if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
                     {
                         int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(char);
@@ -464,18 +356,15 @@ pressed:
                             tkbio.fb.copySize = size;
                         }
                         
-                        tkbio_fill_rect(height, width, base, color, tkbio.fb.copy);
-                        
-                        if(tkbio.fb.bpp == 2)
-                            tkbio_color32to16(tkbio.fb.copyColor, tkbio.layout.colors[(int)elem->color&15]);
-                        else
-                            memcpy(tkbio.fb.copyColor, tkbio.layout.colors[(int)elem->color&15], 4);
-                        
+                        tkbio_fb_draw_rect(y*height, x*width, height, width,
+                            elem->color >> 4, DENSITY, tkbio.fb.copy);
+                        tkbio.fb.copyColor = elem->color;
                         tkbio.fb.status = FB_STATUS_COPY;
                     }
                     else
                     {
-                        tkbio_fill_rect(height, width, base, color, 0);
+                        tkbio_fb_draw_rect(y*height, x*width, height, width,
+                            elem->color >> 4, DENSITY, 0);
                         tkbio.fb.status = FB_STATUS_FILL;
                     }
                 }

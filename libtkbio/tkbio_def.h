@@ -20,48 +20,62 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_H__
-#define __TKBIO_H__
+#ifndef __TKBIO_DEF_H__
+#define __TKBIO_DEF_H__
 
+#include <linux/fb.h>
 #include "tkbio_layout.h"
 
-#define TKBIO_ERROR_RPC_OPEN    -1
-#define TKBIO_ERROR_FB_OPEN     -2
-#define TKBIO_ERROR_FB_VINFO    -3
-#define TKBIO_ERROR_FB_FINFO    -4
-#define TKBIO_ERROR_FB_MMAP     -5
-#define TKBIO_ERROR_SCREEN_OPEN -6
-#define TKBIO_ERROR_SCREEN_POLL -7
+#ifdef NDEBUG
+#   define DEBUG
+#else
+#   define DEBUG(x) x
+#endif
 
-#define TKBIO_FORMAT_LANDSCAPE  0
-#define TKBIO_FORMAT_PORTAIT    1
+#define RPCNAME     "tspd"
+#define SCREENMAX   830
+#define DENSITY     1       // pixel
+#define INCREASE    33      // percent
+#define DELAY       100000  // us
 
-typedef int tkbio_handler(struct tkbio_charelem elem, void *state);
+#define MSB         (1<<(sizeof(int)*8-1))
+#define SMSB        (1<<(sizeof(int)*8-2))
+#define NIBBLE      ((sizeof(int)/2)*8)
 
-struct tkbio_config
+#define FB_STATUS_NOP  0
+#define FB_STATUS_COPY 1
+#define FB_STATUS_FILL 2
+
+struct tkbio_fb
 {
-    char *fb;
-    struct tkbio_layout layout;
-    int format;
+    int fd;
+    struct fb_var_screeninfo vinfo;
+    struct fb_fix_screeninfo finfo;
+    int size, bpp;
+    char *ptr;
+    int copySize;
+    char *copy, copyColor;
+    int status; // last button nop/copy/fill
 };
 
-int tkbio_init_default(const char *name);
-int tkbio_init_custom(const char *name, struct tkbio_config config);
+struct tkbio_parser
+{
+    int pressed; // button currently pressed
+    int y, x;    // last pressed pos
+    int map;
+    int hold;
+    char toggle;
+};
 
-struct tkbio_config tkbio_default_config();
-
-void tkbio_finish();
-
-int tkbio_run(tkbio_handler *h, void *state);
-struct tkbio_charelem tkbio_handle_event();
-
-void tkbio_set_signal_handler(void handler(int signal));
-
-// from tkbio_fb.c
-void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, char *copy);
-void tkbio_draw_rect_border(int y, int x, int height, int width, int color, int density, char *copy);
-void tkbio_fill_rect(int y, int x, int height, int width, int density, char *copy);
-void tkbio_fill_rect_border(int y, int x, int height, int width, int density, char *copy);
+struct tkbio_global
+{
+    int id, format, pause;
+    int fd_rpc, fd_sc;
+    struct tkbio_fb fb;
+    struct tkbio_layout layout;
+    struct tkbio_parser parser;
+    void (*custom_signal_handler)(int signal);
+};
 
 #endif
 

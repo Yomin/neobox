@@ -2,6 +2,8 @@
 .PHONY: all, debug, clean, touch
 
 NAME = tkbio
+SOURCES = $(shell find . -name "*.c")
+OBJECTS = $(SOURCES:%.c=%.o)
 
 all: DEBUG =
 all: CFLAGS = -D NDEBUG
@@ -15,11 +17,11 @@ clean:
 	find . ! -type d \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
 
 
-$(NAME).o: $(NAME).c
+%.o: %.c
 	gcc -Wall -c $(CFLAGS) -o $@ $<
 
-lib$(NAME).a: $(NAME).o
-	ar rcs $@ $<
+lib$(NAME).a: $(OBJECTS)
+	ar rcs $@ $(OBJECTS)
 
 
 touch:
