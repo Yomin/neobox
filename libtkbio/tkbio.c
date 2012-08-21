@@ -150,21 +150,24 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     signal(SIGALRM, tkbio_signal_handler);
     
     // print initial screen
-    struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
-    struct tkbio_mapelem *elem;
-    int y, x, fy, fx, fheight = map->height, fwidth = map->width;
-    tkbio_layout_to_fb_sizes(&fheight, &fwidth, 0, 0);
-    for(y=0; y<map->height; y++)
-        for(x=0; x<map->width; x++)
-        {
-            fy = y; fx = x;
-            tkbio_layout_to_fb_cords(&fy, &fx, map->height);
-            elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
-            if(!(elem->type & TKBIO_LAYOUT_OPTION_COPY))
-                tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
-            if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, DENSITY, 0);
-        }
+    if(!(config.options & TKBIO_OPTION_NO_INITIAL_PRINT))
+    {
+        struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
+        struct tkbio_mapelem *elem;
+        int y, x, fy, fx, fheight = map->height, fwidth = map->width;
+        tkbio_layout_to_fb_sizes(&fheight, &fwidth, 0, 0);
+        for(y=0; y<map->height; y++)
+            for(x=0; x<map->width; x++)
+            {
+                fy = y; fx = x;
+                tkbio_layout_to_fb_cords(&fy, &fx, map->height);
+                elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
+                if(!(elem->type & TKBIO_LAYOUT_OPTION_COPY))
+                    tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
+                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                    tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, DENSITY, 0);
+            }
+    }
     
     // return screen descriptor for manual polling
     return tkbio.fd_sc;
@@ -176,6 +179,7 @@ struct tkbio_config tkbio_default_config()
     config.fb = "/dev/fb0";
     config.layout = tkbLayoutDefault;
     config.format = TKBIO_FORMAT_LANDSCAPE;
+    config.options = 0;
     return config;
 }
 

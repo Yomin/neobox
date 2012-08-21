@@ -36,6 +36,8 @@
 #define TKBIO_FORMAT_LANDSCAPE  0
 #define TKBIO_FORMAT_PORTAIT    1
 
+#define TKBIO_OPTION_NO_INITIAL_PRINT   1
+
 typedef int tkbio_handler(struct tkbio_charelem elem, void *state);
 
 struct tkbio_config
@@ -43,6 +45,7 @@ struct tkbio_config
     char *fb;
     struct tkbio_layout layout;
     int format;
+    int options;
 };
 
 int tkbio_init_default(const char *name);

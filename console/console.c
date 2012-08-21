@@ -25,6 +25,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include "tkbio.h"
 
 #define NAME "console"
@@ -47,19 +48,39 @@ int handler(struct tkbio_charelem elem, void *state)
     return 0;
 }
 
+int usage(char *name)
+{
+    printf("Usage: %s [-s] <tty>\n", name);
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
-    if(argc != 2) {
-        printf("Usage: %s tty\n", argv[0]);
-        return 0;
+    if(argc < 2 || argc > 3)
+        return usage(argv[0]);
+    
+    int show = 0;
+    char *tty;
+    if(argc == 3)
+    {
+        tty = argv[2];
+        if(!strcmp("-s", argv[1]))
+            show = 1;
+        else
+            return usage(argv[0]);
     }
+    else
+        tty = argv[1];
     
     int fd;
+    struct tkbio_config config = tkbio_default_config();
+    if(!show)
+        config.options |= TKBIO_OPTION_NO_INITIAL_PRINT;
     
-    if((fd = tkbio_init_default(NAME)) < 0)
+    if((fd = tkbio_init_custom(NAME, config)) < 0)
         return fd;
     
-    if((fd = open(argv[1], O_RDONLY)) < 0)
+    if((fd = open(tty, O_RDONLY)) < 0)
     {
         int e = errno;
         perror("Failed to open tty");
