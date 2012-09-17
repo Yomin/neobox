@@ -62,9 +62,9 @@ void tkbio_set_signal_handler(void handler(int signal));
 
 // from tkbio_fb.c
 void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, char *copy);
-void tkbio_draw_rect_border(int y, int x, int height, int width, int color, int density, char *copy);
+void tkbio_draw_rect_border(int y, int x, int height, int width, int color, char borders, int density, char *copy);
 void tkbio_fill_rect(int y, int x, int height, int width, int density, char *copy);
-void tkbio_fill_rect_border(int y, int x, int height, int width, int density, char *copy);
+void tkbio_fill_rect_border(int y, int x, int height, int width, char borders, int density, char *copy);
 
 #endif
 

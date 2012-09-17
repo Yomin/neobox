@@ -40,6 +40,11 @@
 
 struct tkbio_global tkbio;
 
+struct tkbio_point
+{
+    int y, x;
+};
+
 int tkbio_hash(const char *name)
 {
     int h = 0;
@@ -59,6 +64,69 @@ void tkbio_signal_handler(int signal)
         tkbio.pause = 0;
     else if(tkbio.custom_signal_handler)
         tkbio.custom_signal_handler(signal);
+}
+
+void tkbio_connect(int posA, int posB, int map)
+{
+    int width = tkbio.layout.maps[map].width;
+    struct vector *va = &tkbio.connect[map][posA];
+    struct vector *vb = &tkbio.connect[map][posB];
+    struct vector *vpa, *vpb;
+    struct tkbio_point pa = { .y = posA/width, .x = posA%width };
+    struct tkbio_point pb = { .y = posB/width, .x = posB%width };
+    struct tkbio_point *ppa, *ppb;
+    int count_a = vector_size(va);
+    int count_b = vector_size(vb);
+    int i, j;
+        
+    vector_push(&pb, va);
+    vector_push(&pa, vb);
+    
+    for(i=0; i<count_b; i++)
+    {
+        // pos of one partner of b
+        ppb = vector_at(i, vb);
+        // partners of one partner of b
+        vpb = &tkbio.connect[map][ppb->y*width+ppb->x];
+        
+        // set partner at ppb as partner of a
+        vector_push(ppb, va);
+        // set a as partner of partner at ppb
+        vector_push(&pa, vpb);
+    }
+    for(i=0; i<count_a; i++)
+    {
+        // pos of one partner of a
+        ppa = vector_at(i, va);
+        // partners of one partner of a
+        vpa = &tkbio.connect[map][ppa->y*width+ppa->x];
+        
+        // set partner at ppa as partner of b
+        vector_push(ppa, vb);
+        // set b as partner of partner at ppa
+        vector_push(&pb, vpa);
+    }
+    // set all partners of p as partners of all partners of me
+    for(i=0; i<count_a; i++)
+    {
+        // pos of one partner of a
+        ppa = vector_at(i, va);
+        // partners of one partner of a
+        vpa = &tkbio.connect[map][ppa->y*width+ppa->x];
+        
+        for(j=0; j<count_b; j++)
+        {
+            // pos of one partner of b
+            ppb = vector_at(j, vb);
+            // partners of one partner of b
+            vpb = &tkbio.connect[map][ppb->y*width+ppb->x];
+            
+            // set partner of b at ppb as partner of the partner of a at ppa
+            vector_push(ppb, vpa);
+            // set partner of a at ppa as partner of the partner of b at ppb
+            vector_push(ppa, vpb);
+        }
+    }
 }
 
 int tkbio_init_custom(const char *name, struct tkbio_config config)
@@ -116,6 +184,25 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     tkbio.layout = config.layout;
     tkbio.format = config.format;
     
+    // calculate connects
+    tkbio.connect = malloc(config.layout.size*sizeof(struct tkbio_positions*));
+    int i, j, width, size;
+    for(i=0; i<config.layout.size; i++)
+    {
+        width = config.layout.maps[i].width;
+        size = config.layout.maps[i].height*width;
+        tkbio.connect[i] = malloc(size*sizeof(struct vector));
+        for(j=0; j<size; j++)
+        {
+            struct vector *v = &tkbio.connect[i][j];
+            vector_init(sizeof(struct tkbio_point), &v);
+            if(j%width>0 && config.layout.maps[i].map[j].connect & TKBIO_LAYOUT_CONNECT_LEFT)
+                tkbio_connect(j-1, j, i);
+            if(j>=width && config.layout.maps[i].map[j].connect & TKBIO_LAYOUT_CONNECT_UP)
+                tkbio_connect(j-width, j, i);
+        }
+    }
+    
     // init parser
     tkbio.parser.map = config.layout.start;
     tkbio.parser.toggle = 0;
@@ -160,12 +247,15 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
             for(x=0; x<map->width; x++)
             {
                 fy = y; fx = x;
-                tkbio_layout_to_fb_cords(&fy, &fx, map->height);
+                tkbio_layout_to_fb_cords(&fy, &fx);
                 elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
                 if(!(elem->type & TKBIO_LAYOUT_OPTION_COPY))
                     tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
                 if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, DENSITY, 0);
+                {
+                    char borders = tkbio_connect_to_borders(fy, fx, elem->connect);
+                    tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, borders, DENSITY, 0);
+                }
             }
     }
     
@@ -196,6 +286,15 @@ void tkbio_finish()
     close(tkbio.fd_sc);
     if(tkbio.fb.copy)
         free(tkbio.fb.copy);
+    
+    int i, j, size;
+    for(i=0; i<tkbio.layout.size; i++)
+    {
+        size = tkbio.layout.maps[i].height * tkbio.layout.maps[i].width;
+        for(j=0; j<size; j++)
+            vector_finish(&tkbio.connect[i][j]);
+        free(tkbio.connect[i]);
+    }
 }
 
 void tkbio_set_pause()
@@ -248,7 +347,7 @@ struct tkbio_charelem tkbio_handle_event()
     }
     
     int mapY = y, mapX = x;
-    tkbio_fb_to_layout_cords(&mapY, &mapX, map->height);
+    tkbio_fb_to_layout_cords(&mapY, &mapX);
     struct tkbio_mapelem *elem = (struct tkbio_mapelem*) &map->map[mapY*map->width+mapX];
     
     if(msg & SMSB) // moved
@@ -256,6 +355,23 @@ struct tkbio_charelem tkbio_handle_event()
         if(tkbio.parser.pressed && !tkbio.pause &&
           (tkbio.parser.y != y || tkbio.parser.x != x))
         {
+            struct vector *vec = &tkbio.connect
+                [tkbio.parser.map][tkbio.parser.py*map->width+tkbio.parser.px];
+            
+            int i;
+            struct tkbio_point *p;
+            for(i=0; i<vector_size(vec); i++)
+            {
+                p = vector_at(i, vec);
+                if(p->y == y && p->x == x)
+                {
+                    DEBUG(printf("Move to partner (%i,%i)\n", mapY, mapX));
+                    tkbio.parser.y = y;
+                    tkbio.parser.x = x;
+                    return ret;
+                }
+            }
+            
             DEBUG(printf("Move (%i,%i)\n", mapY, mapX));
             switch(tkbio.fb.status)
             {
@@ -310,19 +426,46 @@ struct tkbio_charelem tkbio_handle_event()
                     break;
             }
             
+            struct vector *vec = &tkbio.connect
+                [tkbio.parser.map][tkbio.parser.py*map->width+tkbio.parser.px];
+            
             switch(tkbio.fb.status)
             {
                 case FB_STATUS_NOP:
                     break;
                 case FB_STATUS_COPY:
                     if(tkbio.fb.copy)
+                    {
                         tkbio_fb_fill_rect(tkbio.parser.y*height, tkbio.parser.x*width,
                             height, width, DENSITY, tkbio.fb.copy);
+                        
+                        int i;
+                        struct tkbio_point *p;
+                        int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(char);
+                        char *ptr = tkbio.fb.copy+size;
+                        for(i=0; i<vector_size(vec); i++, ptr += size)
+                        {
+                            p = vector_at(i, vec);
+                            tkbio_fb_fill_rect(p->y*height, p->x*width, height,
+                                width, DENSITY, ptr);
+                        }
+                    }
                     break;
                 case FB_STATUS_FILL:
+                {
                     tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
                         height, width, elem->color & 15, DENSITY, 0);
+                    
+                    int i;
+                    struct tkbio_point *p;
+                    for(i=0; i<vector_size(vec); i++)
+                    {
+                        p = vector_at(i, vec);
+                        tkbio_fb_draw_rect(p->y*height, p->x*width, height,
+                            width, elem->color & 15, DENSITY, 0);
+                    }
                     break;
+                }
             }
             
             tkbio.fb.status = FB_STATUS_NOP;
@@ -345,23 +488,37 @@ pressed:
                     }
                 default:
                 {
+                    struct vector *vec = &tkbio.connect[tkbio.parser.map][y*map->width+x];
+                    
                     if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
                     {
                         int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(char);
+                        int allsize = size * (vector_size(vec)+1);
                         
                         if(!tkbio.fb.copy)
                         {
-                            tkbio.fb.copy = malloc(size);
-                            tkbio.fb.copySize = size;
+                            tkbio.fb.copy = malloc(allsize);
+                            tkbio.fb.copySize = allsize;
                         }
-                        else if(tkbio.fb.copySize < size)
+                        else if(tkbio.fb.copySize < allsize)
                         {
-                            tkbio.fb.copy = realloc(tkbio.fb.copy, size);
-                            tkbio.fb.copySize = size;
+                            tkbio.fb.copy = realloc(tkbio.fb.copy, allsize);
+                            tkbio.fb.copySize = allsize;
                         }
                         
                         tkbio_fb_draw_rect(y*height, x*width, height, width,
                             elem->color >> 4, DENSITY, tkbio.fb.copy);
+                        
+                        int i;
+                        struct tkbio_point *p;
+                        char *ptr = tkbio.fb.copy+size;
+                        for(i=0; i<vector_size(vec); i++, ptr += size)
+                        {
+                            p = vector_at(i, vec);
+                            tkbio_fb_draw_rect(p->y*height, p->x*width, height, width,
+                                elem->color >> 4, DENSITY, ptr);
+                        }
+                        
                         tkbio.fb.copyColor = elem->color;
                         tkbio.fb.status = FB_STATUS_COPY;
                     }
@@ -369,6 +526,16 @@ pressed:
                     {
                         tkbio_fb_draw_rect(y*height, x*width, height, width,
                             elem->color >> 4, DENSITY, 0);
+                        
+                        int i;
+                        struct tkbio_point *p;
+                        for(i=0; i<vector_size(vec); i++)
+                        {
+                            p = vector_at(i, vec);
+                            tkbio_fb_draw_rect(p->y*height, p->x*width, height, width,
+                                elem->color >> 4, DENSITY, 0);
+                        }
+                        
                         tkbio.fb.status = FB_STATUS_FILL;
                     }
                 }
@@ -376,6 +543,8 @@ pressed:
             
             tkbio.parser.y = y;
             tkbio.parser.x = x;
+            tkbio.parser.py = y;
+            tkbio.parser.px = x;
             tkbio.parser.pressed = 1;
             
             tkbio_set_pause();

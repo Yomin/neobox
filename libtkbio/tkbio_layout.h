@@ -29,6 +29,8 @@
 #define TKBIO_LAYOUT_TYPE_TOGG      3
 #define TKBIO_LAYOUT_OPTION_BORDER  4
 #define TKBIO_LAYOUT_OPTION_COPY    8
+#define TKBIO_LAYOUT_CONNECT_LEFT   1
+#define TKBIO_LAYOUT_CONNECT_UP     2
 
 #define TKBIO_LAYOUT_MASK_TYPE      3
 
@@ -46,7 +48,7 @@ struct tkbio_mapelem
     char type;
     struct tkbio_charelem elem;
     char color;
-    struct tkbio_mapelem **connect;
+    char connect;
 };
 
 struct tkbio_map
@@ -57,7 +59,7 @@ struct tkbio_map
 
 struct tkbio_layout
 {
-    int start;
+    int start, size;
     const struct tkbio_map *maps;
     const char (*colors)[4];
     tkbio_parsefun *fun;

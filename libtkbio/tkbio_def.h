@@ -24,6 +24,7 @@
 #define __TKBIO_DEF_H__
 
 #include <linux/fb.h>
+#include <alg/vector.h>
 #include "tkbio_layout.h"
 
 #ifdef NDEBUG
@@ -61,7 +62,8 @@ struct tkbio_fb
 struct tkbio_parser
 {
     int pressed; // button currently pressed
-    int y, x;    // last pressed pos
+    int y, x;    // last pos
+    int py, px;  // last pressed pos
     int map;
     int hold;
     char toggle;
@@ -74,6 +76,7 @@ struct tkbio_global
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
+    struct vector **connect;
     void (*custom_signal_handler)(int signal);
 };
 

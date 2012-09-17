@@ -23,16 +23,23 @@
 #ifndef __TKBIO_FB_H__
 #define __TKBIO_FB_H__
 
+#define TKBIO_BORDER_LEFT   1
+#define TKBIO_BORDER_RIGHT  2
+#define TKBIO_BORDER_TOP    4
+#define TKBIO_BORDER_BOTTOM 8
+#define TKBIO_BORDER_ALL    15
+
 void tkbio_color32to16(char* dst, const char* src);
 
 void tkbio_layout_to_fb_sizes(int *height, int *width, int *scrHeight, int *scrWidth);
-void tkbio_layout_to_fb_cords(int *y, int *x, int mapHeight);
-void tkbio_fb_to_layout_cords(int *y, int *x, int mapHeight);
+void tkbio_layout_to_fb_cords(int *y, int *x);
+void tkbio_fb_to_layout_cords(int *y, int *x);
+char tkbio_connect_to_borders(int y, int x, char connect);
 
 void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int density, char *copy);
-void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, int density, char *copy);
+void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, char borders, int density, char *copy);
 void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, char *fill);
-void tkbio_fb_fill_rect_border(int y, int x, int height, int width, int density, char *fill);
+void tkbio_fb_fill_rect_border(int y, int x, int height, int width, char borders, int density, char *fill);
 
 #endif
 

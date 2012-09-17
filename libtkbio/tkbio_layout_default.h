@@ -192,6 +192,7 @@ struct tkbio_charelem tkbio_parse(int map, struct tkbio_charelem elem, char togg
 struct tkbio_layout tkbLayoutDefault =
     {
         .start  = TKBIO_TYPE_PRIMARY,
+        .size   = sizeof(tkbio_maps)/sizeof(struct tkbio_map),
         .maps   = tkbio_maps,
         .colors = tkbio_colors,
         .fun    = tkbio_parse

@@ -4,6 +4,7 @@
 NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
+INCLUDES = -Ilibs/alg
 
 all: DEBUG =
 all: CFLAGS = -D NDEBUG
@@ -18,7 +19,7 @@ clean:
 
 
 %.o: %.c
-	gcc -Wall -c $(CFLAGS) -o $@ $<
+	gcc -Wall -c $(CFLAGS) $(INCLUDES) -o $@ $<
 
 lib$(NAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
