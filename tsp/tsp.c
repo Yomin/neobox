@@ -31,6 +31,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/queue.h>
+#include <signal.h>
 
 #define BYTES_PER_CMD   16
 #define MIN_PIXEL       100
@@ -145,7 +146,7 @@ void del_socket(int fd, int pos)
     
     if(fd == fd_active)
     {
-        if(s->prev_fd)
+        if(s->prev_fd != -1)
         {
 #ifndef NDEBUG
             struct chain_socket *s2 = find_socket(TYPE_FD, s->prev_fd);
@@ -168,6 +169,35 @@ void del_socket(int fd, int pos)
     memmove(pfds+pos, pfds+pos+1, sizeof(struct pollfd)*(sock_count-pos+1));
     sock_count--;
     pfds = realloc(pfds, sizeof(struct pollfd)*(sock_count+2));
+}
+
+void cleanup(int start)
+{
+    int i;
+    for(i=start; i<sock_count+2; i++)
+        close(pfds[i].fd);
+    free(pfds);
+}
+
+void signal_handler(int signal)
+{
+    switch(signal)
+    {
+    case SIGINT:
+        cleanup(0);
+        break;
+    case SIGPIPE:
+    {
+        int i;
+        for(i=2; i<sock_count+2; i++)
+            if(pfds[i].fd == fd_active)
+            {
+                del_socket(fd_active, i);
+                break;
+            }
+        break;
+    }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -236,6 +266,9 @@ int main(int argc, char* argv[])
         return 6;
     }
     
+    signal(SIGINT, signal_handler);
+    signal(SIGPIPE, signal_handler);
+    
     LIST_INIT(&socklist);
     
     pfds = malloc(sizeof(struct pollfd)*2);
@@ -248,6 +281,8 @@ int main(int argc, char* argv[])
     int pressed = 0;
     int y = 0, x = 0;
     sock_count = 0;
+    
+    DEBUG(printf("Ready\n"));
     
     while(1)
     {
@@ -310,11 +345,8 @@ int main(int argc, char* argv[])
             if((fd_sc = open(argv[1], O_RDONLY)) < 0)
             {
                 perror("Failed to open screen socket");
-                int i;
-                for(i=2; i<sock_count+2; i++)
-                    close(pfds[i].fd);
+                cleanup(2);
                 close(fd_rpc);
-                free(pfds);
                 return 4;
             }
         }
@@ -334,11 +366,8 @@ int main(int argc, char* argv[])
             if((fd_rpc = open("/var/" NAME "/rpc", O_RDONLY|O_NONBLOCK)) < 0)
             {
                 perror("Failed to open rpc socket");
-                int i;
-                for(i=2; i<sock_count+2; i++)
-                    close(pfds[i].fd);
+                cleanup(2);
                 close(fd_sc);
-                free(pfds);
                 return 6;
             }
         }
@@ -349,15 +378,12 @@ int main(int argc, char* argv[])
                 if(pfds[i].revents & POLLHUP)
                 {
                     del_socket(pfds[i].fd, i);
-                    break;
+                    i--;
                 }
         }
     }
     
-    int i;
-    for(i=0; i<sock_count+2; i++)
-        close(pfds[i].fd);
-    free(pfds);
+    cleanup(0);
     
     return 0;
 }
