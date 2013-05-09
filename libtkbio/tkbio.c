@@ -129,18 +129,54 @@ void tkbio_connect(int posA, int posB, int map)
     }
 }
 
+int tkbio_register_socket(int tries)
+{
+    while((tkbio.fd_rpc = open("/var/" RPCNAME "/rpc", O_WRONLY|O_NONBLOCK)) < 0)
+    {
+        DEBUG(perror("Failed to open rpc socket"));
+        if(tries > 0 && !--tries)
+        {
+            DEBUG(perror("Unable to open rpc socket"));
+            return TKBIO_ERROR_RPC_OPEN;
+        }
+        sleep(1);
+    }
+    
+    write(tkbio.fd_rpc, &tkbio.id, sizeof(int));
+    return 0;
+}
+
+int tkbio_activate_socket(int tries)
+{
+    char buf[256];
+    snprintf(buf, 256, "/var/" RPCNAME "/socket_%i", tkbio.id);
+    while((tkbio.fd_sc = open(buf, O_RDONLY|O_NONBLOCK)) < 0)
+    {
+        DEBUG(perror("Failed to open screen socket"));
+        if(tries > 0 && !--tries)
+        {
+            DEBUG(perror("Unable to open screen socket"));
+            return TKBIO_ERROR_SCREEN_OPEN;
+        }
+        sleep(1);
+    }
+    
+    tkbio.id |= MSB;
+    write(tkbio.fd_rpc, &tkbio.id, sizeof(int));
+    tkbio.id &= ~MSB;
+    return 0;
+}
+
 int tkbio_init_custom(const char *name, struct tkbio_config config)
 {
+    int ret;
+    
     DEBUG(printf("tkbio init\n"));
     
     // register socket
-    if((tkbio.fd_rpc = open("/var/" RPCNAME "/rpc", O_WRONLY|O_NONBLOCK)) < 0)
-    {
-        DEBUG(perror("Failed to open rpc socket"));
-        return TKBIO_ERROR_RPC_OPEN;
-    }
     tkbio.id = tkbio_hash(name);
-    write(tkbio.fd_rpc, &tkbio.id, sizeof(int));
+    if((ret = tkbio_register_socket(-1)) < 0)
+        return ret;
     
     // open framebuffer
     if((tkbio.fb.fd = open(config.fb, O_RDWR)) < 0)
@@ -209,27 +245,13 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     tkbio.parser.hold = 0;
     tkbio.parser.pressed = 0;
     
-    // open screen socket
-    char buf[256];
-    snprintf(buf, 256, "/var/" RPCNAME "/socket_%i", tkbio.id);
-    int tries = 3;
-    while((tkbio.fd_sc = open(buf, O_RDONLY|O_NONBLOCK)) < 0)
-    {
-        DEBUG(perror("Failed to open screen socket"));
-        if(!--tries)
-        {
-            DEBUG(perror("Unable to open screen socket"));
-            close(tkbio.fd_rpc);
-            close(tkbio.fb.fd);
-            return TKBIO_ERROR_SCREEN_OPEN;
-        }
-        sleep(1);
-    }
-    
     // activate socket
-    tkbio.id |= MSB;
-    write(tkbio.fd_rpc, &tkbio.id, sizeof(int));
-    tkbio.id &= ~MSB;
+    if((ret = tkbio_activate_socket(-1)) < 0)
+    {
+        close(tkbio.fd_rpc);
+        close(tkbio.fb.fd);
+        return ret;
+    }
     
     // else
     tkbio.pause = 0;
@@ -574,8 +596,10 @@ int tkbio_run(tkbio_handler *handler, void *state)
         }
         else if(pfds[0].revents & POLLHUP)
         {
-            DEBUG(printf("Failed to poll screen socket"));
-            return TKBIO_ERROR_SCREEN_POLL;
+            DEBUG(printf("Failed to poll screen socket\n"));
+            tkbio_register_socket(-1);
+            tkbio_activate_socket(-1);
+            pfds[0].fd = tkbio.fd_sc;
         }
     }
 }
