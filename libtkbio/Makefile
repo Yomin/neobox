@@ -1,21 +1,27 @@
 
-.PHONY: all, debug, clean, touch
+.PHONY: all, debug, clean, touch, libs
+
+LIBALGPATH = libs/libalg
+LIBALG = $(LIBALGPATH)/libalg.a
 
 NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
-INCLUDES = -Ilibs/alg
+INCLUDES = -I$(LIBALGPATH)
 
 all: DEBUG =
 all: CFLAGS = -D NDEBUG
-all: touch lib$(NAME).a
+all: touch $(LIBALG) lib$(NAME).a
 
 debug: DEBUG = yes
 debug: CFLAGS = -ggdb
-debug: touch lib$(NAME).a
+debug: touch $(LIBALG) lib$(NAME).a
 
 clean:
-	find . ! -type d \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
+	find . ! -type d ! -type l \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
+
+libs:
+	@for l in $(shell ls libs); do echo -L../lib$(NAME)/libs/$$l -l$${l:3}; done
 
 
 %.o: %.c
@@ -24,6 +30,8 @@ clean:
 lib$(NAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
 
+$(LIBALG):
+	@make -C $(LIBALGPATH)
 
 touch:
 	$(shell [ -f debug -a -z "$(DEBUG)" ] && { touch $(NAME).c; rm debug; })
