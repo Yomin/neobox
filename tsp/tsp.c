@@ -200,53 +200,86 @@ void signal_handler(int signal)
     }
 }
 
+void usage(const char *name)
+{
+    printf("Usage: %s [-f] <screen>\n", name);
+}
+
 int main(int argc, char* argv[])
 {
-    if(argc != 2)
+    int opt;
+    int daemon = 1;
+    char *screen;
+    
+    while((opt = getopt(argc, argv, "f")) != -1)
     {
-        printf("Usage: %s screen\n", argv[0]);
+        switch(opt)
+        {
+        case 'f':
+            daemon = 0;
+            break;
+        default:
+            usage(argv[0]);
+            return 0;
+        }
+    }
+    
+    if(optind == argc)
+    {
+        usage(argv[0]);
         return 0;
     }
     
-    mkdir("/var/" NAME, 0755);
+    screen = argv[optind];
     
-#ifdef NDEBUG
-    
-    int tmp = fork();
-    if(tmp < 0)
+    if(mkdir("/var/" NAME, 0755) == -1 && errno != EEXIST)
     {
-        perror("Failed to fork process");
-        return 1;
-    }
-    if(tmp > 0)
-    {
-        return 0;
+        perror("Failed to create working dir");
+        return 7;
     }
     
-    setsid();
-    
-    close(0); close(1); close(2);
-    tmp = open("/dev/null", O_RDWR); dup(tmp); dup(tmp);
-    
-    chdir("/var/" NAME);
-    
-    if((tmp = open("lock", O_RDWR|O_CREAT, 755)) < 0)
+    if(daemon)
     {
-        perror("Failed to open lockfile");
-        return 2;
+        int tmp = fork();
+        if(tmp < 0)
+        {
+            perror("Failed to fork process");
+            return 1;
+        }
+        if(tmp > 0)
+        {
+            return 0;
+        }
+        
+        setsid();
+        
+        close(0); close(1); close(2);
+        tmp = open("/dev/null", O_RDWR); dup(tmp); dup(tmp);
+        
+        chdir("/var/" NAME);
+        
+        if((tmp = open("pid", O_WRONLY|O_CREAT, 755)) < 0)
+        {
+            perror("Failed to open pidfile");
+            return 2;
+        }
+        
+        pid_t pid = getpid();
+        char buf[10];
+        int count = sprintf(buf, "%i", pid);
+        write(tmp, &buf, count*sizeof(char));
+        
+        if(lockf(tmp, F_TLOCK, -count*sizeof(char)) < 0)
+        {
+            perror("Deamon already running");
+            return 3;
+        }
     }
-    if(lockf(tmp, F_TLOCK, 0) < 0)
-    {
-        perror("Deamon already running");
-        return 3;
-    }
-    
-#endif
     
     int fd_sc, fd_rpc;
     fd_active = -1;
     
-    if((fd_sc = open(argv[1], O_RDONLY)) < 0)
+    if((fd_sc = open(screen, O_RDONLY)) < 0)
     {
         perror("Failed to open screen socket");
         return 4;
