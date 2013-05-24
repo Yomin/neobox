@@ -23,12 +23,13 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include "tkbio.h"
 
-#define NAME "console"
+#define NAME "neobox-console"
 
 int handler(struct tkbio_charelem elem, void *state)
 {
@@ -48,29 +49,79 @@ int handler(struct tkbio_charelem elem, void *state)
     return 0;
 }
 
-int usage(char *name)
+void usage(char *name)
 {
-    printf("Usage: %s [-s] <tty>\n", name);
-    return 0;
+    printf("Usage: %s [-s] [-d] <tty>\n", name);
 }
 
 int main(int argc, char* argv[])
 {
-    if(argc < 2 || argc > 3)
-        return usage(argv[0]);
-    
+    int opt;
     int show = 0;
+    int daemon = 0;
     char *tty;
-    if(argc == 3)
+    
+    while((opt = getopt(argc, argv, "sd")) != -1)
     {
-        tty = argv[2];
-        if(!strcmp("-s", argv[1]))
+        switch(opt)
+        {
+        case 's':
             show = 1;
-        else
-            return usage(argv[0]);
+            break;
+        case 'd':
+            daemon = 1;
+            break;
+        default:
+            usage(argv[0]);
+            return 0;
+        }
     }
-    else
-        tty = argv[1];
+    
+    if(optind == argc)
+    {
+        usage(argv[0]);
+        return 0;
+    }
+    
+    tty = argv[optind];
+    
+    if(daemon)
+    {
+        int tmp = fork();
+        if(tmp < 0)
+        {
+            perror("Failed to fork process");
+            return 1;
+        }
+        if(tmp > 0)
+        {
+            return 0;
+        }
+        
+        setsid();
+        
+        close(0); close(1); close(2);
+        tmp = open("/dev/null", O_RDWR); dup(tmp); dup(tmp);
+        
+        if(mkdir("/var/" NAME, 0755) == -1 && errno != EEXIST)
+        {
+            perror("Failed to create working dir");
+            return 2;
+        }
+        chdir("/var/" NAME);
+        
+        if((tmp = open("pid", O_WRONLY|O_CREAT, 755)) < 0)
+        {
+            perror("Failed to open pidfile");
+            return 3;
+        }
+        
+        pid_t pid = getpid();
+        char buf[10];
+        int count = sprintf(buf, "%i", pid);
+        write(tmp, &buf, count*sizeof(char));
+        close(tmp);
+    }
     
     int fd;
     struct tkbio_config config = tkbio_default_config();
