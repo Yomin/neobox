@@ -92,7 +92,15 @@ void tkbio_connect(int posA, int posB, int map)
     int count_a = vector_size(va);
     int count_b = vector_size(vb);
     int i, j;
-        
+    
+    // check if already connected
+    for(i=0; i<count_a; i++)
+    {
+        ppa = vector_at(i, va);
+        if(ppa->y == pb.y && ppa->x == pb.x)
+            return;
+    }
+    
     vector_push(&pb, va);
     vector_push(&pa, vb);
     
