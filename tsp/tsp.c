@@ -27,196 +27,163 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/queue.h>
 #include <signal.h>
+#include <libgen.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/queue.h>
+#include <sys/stat.h>
+
+#include "tsp.h"
 
 #define BYTES_PER_CMD   16
 #define MIN_PIXEL       100
-#define NAME            "tspd"
-#define MSB             (1<<(sizeof(int)*8-1))
-#define SMSB            (1<<(sizeof(int)*8-2))
-#define NIBBLE          ((sizeof(int)/2)*8)
-
-#define TYPE_ID 0
-#define TYPE_FD 1
 
 #ifdef NDEBUG
-#   define DEBUG
+#   define DEBUG(x)
 #else
 #   define DEBUG(x) x
 #endif
 
-struct pollfd *pfds;
-int sock_count, fd_active;
 
 struct chain_socket
 {
     LIST_ENTRY(chain_socket) chain;
-    int id, fd, prev_fd;
+    int sock, pfds_pos;
 };
-LIST_HEAD(sockets, chain_socket) socklist;
+LIST_HEAD(client_sockets, chain_socket);
 
-struct chain_socket* find_socket(int type, int id)
+
+int client_count, pfds_cap;
+struct client_sockets client_list;
+char *pwd;
+struct pollfd *pfds;
+
+
+int open_rpc_socket(int *sock, struct sockaddr_un *addr)
 {
-    struct chain_socket *s = socklist.lh_first;
-    while(s)
+    addr->sun_family = AF_UNIX;
+    sprintf(addr->sun_path, "%s/%s", pwd, TSP_RPC);
+    
+    if((*sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
-        if(type == TYPE_ID && s->id == id)
-            return s;
-        if(type == TYPE_FD && s->fd == id)
-            return s;
-        s = s->chain.le_next;
+        perror("Failed to open rpc socket");
+        return 6;
     }
+    
+    if(unlink(addr->sun_path) == -1 && errno != ENOENT)
+    {
+        perror("Failed to unlink rpc socket file");
+        return 7;
+    }
+    
+    if(bind(*sock, (struct sockaddr*)addr, sizeof(struct sockaddr_un)) == -1)
+    {
+        perror("Failed to bind rpc socket");
+        return 8;
+    }
+    
+    listen(*sock, 10);
+    
     return 0;
 }
 
-void delete_socket(struct chain_socket *s)
+void add_client(int fd)
 {
-    char buf[256];
-    snprintf(buf, 256, "/var/" NAME "/socket_%i", s->id);
-    if(remove(buf) < 0)
-        DEBUG(perror("Failed to remove socket"));
-    LIST_REMOVE(s, chain);
-    free(s);
+    struct chain_socket *cs = malloc(sizeof(struct chain_socket));
+    LIST_INSERT_HEAD(&client_list, cs, chain);
+    cs->sock = fd;
+    cs->pfds_pos = client_count+2;
+    if(client_count+2 == pfds_cap)
+    {
+        pfds_cap += 10;
+        pfds = realloc(pfds, pfds_cap*sizeof(struct pollfd));
+    }
+    pfds[client_count+2].fd = fd;
+    pfds[client_count+2].events = POLLIN;
+    client_count++;
+    DEBUG(printf("Client added [%i]\n", fd));
 }
 
-void add_socket(int id)
+void send_client(struct tsp_event *event)
 {
-    struct chain_socket *s = find_socket(TYPE_ID, id);
-    if(s)
-    {
-        DEBUG(printf("Socket exists: %i\n", id));
+    if(!client_list.lh_first)
         return;
+    int sock = client_list.lh_first->sock;
+    send(sock, event, sizeof(struct tsp_event), 0);
+}
+
+int rem_client(int num)
+{
+    struct chain_socket *cs = client_list.lh_first;
+    DEBUG(int fd);
+    
+    while(cs && cs->pfds_pos != num)
+        cs = cs->chain.le_next;
+    if(!cs)
+        return 0;
+    DEBUG(fd = pfds[cs->pfds_pos].fd);
+    
+    memcpy(pfds+cs->pfds_pos, pfds+cs->pfds_pos+1, client_count+2-cs->pfds_pos-1);
+    LIST_REMOVE(cs, chain);
+    free(cs);
+    client_count--;
+    if((cs = client_list.lh_first))
+    {
+        DEBUG(printf("Client removed [%i], switch [%i]\n", fd, pfds[cs->pfds_pos].fd));
+        return 1;
     }
     else
-        DEBUG(printf("Socket added: %i\n", id));
-    
-    s = malloc(sizeof(struct chain_socket));
-    LIST_INSERT_HEAD(&socklist, s, chain);
-    s->id = id;
-    
-    char buf[256];
-    snprintf(buf, 256, "/var/" NAME "/socket_%i", id);
-    if(mknod(buf, S_IFIFO|0666, 0) < 0 && errno != EEXIST)
     {
-        perror("Failed to create socket");
-        return;
+        DEBUG(printf("Client removed [%i], last\n", fd));
+        return 0;
     }
 }
 
-void activate_socket(int id)
+void free_clients()
 {
-    struct chain_socket *s = find_socket(TYPE_ID, id);
-    if(!s)
+    struct chain_socket *cs;
+    while((cs = client_list.lh_first))
     {
-        DEBUG(printf("Failed to find socket"));
-        return;
+        LIST_REMOVE(cs, chain);
+        free(cs);
     }
-    
-    char buf[256];
-    snprintf(buf, 256, "/var/" NAME "/socket_%i", id);
-    if((s->fd = open(buf, O_WRONLY|O_NONBLOCK)) < 0)
-    {
-        if(errno == ENXIO)
-        {
-            DEBUG(printf("Client not listening\n"));
-            delete_socket(s);
-        }
-        else
-            DEBUG(perror("Failed to open socket"));
-        return;
-    }
-    
-    sock_count++;
-    pfds = realloc(pfds, sizeof(struct pollfd)*(sock_count+2));
-    pfds[sock_count+1].fd = s->fd;
-    pfds[sock_count+1].events = 0;
-    
-    s->prev_fd = fd_active;
-    fd_active = s->fd;
-}
-
-void del_socket(int fd, int pos)
-{
-    struct chain_socket *s = find_socket(TYPE_FD, fd);
-    DEBUG(printf("Socket removed: %i", s->id));
-    
-    if(fd == fd_active)
-    {
-        if(s->prev_fd != -1)
-        {
-#ifndef NDEBUG
-            struct chain_socket *s2 = find_socket(TYPE_FD, s->prev_fd);
-            printf(", active: %i\n", s2->id);
-#endif
-            fd_active = s->prev_fd;
-        }
-        else
-        {
-            DEBUG(printf(", active: none\n"));
-            fd_active = -1;
-        }
-    }
-    else
-        DEBUG(printf("\n"));
-    
-    close(s->fd);
-    delete_socket(s);
-    
-    memmove(pfds+pos, pfds+pos+1, sizeof(struct pollfd)*(sock_count-pos+1));
-    sock_count--;
-    pfds = realloc(pfds, sizeof(struct pollfd)*(sock_count+2));
-}
-
-void cleanup(int start)
-{
-    int i;
-    for(i=start; i<sock_count+2; i++)
-        close(pfds[i].fd);
-    free(pfds);
 }
 
 void signal_handler(int signal)
 {
-    switch(signal)
-    {
-    case SIGINT:
-        cleanup(0);
-        break;
-    case SIGPIPE:
-    {
-        int i;
-        for(i=2; i<sock_count+2; i++)
-            if(pfds[i].fd == fd_active)
-            {
-                del_socket(fd_active, i);
-                break;
-            }
-        break;
-    }
-    }
+    free_clients();
+    exit(0);
 }
 
 void usage(const char *name)
 {
-    printf("Usage: %s [-f] <screen>\n", name);
+    printf("Usage: %s [-f] [-d pwd] <screen>\n", name);
 }
 
 int main(int argc, char* argv[])
 {
-    int opt;
+    int opt, ret;
     int daemon = 1;
-    char *screen;
+    char *screen_dev;
+    int screen_fd, rpc_sock;
+    struct sockaddr_un rpc_addr;
     
-    while((opt = getopt(argc, argv, "f")) != -1)
+    unsigned char screen_buf[BYTES_PER_CMD];
+    struct tsp_event event;
+    
+    memset(&event, 0, sizeof(struct tsp_event));
+    pwd = TSP_PWD;
+    
+    while((opt = getopt(argc, argv, "fd:")) != -1)
     {
         switch(opt)
         {
         case 'f':
             daemon = 0;
+            break;
+        case 'd':
+            pwd = optarg;
             break;
         default:
             usage(argv[0]);
@@ -230,9 +197,9 @@ int main(int argc, char* argv[])
         return 0;
     }
     
-    screen = argv[optind];
+    screen_dev = argv[optind];
     
-    if(mkdir("/var/" NAME, 0755) == -1 && errno != EEXIST)
+    if(mkdir(pwd, 0777) == -1 && errno != EEXIST)
     {
         perror("Failed to create working dir");
         return 7;
@@ -256,7 +223,7 @@ int main(int argc, char* argv[])
         close(0); close(1); close(2);
         tmp = open("/dev/null", O_RDWR); dup(tmp); dup(tmp);
         
-        chdir("/var/" NAME);
+        chdir(pwd);
         
         if((tmp = open("pid", O_WRONLY|O_CREAT, 755)) < 0)
         {
@@ -271,153 +238,158 @@ int main(int argc, char* argv[])
         
         if(lockf(tmp, F_TLOCK, -count*sizeof(char)) < 0)
         {
-            perror("Deamon already running");
+            perror("Daemon already running");
             return 3;
         }
     }
     
-    int fd_sc, fd_rpc;
-    fd_active = -1;
-    
-    if((fd_sc = open(screen, O_RDONLY)) < 0)
+    if((screen_fd = open(screen_dev, O_RDONLY)) < 0)
     {
         perror("Failed to open screen socket");
         return 4;
     }
     
-    if(mknod("/var/" NAME "/rpc", S_IFIFO|0666, 0) < 0 && errno != EEXIST)
-    {
-        perror("Failed to create rpc socket");
-        close(fd_sc);
-        return 5;
-    }
+    if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
+        return ret;
     
-    if((fd_rpc = open("/var/" NAME "/rpc", O_RDONLY|O_NONBLOCK)) < 0)
-    {
-        perror("Failed to open rpc socket");
-        close(fd_sc);
-        return 6;
-    }
-    
-    signal(SIGINT, signal_handler);
-    signal(SIGPIPE, signal_handler);
-    
-    LIST_INIT(&socklist);
-    
-    pfds = malloc(sizeof(struct pollfd)*2);
-    pfds[0].fd = fd_sc;
+    pfds_cap = 10;
+    pfds = malloc(pfds_cap*sizeof(struct pollfd));
+    pfds[0].fd = screen_fd;
     pfds[0].events = POLLIN;
-    pfds[1].fd = fd_rpc;
+    pfds[1].fd = rpc_sock;
     pfds[1].events = POLLIN;
     
-    unsigned char buf[BYTES_PER_CMD];
-    int pressed = 0;
-    int y = 0, x = 0;
-    sock_count = 0;
+    client_count = 0;
+    LIST_INIT(&client_list);
+    
+    signal(SIGINT, signal_handler);
     
     DEBUG(printf("Ready\n"));
     
     while(1)
     {
-        poll(pfds, 2, -1);
+        poll(pfds, client_count+2, -1);
         
         if(pfds[0].revents & POLLIN)
         {
-            read(fd_sc, buf, BYTES_PER_CMD);
+            read(screen_fd, screen_buf, BYTES_PER_CMD);
             
-            if(buf[8] == 0x01 && buf[9] == 0x00 && buf[10] == 0x4A && buf[11] == 0x01)
+            if( screen_buf[8] == 0x01 && screen_buf[9] == 0x00 &&
+                screen_buf[10] == 0x4A && screen_buf[11] == 0x01)
             {
                 DEBUG(printf("Button"));
-                switch(buf[12])
+                switch(screen_buf[12])
                 {
                     case 0x00:
-                        if(pressed)
+                        if(event.event & TSP_EVENT_PRESSED)
                         {
-                            DEBUG(printf(" released (%i,%i)\n", y, x));
-                            pressed = 0;
-                            int msg = x | y << NIBBLE | MSB;
-                            if(fd_active >= 0)
-                                write(fd_active, &msg, sizeof(int));
+                            DEBUG(printf(" released (%i,%i)\n", event.y, event.x));
+                            event.event &= ~TSP_EVENT_PRESSED;
+                            send_client(&event);
                         }
+                        else
+                            DEBUG(printf(" already released (%i,%i)\n", event.y, event.x));
                         break;
                     case 0x01:
-                        if(!pressed)
+                        if(!(event.event & TSP_EVENT_PRESSED))
                         {
-                            DEBUG(printf(" pressed (%i,%i)\n", y, x));
-                            pressed = 1;
-                            int msg = x | y << NIBBLE;
-                            if(fd_active >= 0)
-                                write(fd_active, &msg, sizeof(int));
+                            DEBUG(printf(" pressed (%i,%i)\n", event.y, event.x));
+                            event.event |= TSP_EVENT_PRESSED;
+                            send_client(&event);
                         }
+                        else
+                            DEBUG(printf(" already pressed (%i,%i)\n", event.y, event.x));
                         break;
                     default:
-                        DEBUG(printf(" unrecognized (%i,%i)\n", y, x));
+                        DEBUG(printf(" unrecognized (%i,%i)\n", event.y, event.x));
                 }
             }
-            else if(buf[8] == 0x03 && buf[9] == 0x00 && buf[10] == 0x00 && buf[11] == 0x00)
+            else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
+                    screen_buf[10] == 0x00 && screen_buf[11] == 0x00)
             {
-                y = buf[13]*256+buf[12]-MIN_PIXEL;
+                event.y = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
             }
-            else if(buf[8] == 0x03 && buf[9] == 0x00 && buf[10] == 0x01 && buf[11] == 0x00)
+            else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
+                    screen_buf[10] == 0x01 && screen_buf[11] == 0x00)
             {
-                x = buf[13]*256+buf[12]-MIN_PIXEL;
-                if(pressed)
+                event.x = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
+                if(event.event & TSP_EVENT_PRESSED)
                 {
-                    int msg = x | y << NIBBLE | SMSB;
-                    DEBUG(printf("Move (%i,%i)\n", y, x));
-                    if(fd_active >= 0)
-                        write(fd_active, &msg, sizeof(int));
+                    event.event |= TSP_EVENT_MOVED;
+                    DEBUG(printf("Move (%i,%i)\n", event.y, event.x));
+                    send_client(&event);
+                    event.event &= ~TSP_EVENT_MOVED;
                 }
             }
-            
         }
         else if(pfds[0].revents & POLLHUP)
         {
-            DEBUG(printf("POLLHUP on screen socket\n"));
-            close(fd_sc);
-            if((fd_sc = open(argv[1], O_RDONLY)) < 0)
+            DEBUG(printf("pollhup on screen socket\n"));
+            close(screen_fd);
+            if((screen_fd = open(screen_dev, O_RDONLY)) < 0)
             {
                 perror("Failed to open screen socket");
-                cleanup(2);
-                close(fd_rpc);
+                close(rpc_sock);
+                free_clients();
                 return 4;
             }
         }
         else if(pfds[1].revents & POLLIN)
         {
-            int id;
-            read(fd_rpc, &id, sizeof(int));
-            if(id & MSB)
-                activate_socket(id & ~MSB);
-            else
-                add_socket(id);
+            int client;
+            if((client = accept(rpc_sock, 0, 0)) == -1)
+            {
+                DEBUG(perror("Failed to accept client"));
+                continue;
+            }
+            add_client(client);
         }
         else if(pfds[1].revents & POLLHUP)
         {
-            DEBUG(printf("POLLHUP on rpc socket\n"));
-            close(fd_rpc);
-            if((fd_rpc = open("/var/" NAME "/rpc", O_RDONLY|O_NONBLOCK)) < 0)
+            DEBUG(printf("pollhup on rpc socket\n"));
+            close(rpc_sock);
+            if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
             {
-                perror("Failed to open rpc socket");
-                cleanup(2);
-                close(fd_sc);
-                return 6;
+                close(screen_fd);
+                free_clients();
+                return ret;
             }
         }
         else
         {
-            int i;
-            for(i=2; i<sock_count+2; i++)
-                if(pfds[i].revents & POLLHUP)
+            int x;
+            for(x=2; x<client_count+2; x++)
+                if(pfds[x].revents & POLLHUP || pfds[x].revents & POLLERR)
                 {
-                    del_socket(pfds[i].fd, i);
-                    i--;
+                    DEBUG(printf("pollhup/pollerr on client socket [%i]\n", pfds[x].fd));
+                    goto client_remove;
+                }
+                else if(pfds[x].revents & POLLIN)
+                {
+                    char cmd;
+                    recv(pfds[x].fd, &cmd, sizeof(char), 0);
+                    switch(cmd)
+                    {
+                    case TSP_CMD_REMOVE:
+client_remove:          if(rem_client(x))
+                        {
+                            event.event |= TSP_EVENT_ACTIVATED;
+                            send_client(&event);
+                            event.event &= ~TSP_EVENT_ACTIVATED;
+                        }
+                        break;
+                    case TSP_CMD_SWITCH:
+                        break;
+                    default:
+                        DEBUG(printf("Unrecognized command 0x%02x\n", cmd));
+                    }
                 }
         }
     }
     
-    cleanup(0);
+    close(screen_fd);
+    close(rpc_sock);
+    free_clients();
     
     return 0;
 }
-
