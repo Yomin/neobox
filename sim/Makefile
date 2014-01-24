@@ -1,14 +1,15 @@
 
-.PHONY: all, debug, clean, touch, sim
+.PHONY: all, debug, clean, touch
 
-NAME = tsp
+NAME = sim
+CFLAGS = $$(pkg-config --cflags --libs gtk+-3.0) -lrt
 
 all: DEBUG =
-all: CFLAGS = -D NDEBUG
+all: CFLAGS := $(CFLAGS) -D NDEBUG
 all: touch $(NAME)
 
 debug: DEBUG = yes
-debug: CFLAGS = -ggdb
+debug: CFLAGS := $(CFLAGS) -ggdb
 debug: touch $(NAME)
 
 clean:
@@ -22,6 +23,3 @@ $(NAME): $(NAME).c
 touch:
 	$(shell [ -f debug -a -z "$(DEBUG)" ] && { touch $(NAME).c; rm debug; })
 	$(shell [ ! -f debug -a -n "$(DEBUG)" ] && { touch $(NAME).c; touch debug; })
-
-sim: debug
-	./$(NAME) -f -d ../sim/ ../sim/screen.ipc

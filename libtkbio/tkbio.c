@@ -231,26 +231,61 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         return ret;
     
     // open framebuffer
-    DEBUG(printf("[TKBIO] Opening framebuffer\n"));
-    if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
+    if(strncmp(config.fb+strlen(config.fb)-4, ".ipc", 4))
     {
-        DEBUG(perror("[TKBIO] Failed to open framebuffer"));
-        close(tkbio.sock);
-        return TKBIO_ERROR_FB_OPEN;
+        tkbio.sim = 0;
+        DEBUG(printf("[TKBIO] Opening framebuffer\n"));
+        if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to open framebuffer"));
+            close(tkbio.sock);
+            return TKBIO_ERROR_FB_OPEN;
+        }
+        if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to get variable screeninfo"));
+            close(tkbio.sock);
+            close(tkbio.fb.fd);
+            return TKBIO_ERROR_FB_VINFO;
+        }
+        if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to get fixed screeninfo"));
+            close(tkbio.sock);
+            close(tkbio.fb.fd);
+            return TKBIO_ERROR_FB_FINFO;
+        }
     }
-    if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
+    else
     {
-        DEBUG(perror("[TKBIO] Failed to get variable screeninfo"));
-        close(tkbio.sock);
-        close(tkbio.fb.fd);
-        return TKBIO_ERROR_FB_VINFO;
-    }
-    if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
-    {
-        DEBUG(perror("[TKBIO] Failed to get fixed screeninfo"));
-        close(tkbio.sock);
-        close(tkbio.fb.fd);
-        return TKBIO_ERROR_FB_FINFO;
+        tkbio.sim = 1;
+        DEBUG(printf("[TKBIO] Simulating framebuffer\n"));
+        tkbio.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if(tkbio.fb.sock == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to open framebuffer socket"));
+            return TKBIO_ERROR_FB_OPEN;
+        }
+        
+        struct sockaddr_un addr;
+        addr.sun_family = AF_UNIX;
+        strcpy(addr.sun_path, config.fb);
+        
+        if(connect(tkbio.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to connect framebuffer socket"));
+            return TKBIO_ERROR_FB_OPEN;
+        }
+        
+        recv(tkbio.fb.sock, tkbio.fb.shm, sizeof(tkbio.fb.shm), 0);
+        recv(tkbio.fb.sock, &tkbio.fb.vinfo, sizeof(struct fb_var_screeninfo), 0);
+        recv(tkbio.fb.sock, &tkbio.fb.finfo, sizeof(struct fb_fix_screeninfo), 0);
+        
+        if((tkbio.fb.fd = shm_open(tkbio.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
+        {
+            DEBUG(perror("[TKBIO] Failed to open shared memory"));
+            return TKBIO_ERROR_FB_OPEN;
+        }
     }
     
     tkbio.fb.bpp = tkbio.fb.vinfo.bits_per_pixel/8;
@@ -260,7 +295,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     DEBUG(printf("[TKBIO]   bytes per pixel %i\n", tkbio.fb.bpp));
     DEBUG(printf("[TKBIO]   line length %i\n", tkbio.fb.finfo.line_length));
     
-    if(ftruncate(tkbio.fb.fd, tkbio.fb.size) == -1)
+    if(tkbio.sim && ftruncate(tkbio.fb.fd, tkbio.fb.size) == -1)
     {
         DEBUG(perror("[TKBIO] Failed to truncate shared memory"));
         return TKBIO_ERROR_FB_OPEN;
@@ -391,7 +426,14 @@ void tkbio_finish()
 {
     DEBUG(printf("[TKBIO] finish\n"));
     close(tkbio.sock);
-    close(tkbio.fb.fd);
+    if(tkbio.sim)
+    {
+        shm_unlink(tkbio.fb.shm);
+        close(tkbio.fb.fd);
+        close(tkbio.fb.sock);
+    }
+    else
+        close(tkbio.fb.fd);
     if(tkbio.fb.copy)
         free(tkbio.fb.copy);
     
@@ -658,6 +700,13 @@ pressed:
             
             tkbio_set_pause();
         }
+    }
+    
+    // notify framebuffer for redraw
+    if(tkbio.sim)
+    {
+        unsigned char tmp = 'x';
+        send(tkbio.fb.sock, &tmp, 1, 0);
     }
     
     return ret;

@@ -1,4 +1,4 @@
-.PHONY: all, debug, clean, touch
+.PHONY: all, debug, clean, touch, sim
 
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
@@ -20,7 +20,7 @@ debug: touch $(NAME)
 $(NAME): $(LIBTKBIO) $(SOURCES)
 	gcc $(SOURCES) -o $@ $(CFLAGS) $(debug1) $(INCLUDES) $(LIBS)
 
-$(LIBTKBIO): $(LIBTKBIOPATH)/tkbio.c
+$(LIBTKBIO): $(LIBTKBIOPATH)/*.c
 	@make -C $(LIBTKBIOPATH) $(debug2)
 
 clean:
@@ -29,3 +29,6 @@ clean:
 touch:
 	$(shell [ -f debug -a -z "$(debug2)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
 	$(shell [ ! -f debug -a -n "$(debug2)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
+
+sim: debug
+	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim $(shell tty)

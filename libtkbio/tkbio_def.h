@@ -49,6 +49,7 @@ struct tkbio_fb
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
     int size, bpp;
+    char shm[20];
     unsigned char *ptr;
     int copySize;
     unsigned char *copy, copyColor;
@@ -69,7 +70,7 @@ struct tkbio_global
 {
     const char* name, *tsp;
     int format, pause;
-    int sock;
+    int sock, sim;
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
