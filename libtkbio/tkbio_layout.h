@@ -41,14 +41,14 @@ struct tkbio_charelem
     char c[TKBIO_CHARELEM_MAX];
 };
 
-typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem, char toggle);
+typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem, unsigned char toggle);
 
 struct tkbio_mapelem
 {
-    char type;
+    unsigned char type;
     struct tkbio_charelem elem;
-    char color;
-    char connect;
+    unsigned char color;
+    unsigned char connect;
 };
 
 struct tkbio_map
@@ -61,7 +61,7 @@ struct tkbio_layout
 {
     int start, size;
     const struct tkbio_map *maps;
-    const char (*colors)[4];
+    const unsigned char (*colors)[4];
     tkbio_parsefun *fun;
 };
 

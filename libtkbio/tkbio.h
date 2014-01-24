@@ -42,16 +42,21 @@ typedef int tkbio_handler(struct tkbio_charelem elem, void *state);
 
 struct tkbio_config
 {
-    char *fb;
+    char *fb, *tsp;
     struct tkbio_layout layout;
     int format;
     int options;
 };
 
 int tkbio_init_default(const char *name);
+int tkbio_init_default_args(const char *name, int *argc, char *argv[]);
+int tkbio_init_layout(const char *name, struct tkbio_layout layout);
+int tkbio_init_layout_args(const char *name, struct tkbio_layout layout, int *argc, char *argv[]);
 int tkbio_init_custom(const char *name, struct tkbio_config config);
+int tkbio_init_custom_args(const char *name, struct tkbio_config config, int *argc, char *argv[]);
 
-struct tkbio_config tkbio_default_config();
+struct tkbio_config tkbio_config_default();
+struct tkbio_config tkbio_config_args(int *argc, char *argv[]);
 
 void tkbio_finish();
 
@@ -61,10 +66,10 @@ struct tkbio_charelem tkbio_handle_event();
 void tkbio_set_signal_handler(void handler(int signal));
 
 // from tkbio_fb.c
-void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, char *copy);
-void tkbio_draw_rect_border(int y, int x, int height, int width, int color, char borders, int density, char *copy);
-void tkbio_fill_rect(int y, int x, int height, int width, int density, char *copy);
-void tkbio_fill_rect_border(int y, int x, int height, int width, char borders, int density, char *copy);
+void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, unsigned char *copy);
+void tkbio_draw_rect_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy);
+void tkbio_fill_rect(int y, int x, int height, int width, int density, unsigned char *copy);
+void tkbio_fill_rect_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *copy);
 
 #endif
 

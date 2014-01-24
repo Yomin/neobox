@@ -25,7 +25,7 @@
 
 #include "tkbio_layout.h"
 
-const char tkbio_colors[10][4] =
+const unsigned char tkbio_colors[10][4] =
     {
         {0x00, 0xFF, 0x00, 0x00},   // PRIMARY
         {0x00, 0x88, 0x00, 0x00},   // SHIFT
@@ -156,7 +156,7 @@ const struct tkbio_map tkbio_maps[7] =
         {5, 6, tkbio_map_fk}
     };
 
-struct tkbio_charelem tkbio_parse(int map, struct tkbio_charelem elem, char toggle)
+struct tkbio_charelem tkbio_parse(int map, struct tkbio_charelem elem, unsigned char toggle)
 {
     if(toggle & CTRLL && !(toggle & ~CTRLL))
     {

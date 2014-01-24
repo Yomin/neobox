@@ -28,7 +28,7 @@
 
 extern struct tkbio_global tkbio;
 
-void tkbio_color32to16(char* dst, const char* src)
+void tkbio_color32to16(unsigned char* dst, const unsigned char* src)
 {
     dst[0] = (src[0]>>0 & ~7)  | (src[1]>>5 & 7);
     dst[1] = (src[1]<<3 & ~31) | (src[2]>>3 & 31);
@@ -82,9 +82,9 @@ void tkbio_fb_to_layout_cords(int *y, int *x)
     }
 }
 
-char tkbio_connect_to_borders(int y, int x, char connect)
+unsigned char tkbio_connect_to_borders(int y, int x, unsigned char connect)
 {
-    char borders = TKBIO_BORDER_ALL;
+    unsigned char borders = TKBIO_BORDER_ALL;
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
     if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
@@ -113,17 +113,17 @@ char tkbio_connect_to_borders(int y, int x, char connect)
     return borders;
 }
 
-void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, char *copy)
+void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, unsigned char *copy)
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_draw_rect(y, x, height, width, color, density, copy);
 }
 
-void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int density, char *copy)
+void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int density, unsigned char *copy)
 {
-    char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
-    char *ptr = base;
-    char col[4];
+    unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
+    unsigned char *ptr = base;
+    unsigned char col[4];
     int i, j, k;
     
     if(tkbio.fb.bpp == 2)
@@ -146,17 +146,17 @@ void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int dens
     }
 }
 
-void tkbio_draw_rect_border(int y, int x, int height, int width, int color, char borders, int density, char *copy)
+void tkbio_draw_rect_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy)
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_draw_rect_border(y, x, height, width, color, borders, density, copy);
 }
 
-void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, char borders, int density, char *copy)
+void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy)
 {
-    char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
-    char *ptr = base, *base2 = base;
-    char col[4];
+    unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
+    unsigned char *ptr = base, *base2 = base;
+    unsigned char col[4];
     int i, j, k;
     
     if(tkbio.fb.bpp == 2)
@@ -194,16 +194,16 @@ void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, c
     }
 }
 
-void tkbio_fill_rect(int y, int x, int height, int width, int density, char *fill)
+void tkbio_fill_rect(int y, int x, int height, int width, int density, unsigned char *fill)
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_fill_rect(y, x, height, width, density, fill);
 }
 
-void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, char *fill)
+void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, unsigned char *fill)
 {
-    char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
-    char *ptr = base;
+    unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
+    unsigned char *ptr = base;
     int i, j, k;
     
     for(i=0; i<height; i+=density, ptr = base)
@@ -220,16 +220,16 @@ void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, char *
     }
 }
 
-void tkbio_fill_rect_border(int y, int x, int height, int width, char borders, int density, char *fill)
+void tkbio_fill_rect_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *fill)
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_fill_rect_border(y, x, height, width, borders, density, fill);
 }
 
-void tkbio_fb_fill_rect_border(int y, int x, int height, int width, char borders, int density, char *fill)
+void tkbio_fb_fill_rect_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *fill)
 {
-    char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
-    char *ptr = base, *base2 = base;
+    unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
+    unsigned char *ptr = base, *base2 = base;
     int i, j, k;
     
     for(i=(borders&TKBIO_BORDER_TOP?0:1); i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)

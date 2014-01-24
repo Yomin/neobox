@@ -1,13 +1,14 @@
 
 .PHONY: all, debug, clean, touch, libs
 
-LIBALGPATH = libs/libalg
+LIBALGPATH = lib/libalg
 LIBALG = $(LIBALGPATH)/libalg.a
+TSP = include/tsp
 
 NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
-INCLUDES = -I$(LIBALGPATH)
+INCLUDES = -I$(LIBALGPATH) -I$(TSP)
 
 all: DEBUG =
 all: CFLAGS = -D NDEBUG
@@ -21,7 +22,8 @@ clean:
 	find . ! -type d ! -type l \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
 
 libs:
-	@for l in $(shell ls libs); do echo -L../lib$(NAME)/libs/$$l -l$${l:3}; done
+	@for l in $(shell ls lib); do echo -n "-L../lib$(NAME)/lib/$$l -l$${l:3} "; done
+	@echo "-lrt"
 
 
 %.o: %.c

@@ -28,7 +28,7 @@
 #include "tkbio_layout.h"
 
 #ifdef NDEBUG
-#   define DEBUG
+#   define DEBUG(x)
 #else
 #   define DEBUG(x) x
 #endif
@@ -39,23 +39,19 @@
 #define INCREASE    33      // percent
 #define DELAY       100000  // us
 
-#define MSB         (1<<(sizeof(int)*8-1))
-#define SMSB        (1<<(sizeof(int)*8-2))
-#define NIBBLE      ((sizeof(int)/2)*8)
-
 #define FB_STATUS_NOP  0
 #define FB_STATUS_COPY 1
 #define FB_STATUS_FILL 2
 
 struct tkbio_fb
 {
-    int fd;
+    int fd, sock;
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
     int size, bpp;
-    char *ptr;
+    unsigned char *ptr;
     int copySize;
-    char *copy, copyColor;
+    unsigned char *copy, copyColor;
     int status; // last button nop/copy/fill
 };
 
@@ -66,13 +62,14 @@ struct tkbio_parser
     int py, px;  // last pressed pos
     int map;
     int hold;
-    char toggle;
+    unsigned char toggle;
 };
 
 struct tkbio_global
 {
-    int id, format, pause;
-    int fd_rpc, fd_sc;
+    const char* name, *tsp;
+    int format, pause;
+    int sock;
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
