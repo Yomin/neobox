@@ -30,8 +30,8 @@ extern struct tkbio_global tkbio;
 
 void tkbio_color32to16(char* dst, const char* src)
 {
-    dst[0] = (src[0] & ~7)>>0 | src[2]>>5;
-    dst[1] = (src[2] & ~7)<<3 | (src[1] & ~7)>>2;
+    dst[0] = (src[0]>>0 & ~7)  | (src[1]>>5 & 7);
+    dst[1] = (src[1]<<3 & ~31) | (src[2]>>3 & 31);
 }
 
 void tkbio_layout_to_fb_sizes(int *height, int *width, int *scrHeight, int *scrWidth)
@@ -135,7 +135,7 @@ void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int dens
     {
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 if(copy)
                     *(copy++) = *ptr;
@@ -168,7 +168,7 @@ void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, c
     {
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 if(copy)
                     *(copy++) = *ptr;
@@ -183,7 +183,7 @@ void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, c
     {
         for(j=(borders&TKBIO_BORDER_LEFT?0:1); j<(borders&TKBIO_BORDER_RIGHT?2:1); j++, ptr+=tkbio.fb.bpp*(width-2))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 if(copy)
                     *(copy++) = *ptr;
@@ -210,7 +210,7 @@ void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, char *
     {
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp; k>=0; k--)
             {
                 *(ptr++) = *fill;
                 fill++;
@@ -236,7 +236,7 @@ void tkbio_fb_fill_rect_border(int y, int x, int height, int width, char borders
     {
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 *(ptr++) = *fill;
                 fill++;
@@ -250,7 +250,7 @@ void tkbio_fb_fill_rect_border(int y, int x, int height, int width, char borders
     {
         for(j=(borders&TKBIO_BORDER_LEFT?0:1); j<(borders&TKBIO_BORDER_RIGHT?0:1); j++, ptr+=tkbio.fb.bpp*(width-2))
         {
-            for(k=0; k<tkbio.fb.bpp; k++)
+            for(k=tkbio.fb.bpp; k>=0; k--)
             {
                 *(ptr++) = *fill;
                 fill++;
