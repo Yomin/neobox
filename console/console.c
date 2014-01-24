@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <getopt.h>
 #include "tkbio.h"
 
 #define NAME "neobox-console"
@@ -60,6 +61,8 @@ int main(int argc, char* argv[])
     int show = 0;
     int daemon = 0;
     char *tty;
+    
+    struct tkbio_config config = tkbio_config_args(&argc, argv);
     
     while((opt = getopt(argc, argv, "sd")) != -1)
     {
@@ -124,7 +127,6 @@ int main(int argc, char* argv[])
     }
     
     int fd;
-    struct tkbio_config config = tkbio_default_config();
     if(!show)
         config.options |= TKBIO_OPTION_NO_INITIAL_PRINT;
     
