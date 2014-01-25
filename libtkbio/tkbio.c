@@ -377,6 +377,12 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
                     tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, borders, DENSITY, 0);
                 }
             }
+        // notify framebuffer for redraw
+        if(tkbio.sim)
+        {
+            unsigned char tmp = 'x';
+            send(tkbio.fb.sock, &tmp, 1, 0);
+        }
     }
     
     DEBUG(printf("[TKBIO] init done\n"));
