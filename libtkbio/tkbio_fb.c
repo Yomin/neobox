@@ -125,6 +125,12 @@ void tkbio_draw_rect(int y, int x, int height, int width, int color, int density
     tkbio_fb_draw_rect(y, x, height, width, color, density, copy);
 }
 
+void tkbio_draw_field(int y, int x, int height, int width, int color, int density, unsigned char *copy)
+{
+    tkbio_layout_to_fb_cords(&y, &x);
+    tkbio_fb_draw_rect(y*height, x*width, height, width, color, density, copy);
+}
+
 void tkbio_fb_draw_rect(int y, int x, int height, int width, int color, int density, unsigned char *copy)
 {
     unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
@@ -156,6 +162,12 @@ void tkbio_draw_rect_border(int y, int x, int height, int width, int color, unsi
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_draw_rect_border(y, x, height, width, color, borders, density, copy);
+}
+
+void tkbio_draw_field_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy)
+{
+    tkbio_layout_to_fb_cords(&y, &x);
+    tkbio_fb_draw_rect_border(y*height, x*width, height, width, color, borders, density, copy);
 }
 
 void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy)
@@ -214,6 +226,12 @@ void tkbio_fill_rect(int y, int x, int height, int width, int density, unsigned 
     tkbio_fb_fill_rect(y, x, height, width, density, fill);
 }
 
+void tkbio_fill_field(int y, int x, int height, int width, int density, unsigned char *fill)
+{
+    tkbio_layout_to_fb_cords(&y, &x);
+    tkbio_fb_fill_rect(y*height, x*height, height, width, density, fill);
+}
+
 void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, unsigned char *fill)
 {
     unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
@@ -238,6 +256,12 @@ void tkbio_fill_rect_border(int y, int x, int height, int width, unsigned char b
 {
     tkbio_layout_to_fb_cords(&y, &x);
     tkbio_fb_fill_rect_border(y, x, height, width, borders, density, fill);
+}
+
+void tkbio_fill_field_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *fill)
+{
+    tkbio_layout_to_fb_cords(&y, &x);
+    tkbio_fb_fill_rect_border(y*height, x*width, height, width, borders, density, fill);
 }
 
 void tkbio_fb_fill_rect_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *fill)

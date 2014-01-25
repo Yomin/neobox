@@ -14,7 +14,7 @@ all: DEBUG =
 all: CFLAGS = -D NDEBUG
 all: touch $(LIBALG) lib$(NAME).a
 
-debug: DEBUG = yes
+debug: DEBUG = debug
 debug: CFLAGS = -ggdb
 debug: touch $(LIBALG) lib$(NAME).a
 
@@ -33,7 +33,7 @@ lib$(NAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
 
 $(LIBALG):
-	@make -C $(LIBALGPATH)
+	@make -C $(LIBALGPATH) $(DEBUG)
 
 touch:
 	$(shell [ -f debug -a -z "$(DEBUG)" ] && { touch $(NAME).c; rm debug; })

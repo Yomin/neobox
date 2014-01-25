@@ -52,7 +52,7 @@ struct tkbio_fb
     char shm[20];
     unsigned char *ptr;
     int copySize;
-    unsigned char *copy, copyColor;
+    unsigned char *copy, fillColor;
     int status; // last button nop/copy/fill
 };
 
