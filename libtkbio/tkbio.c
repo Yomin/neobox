@@ -361,12 +361,21 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
                 fy = y; fx = x;
                 tkbio_layout_to_fb_cords(&fy, &fx);
                 elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
-                if(!(elem->type & TKBIO_LAYOUT_OPTION_COPY))
-                    tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
-                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                unsigned char borders = tkbio_fb_connect_to_borders(fy, fx, elem->connect);
+                if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
                 {
-                    unsigned char borders = tkbio_fb_connect_to_borders(fy, fx, elem->connect);
-                    tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, borders, DENSITY, 0);
+                    if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                        tkbio_fb_draw_border(fy*fheight, fx*fwidth, fheight,
+                            fwidth, elem->color >> 4, borders, DENSITY, 0);
+                }
+                else
+                {
+                    if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                        tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth,
+                            fheight, fwidth, elem->color, borders, DENSITY, 0);
+                    else
+                        tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight,
+                            fwidth, elem->color >> 4, DENSITY, 0);
                 }
             }
         // notify framebuffer for redraw
@@ -521,6 +530,7 @@ struct tkbio_charelem tkbio_handle_event()
     int mapY = y, mapX = x;
     tkbio_fb_to_layout_cords(&mapY, &mapX);
     struct tkbio_mapelem *elem = (struct tkbio_mapelem*) &map->map[mapY*map->width+mapX];
+    struct tkbio_mapelem *pelem = (struct tkbio_mapelem*) &map->map[tkbio.parser.py*map->width+tkbio.parser.px];
     
     if(event.event & TSP_EVENT_MOVED)
     {
@@ -553,7 +563,7 @@ struct tkbio_charelem tkbio_handle_event()
                     break;
                 case FB_STATUS_COPY:
                     if(!vec)
-                        tkbio_fill_field(tkbio.parser.py, tkbio.parser.px,
+                        tkbio_fill_rect_field(tkbio.parser.py, tkbio.parser.px,
                             height, width, DENSITY, tkbio.fb.copy);
                     else
                     {
@@ -562,20 +572,39 @@ struct tkbio_charelem tkbio_handle_event()
                         for(i=0; i<vector_size(vec); i++, ptr += size)
                         {
                             p = vector_at(i, vec);
-                            tkbio_fill_field(p->y, p->x, height, width, DENSITY, ptr);
+                            tkbio_fill_rect_field(p->y, p->x, height, width, DENSITY, ptr);
                         }
                     }
                     break;
                 case FB_STATUS_FILL:
                     if(!vec)
-                        tkbio_draw_field(tkbio.parser.py, tkbio.parser.px,
-                            height, width, tkbio.fb.fillColor & 15, DENSITY, 0);
+                    {
+                        if(pelem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                        {
+                            unsigned char borders = tkbio_fb_connect_to_borders(
+                                tkbio.parser.y, tkbio.parser.x, pelem->connect);
+                            tkbio_fb_draw_rect_border(tkbio.parser.y*height,
+                                tkbio.parser.x*width, height, width, pelem->color,
+                                borders, DENSITY, 0);
+                        }
+                        else
+                            tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
+                                height, width, pelem->color & 15, DENSITY, 0);
+                    }
                     else
                         for(i=0; i<vector_size(vec); i++)
                         {
                             p = vector_at(i, vec);
-                            tkbio_draw_field(p->y, p->x, height, width,
-                                p->elem->color & 15, DENSITY, 0);
+                            if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                            {
+                                unsigned char borders = tkbio_connect_to_borders(
+                                    p->y, p->x, p->elem->connect);
+                                tkbio_draw_rect_border_field(p->y, p->x,
+                                    height, width, p->elem->color, borders, DENSITY, 0);
+                            }
+                            else
+                                tkbio_draw_rect_field(p->y, p->x, height,
+                                    width, p->elem->color & 15, DENSITY, 0);
                         }
                     break;
             }
@@ -641,29 +670,48 @@ struct tkbio_charelem tkbio_handle_event()
                             for(i=0; i<vector_size(vec); i++, ptr += size)
                             {
                                 p = vector_at(i, vec);
-                                tkbio_fill_field(p->y, p->x, height, width, DENSITY, ptr);
+                                tkbio_fill_rect_field(p->y, p->x, height, width, DENSITY, ptr);
                             }
                         }
                     }
                     break;
                 case FB_STATUS_FILL:
-                {
                     if(!vec)
-                        tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
-                            height, width, elem->color & 15, DENSITY, 0);
+                    {
+                        if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                        {
+                            unsigned char borders = tkbio_fb_connect_to_borders(
+                                tkbio.parser.y, tkbio.parser.x, elem->connect);
+                            tkbio_fb_draw_rect_border(tkbio.parser.y*height,
+                                tkbio.parser.x*width, height, width,
+                                elem->color, borders, DENSITY, 0);
+                        }
+                        else
+                            tkbio_fb_draw_rect(tkbio.parser.y*height,
+                                tkbio.parser.x*width, height, width,
+                                elem->color & 15, DENSITY, 0);
+                    }
                     else
                     {
                         int i;
                         struct tkbio_point *p;
+                        unsigned char borders;
                         for(i=0; i<vector_size(vec); i++)
                         {
                             p = vector_at(i, vec);
-                            tkbio_draw_field(p->y, p->x, height, width,
-                                p->elem->color & 15, DENSITY, 0);
+                            if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                            {
+                                borders = tkbio_connect_to_borders(
+                                    p->y, p->x, p->elem->connect);
+                                tkbio_draw_rect_border_field(p->y, p->x,
+                                    height, width, elem->color, borders, DENSITY, 0);
+                            }
+                            else
+                                tkbio_draw_rect_field(p->y, p->x, height,
+                                    width, elem->color >> 4, DENSITY, 0);
                         }
                     }
                     break;
-                }
             }
             
             tkbio.fb.status = FB_STATUS_NOP;
@@ -715,7 +763,7 @@ pressed:
                             for(i=0; i<vector_size(vec); i++, ptr += size)
                             {
                                 p = vector_at(i, vec);
-                                tkbio_draw_field(p->y, p->x, height, width,
+                                tkbio_draw_rect_field(p->y, p->x, height, width,
                                     p->elem->color >> 4, DENSITY, ptr);
                             }
                         }
@@ -733,11 +781,10 @@ pressed:
                             for(i=0; i<vector_size(vec); i++)
                             {
                                 p = vector_at(i, vec);
-                                tkbio_draw_field(p->y, p->x, height, width,
+                                tkbio_draw_rect_field(p->y, p->x, height, width,
                                     p->elem->color >> 4, DENSITY, 0);
                             }
                         }
-                        tkbio.fb.fillColor = elem->color;
                         tkbio.fb.status = FB_STATUS_FILL;
                     }
                 }
