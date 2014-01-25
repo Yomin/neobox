@@ -84,6 +84,12 @@ void tkbio_fb_to_layout_cords(int *y, int *x)
 
 unsigned char tkbio_connect_to_borders(int y, int x, unsigned char connect)
 {
+    tkbio_layout_to_fb_cords(&y, &x);
+    return tkbio_fb_connect_to_borders(y, x, connect);
+}
+
+unsigned char tkbio_fb_connect_to_borders(int y, int x, unsigned char connect)
+{
     unsigned char borders = TKBIO_BORDER_ALL;
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
@@ -93,9 +99,9 @@ unsigned char tkbio_connect_to_borders(int y, int x, unsigned char connect)
             borders &= ~TKBIO_BORDER_TOP;
         if(connect & TKBIO_LAYOUT_CONNECT_UP)
             borders &= ~TKBIO_BORDER_RIGHT;
-        if(x < map->width-1 && map->map[y*map->height+x+1].connect & TKBIO_LAYOUT_CONNECT_LEFT)
+        if(y < map->width-1 && map->map[(map->height-x-1)*map->width+y+1].connect & TKBIO_LAYOUT_CONNECT_LEFT)
             borders &= ~TKBIO_BORDER_BOTTOM;
-        if(y < map->height-1 && map->map[(y+1)*map->height+x].connect & TKBIO_LAYOUT_CONNECT_UP)
+        if(x > 0 && map->map[(map->height-x)*map->width+y].connect & TKBIO_LAYOUT_CONNECT_UP)
             borders &= ~TKBIO_BORDER_LEFT;
     }
     else
@@ -104,9 +110,9 @@ unsigned char tkbio_connect_to_borders(int y, int x, unsigned char connect)
             borders &= ~TKBIO_BORDER_LEFT;
         if(connect & TKBIO_LAYOUT_CONNECT_UP)
             borders &= ~TKBIO_BORDER_TOP;
-        if(x < map->width-1 && map->map[y*map->height+x+1].connect & TKBIO_LAYOUT_CONNECT_LEFT)
+        if(x < map->width-1 && map->map[y*map->width+x+1].connect & TKBIO_LAYOUT_CONNECT_LEFT)
             borders &= ~TKBIO_BORDER_RIGHT;
-        if(y < map->height-1 && map->map[(y+1)*map->height+x].connect & TKBIO_LAYOUT_CONNECT_UP)
+        if(y < map->height-1 && map->map[(y+1)*map->width+x].connect & TKBIO_LAYOUT_CONNECT_UP)
             borders &= ~TKBIO_BORDER_BOTTOM;
     }
     
@@ -157,32 +163,40 @@ void tkbio_fb_draw_rect_border(int y, int x, int height, int width, int color, u
     unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
     unsigned char *ptr = base, *base2 = base;
     unsigned char col[4];
-    int i, j, k;
+    int i, j, k, skipped;
     
     if(tkbio.fb.bpp == 2)
         tkbio_color32to16(col, tkbio.layout.colors[color]);
     else
         memcpy(col, tkbio.layout.colors[color], 4);
     
-    for(i=(borders&TKBIO_BORDER_TOP?0:1); i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
+    for(i=0, skipped=0; i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
     {
-        for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
-        {
-            for(k=tkbio.fb.bpp-1; k>=0; k--)
+        if(!skipped && !(borders & TKBIO_BORDER_TOP))
+            skipped = 1;
+        else
+            for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
             {
-                if(copy)
-                    *(copy++) = *ptr;
-                *(ptr++) = col[k];
+                for(k=tkbio.fb.bpp-1; k>=0; k--)
+                {
+                    if(copy)
+                        *(copy++) = *ptr;
+                    *(ptr++) = col[k];
+                }
             }
-        }
         base2 += (height-1)*tkbio.fb.finfo.line_length;
     }
     base2 = base;
     ptr   = base;
     for(i=0; i<height; i++, ptr = base2)
     {
-        for(j=(borders&TKBIO_BORDER_LEFT?0:1); j<(borders&TKBIO_BORDER_RIGHT?2:1); j++, ptr+=tkbio.fb.bpp*(width-2))
+        for(j=0, skipped=0; j<(borders&TKBIO_BORDER_RIGHT?2:1); j++, ptr+=tkbio.fb.bpp*(width-2))
         {
+            if(!skipped && !(borders & TKBIO_BORDER_LEFT))
+            {
+                skipped = 1;
+                continue;
+            }
             for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 if(copy)
@@ -230,26 +244,34 @@ void tkbio_fb_fill_rect_border(int y, int x, int height, int width, unsigned cha
 {
     unsigned char *base = tkbio.fb.ptr + y*tkbio.fb.finfo.line_length + x*tkbio.fb.bpp;
     unsigned char *ptr = base, *base2 = base;
-    int i, j, k;
+    int i, j, k, skipped;
     
-    for(i=(borders&TKBIO_BORDER_TOP?0:1); i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
+    for(i=0, skipped=0; i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
     {
-        for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
-        {
-            for(k=tkbio.fb.bpp-1; k>=0; k--)
+        if(!skipped && !(borders & TKBIO_BORDER_TOP))
+            skipped = 1;
+        else
+            for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
             {
-                *(ptr++) = *fill;
-                fill++;
+                for(k=tkbio.fb.bpp-1; k>=0; k--)
+                {
+                    *(ptr++) = *fill;
+                    fill++;
+                }
             }
-        }
         base2 += (height-1)*tkbio.fb.finfo.line_length;
     }
     base2 = base;
     ptr   = base;
     for(i=0; i<height; i++, ptr = base2)
     {
-        for(j=(borders&TKBIO_BORDER_LEFT?0:1); j<(borders&TKBIO_BORDER_RIGHT?0:1); j++, ptr+=tkbio.fb.bpp*(width-2))
+        for(j=0, skipped=0; j<(borders&TKBIO_BORDER_RIGHT?0:1); j++, ptr+=tkbio.fb.bpp*(width-2))
         {
+            if(!skipped && !(borders & TKBIO_BORDER_LEFT))
+            {
+                skipped = 1;
+                continue;
+            }
             for(k=tkbio.fb.bpp; k>=0; k--)
             {
                 *(ptr++) = *fill;

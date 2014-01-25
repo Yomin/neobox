@@ -373,7 +373,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
                     tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight, fwidth, elem->color & 15, DENSITY, 0);
                 if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
                 {
-                    unsigned char borders = tkbio_connect_to_borders(fy, fx, elem->connect);
+                    unsigned char borders = tkbio_fb_connect_to_borders(fy, fx, elem->connect);
                     tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth, fheight, fwidth, elem->color >> 4, borders, DENSITY, 0);
                 }
             }
