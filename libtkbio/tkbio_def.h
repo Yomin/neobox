@@ -74,7 +74,7 @@ struct tkbio_global
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
-    struct vector **connect;
+    struct vector ***connect;
     void (*custom_signal_handler)(int signal);
 };
 
