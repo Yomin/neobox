@@ -524,7 +524,7 @@ struct tkbio_charelem tkbio_handle_event()
     else
     {
         x = event.x / scrWidth;
-        y = (SCREENMAX - event.y) / scrHeight;
+        y = (SCREENMAX - event.y -1) / scrHeight;
     }
     
     int mapY = y, mapX = x;
