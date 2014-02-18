@@ -31,4 +31,4 @@ touch:
 	$(shell [ ! -f debug -a -n "$(debug2)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
 sim: debug
-	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim $(shell tty)
+	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose $(shell tty)

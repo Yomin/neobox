@@ -161,12 +161,12 @@ void tkbio_init_connect()
 
 int tkbio_open_socket(int tries)
 {
-    DEBUG(printf("[TKBIO] Connecting to rpc socket\n"));
+    VERBOSE(printf("[TKBIO] Connecting to rpc socket\n"));
     
     tkbio.sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if(tkbio.sock == -1)
     {
-        DEBUG(perror("[TKBIO] Failed to open rpc socket"));
+        VERBOSE(perror("[TKBIO] Failed to open rpc socket"));
         return TKBIO_ERROR_RPC_OPEN;
     }
     
@@ -176,17 +176,17 @@ int tkbio_open_socket(int tries)
     
     while(connect(tkbio.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
     {
-        DEBUG(perror("[TKBIO] Failed to connect rpc socket"));
+        VERBOSE(perror("[TKBIO] Failed to connect rpc socket"));
         if(errno != EADDRINUSE)
             return TKBIO_ERROR_RPC_OPEN;
         
         if(tries-- == 1)
         {
-            DEBUG(perror("[TKBIO] Unable to connect rpc socket"));
+            VERBOSE(perror("[TKBIO] Unable to connect rpc socket"));
             return TKBIO_ERROR_RPC_OPEN;
         }
         sleep(1);
-        DEBUG(printf("[TKBIO] Retry connecting to rpc socket\n"));
+        VERBOSE(printf("[TKBIO] Retry connecting to rpc socket\n"));
     }
     return 0;
 }
@@ -197,6 +197,7 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
     {
         { "tkbio-fb", 1, 0, 'f' },
         { "tkbio-tsp", 1, 0, 't' },
+        { "tkbio-verbose", 0, 0, 'v' },
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -211,6 +212,9 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
             break;
         case 't':
             config.tsp = optarg;
+            break;
+        case 'v':
+            config.verbose = 1;
             break;
         default:
             continue;
@@ -230,14 +234,17 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
 {
     int ret;
     
-#ifndef NDEBUG
-    printf("[TKBIO] init\n");
-    printf("[TKBIO] fb: %s\n", config.fb);
-    printf("[TKBIO] tsp: %s\n", config.tsp);
-    printf("[TKBIO] format: %s\n", config.format == TKBIO_FORMAT_LANDSCAPE ? "landscape" : "portrait");
-    printf("[TKBIO] options:\n");
-    printf("[TKBIO]   initial print: %s\n", config.options & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
-#endif
+    tkbio.verbose = config.verbose;
+    
+    if(config.verbose)
+    {
+        printf("[TKBIO] init\n");
+        printf("[TKBIO] fb: %s\n", config.fb);
+        printf("[TKBIO] tsp: %s\n", config.tsp);
+        printf("[TKBIO] format: %s\n", config.format == TKBIO_FORMAT_LANDSCAPE ? "landscape" : "portrait");
+        printf("[TKBIO] options:\n");
+        printf("[TKBIO]   initial print: %s\n", config.options & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
+    }
     
     tkbio.tsp = config.tsp;
     
@@ -250,23 +257,23 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     if(strncmp(config.fb+strlen(config.fb)-4, ".ipc", 4))
     {
         tkbio.sim = 0;
-        DEBUG(printf("[TKBIO] Opening framebuffer\n"));
+        VERBOSE(printf("[TKBIO] Opening framebuffer\n"));
         if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to open framebuffer"));
+            VERBOSE(perror("[TKBIO] Failed to open framebuffer"));
             close(tkbio.sock);
             return TKBIO_ERROR_FB_OPEN;
         }
         if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to get variable screeninfo"));
+            VERBOSE(perror("[TKBIO] Failed to get variable screeninfo"));
             close(tkbio.sock);
             close(tkbio.fb.fd);
             return TKBIO_ERROR_FB_VINFO;
         }
         if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to get fixed screeninfo"));
+            VERBOSE(perror("[TKBIO] Failed to get fixed screeninfo"));
             close(tkbio.sock);
             close(tkbio.fb.fd);
             return TKBIO_ERROR_FB_FINFO;
@@ -275,11 +282,11 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     else
     {
         tkbio.sim = 1;
-        DEBUG(printf("[TKBIO] Simulating framebuffer\n"));
+        VERBOSE(printf("[TKBIO] Simulating framebuffer\n"));
         tkbio.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
         if(tkbio.fb.sock == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to open framebuffer socket"));
+            VERBOSE(perror("[TKBIO] Failed to open framebuffer socket"));
             return TKBIO_ERROR_FB_OPEN;
         }
         
@@ -289,7 +296,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         
         if(connect(tkbio.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to connect framebuffer socket"));
+            VERBOSE(perror("[TKBIO] Failed to connect framebuffer socket"));
             return TKBIO_ERROR_FB_OPEN;
         }
         
@@ -299,27 +306,31 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         
         if((tkbio.fb.fd = shm_open(tkbio.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
         {
-            DEBUG(perror("[TKBIO] Failed to open shared memory"));
+            VERBOSE(perror("[TKBIO] Failed to open shared memory"));
             return TKBIO_ERROR_FB_OPEN;
         }
     }
     
     tkbio.fb.bpp = tkbio.fb.vinfo.bits_per_pixel/8;
     tkbio.fb.size = tkbio.fb.vinfo.xres*tkbio.fb.vinfo.yres*tkbio.fb.bpp;
-    DEBUG(printf("[TKBIO] framebuffer info:\n"));
-    DEBUG(printf("[TKBIO]   size %i x %i\n", tkbio.fb.vinfo.xres,tkbio.fb.vinfo.yres));
-    DEBUG(printf("[TKBIO]   bytes per pixel %i\n", tkbio.fb.bpp));
-    DEBUG(printf("[TKBIO]   line length %i\n", tkbio.fb.finfo.line_length));
+    
+    if(config.verbose)
+    {
+        printf("[TKBIO] framebuffer info:\n");
+        printf("[TKBIO]   size %i x %i\n", tkbio.fb.vinfo.xres,tkbio.fb.vinfo.yres);
+        printf("[TKBIO]   bytes per pixel %i\n", tkbio.fb.bpp);
+        printf("[TKBIO]   line length %i\n", tkbio.fb.finfo.line_length);
+    }
     
     if(tkbio.sim && ftruncate(tkbio.fb.fd, tkbio.fb.size) == -1)
     {
-        DEBUG(perror("[TKBIO] Failed to truncate shared memory"));
+        VERBOSE(perror("[TKBIO] Failed to truncate shared memory"));
         return TKBIO_ERROR_FB_OPEN;
     }
     
     if((tkbio.fb.ptr = (unsigned char*) mmap(0, tkbio.fb.size, PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
     {
-        DEBUG(perror("[TKBIO] Failed to mmap framebuffer"));
+        VERBOSE(perror("[TKBIO] Failed to mmap framebuffer"));
         close(tkbio.sock);
         close(tkbio.fb.fd);
         return TKBIO_ERROR_FB_MMAP;
@@ -386,7 +397,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         }
     }
     
-    DEBUG(printf("[TKBIO] init done\n"));
+    VERBOSE(printf("[TKBIO] init done\n"));
     
     // return socket for manual polling
     return tkbio.sock;
@@ -405,6 +416,7 @@ struct tkbio_config tkbio_config_default()
     config.layout = tkbLayoutDefault;
     config.format = TKBIO_FORMAT_LANDSCAPE;
     config.options = 0;
+    config.verbose = 0;
     return config;
 }
 
@@ -439,7 +451,7 @@ int tkbio_init_layout_args(const char *name, struct tkbio_layout layout, int *ar
 
 void tkbio_finish()
 {
-    DEBUG(printf("[TKBIO] finish\n"));
+    VERBOSE(printf("[TKBIO] finish\n"));
     close(tkbio.sock);
     if(tkbio.sim)
     {
@@ -487,7 +499,7 @@ void tkbio_set_pause()
     timerval.it_value.tv_usec = DELAY;
     while(setitimer(ITIMER_REAL, &timerval, 0) < 0)
     {
-        DEBUG(perror("[TKBIO] Failed to set timer"));
+        VERBOSE(perror("[TKBIO] Failed to set timer"));
         sleep(1);
     }
 }
@@ -500,7 +512,7 @@ struct tkbio_return tkbio_handle_event()
     struct tsp_event event;
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
-        DEBUG(perror("[TKBIO] Failed to receive event"));
+        VERBOSE(perror("[TKBIO] Failed to receive event"));
         return ret;
     }
     
@@ -549,14 +561,14 @@ struct tkbio_return tkbio_handle_event()
                     p = vector_at(i, vec);
                     if(p->y == mapY && p->x == mapX)
                     {
-                        DEBUG(printf("[TKBIO] Move to partner (%i,%i)\n", mapY, mapX));
+                        VERBOSE(printf("[TKBIO] Move to partner (%i,%i)\n", mapY, mapX));
                         tkbio.parser.y = y;
                         tkbio.parser.x = x;
                         return ret;
                     }
                 }
             
-            DEBUG(printf("[TKBIO] Move (%i,%i)\n", mapY, mapX));
+            VERBOSE(printf("[TKBIO] Move (%i,%i)\n", mapY, mapX));
             switch(tkbio.fb.status)
             {
                 case FB_STATUS_NOP:
@@ -615,7 +627,7 @@ struct tkbio_return tkbio_handle_event()
     {
         if(tkbio.parser.pressed)
         {
-            DEBUG(printf("[TKBIO] Release (%i,%i)\n", mapY, mapX));
+            VERBOSE(printf("[TKBIO] Release (%i,%i)\n", mapY, mapX));
             switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
             {
                 case TKBIO_LAYOUT_TYPE_CHAR:
@@ -723,7 +735,7 @@ struct tkbio_return tkbio_handle_event()
     {
         if(!tkbio.parser.pressed)
         {
-            DEBUG(printf("[TKBIO] Press (%i,%i)\n", mapY, mapX));
+            VERBOSE(printf("[TKBIO] Press (%i,%i)\n", mapY, mapX));
 pressed:
             switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
             {
@@ -819,7 +831,7 @@ int tkbio_run(tkbio_handler *handler, void *state)
     
     int ret;
     
-    DEBUG(printf("[TKBIO] run\n"));
+    VERBOSE(printf("[TKBIO] run\n"));
     
     while(1)
     {
@@ -832,7 +844,7 @@ int tkbio_run(tkbio_handler *handler, void *state)
         }
         else if(pfds[0].revents & POLLHUP)
         {
-            DEBUG(printf("[TKBIO] Failed to poll rpc socket\n"));
+            VERBOSE(printf("[TKBIO] Failed to poll rpc socket\n"));
             tkbio_open_socket(-1);
         }
     }

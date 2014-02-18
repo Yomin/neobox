@@ -33,6 +33,8 @@
 #   define DEBUG(x) x
 #endif
 
+#define VERBOSE(x)  if(tkbio.verbose) { x; }
+
 #define RPCNAME     "tspd"
 #define SCREENMAX   830
 #define DENSITY     1       // pixel
@@ -69,7 +71,7 @@ struct tkbio_parser
 struct tkbio_global
 {
     const char* name, *tsp;
-    int format, pause;
+    int format, pause, verbose;
     int sock, sim;
     struct tkbio_fb fb;
     struct tkbio_layout layout;

@@ -46,6 +46,7 @@ struct tkbio_config
     struct tkbio_layout layout;
     int format;
     int options;
+    int verbose;
 };
 
 int tkbio_init_default(const char *name);
