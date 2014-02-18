@@ -67,12 +67,13 @@ void tkbio_signal_handler(int signal)
         break;
     case SIGINT:
     {
-        unsigned char cmd = TSP_CMD_REMOVE;
-        send(tkbio.sock, &cmd, sizeof(unsigned char), 0);
         if(tkbio.custom_signal_handler)
             tkbio.custom_signal_handler(signal);
         else
+        {
+            tkbio_finish();
             exit(128+SIGINT);
+        }
         break;
     }
     default:
@@ -452,7 +453,11 @@ int tkbio_init_layout_args(const char *name, struct tkbio_layout layout, int *ar
 void tkbio_finish()
 {
     VERBOSE(printf("[TKBIO] finish\n"));
+    
+    unsigned char cmd = TSP_CMD_REMOVE;
+    send(tkbio.sock, &cmd, sizeof(unsigned char), 0);
     close(tkbio.sock);
+    
     if(tkbio.sim)
     {
         shm_unlink(tkbio.fb.shm);
