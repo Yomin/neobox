@@ -293,7 +293,7 @@ void tkbio_fill_rect(int y, int x, int height, int width, int density, unsigned 
 void tkbio_fill_rect_field(int y, int x, int height, int width, int density, unsigned char *fill)
 {
     tkbio_layout_to_fb_cords(&y, &x);
-    tkbio_fb_fill_rect(y*height, x*height, height, width, density, fill);
+    tkbio_fb_fill_rect(y*height, x*width, height, width, density, fill);
 }
 
 void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, unsigned char *fill)
@@ -306,7 +306,7 @@ void tkbio_fb_fill_rect(int y, int x, int height, int width, int density, unsign
     {
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            for(k=tkbio.fb.bpp; k>=0; k--)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 *(ptr++) = *fill;
                 fill++;
@@ -360,7 +360,7 @@ void tkbio_fb_fill_border(int y, int x, int height, int width, unsigned char bor
                 skipped = 1;
                 continue;
             }
-            for(k=tkbio.fb.bpp; k>=0; k--)
+            for(k=tkbio.fb.bpp-1; k>=0; k--)
             {
                 *(ptr++) = *fill;
                 fill++;

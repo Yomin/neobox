@@ -752,7 +752,7 @@ pressed:
                     if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
                     {
                         int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(unsigned char);
-                        int allsize = size * (vector_size(vec)+1);
+                        int allsize = size * (vec ? (vector_size(vec)+1) : 1);
                         
                         if(!tkbio.fb.copy)
                         {
