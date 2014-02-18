@@ -38,7 +38,7 @@
 
 #define TKBIO_OPTION_NO_INITIAL_PRINT   1
 
-typedef int tkbio_handler(struct tkbio_charelem elem, void *state);
+typedef int tkbio_handler(struct tkbio_return ret, void *state);
 
 struct tkbio_config
 {
@@ -61,7 +61,7 @@ struct tkbio_config tkbio_config_args(int *argc, char *argv[]);
 void tkbio_finish();
 
 int tkbio_run(tkbio_handler *h, void *state);
-struct tkbio_charelem tkbio_handle_event();
+struct tkbio_return tkbio_handle_event();
 
 void tkbio_set_signal_handler(void handler(int signal));
 

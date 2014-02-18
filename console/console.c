@@ -32,10 +32,10 @@
 
 #define NAME "neobox-console"
 
-int handler(struct tkbio_charelem elem, void *state)
+int handler(struct tkbio_return ret, void *state)
 {
     int fd = *(int*) state;
-    char *ptr = elem.c;
+    char *ptr = ret.c.c;
     int i = 0;
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {

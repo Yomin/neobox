@@ -23,22 +23,40 @@
 #ifndef __TKBIO_LAYOUT_H__
 #define __TKBIO_LAYOUT_H__
 
+#include <stdint.h>
+
 #define TKBIO_LAYOUT_TYPE_CHAR      0
 #define TKBIO_LAYOUT_TYPE_GOTO      1
 #define TKBIO_LAYOUT_TYPE_HOLD      2
-#define TKBIO_LAYOUT_TYPE_TOGG      3
-#define TKBIO_LAYOUT_OPTION_BORDER  4
-#define TKBIO_LAYOUT_OPTION_COPY    8
+#define TKBIO_LAYOUT_TYPE_TOGGLE    3
+#define TKBIO_LAYOUT_TYPE_HSLIDER   4
+#define TKBIO_LAYOUT_TYPE_VSLIDER   5
+#define TKBIO_LAYOUT_MASK_TYPE      7
+#define TKBIO_LAYOUT_OPTION_BORDER  8
+#define TKBIO_LAYOUT_OPTION_COPY    16
+
 #define TKBIO_LAYOUT_CONNECT_LEFT   1
 #define TKBIO_LAYOUT_CONNECT_UP     2
 
-#define TKBIO_LAYOUT_MASK_TYPE      3
-
 #define TKBIO_CHARELEM_MAX          4
+
+#define TKBIO_RETURN_ERROR          0
+#define TKBIO_RETURN_CHAR           1
+#define TKBIO_RETURN_INT            2
 
 struct tkbio_charelem
 {
     char c[TKBIO_CHARELEM_MAX];
+};
+
+struct tkbio_return
+{
+    char type;
+    union
+    {
+        struct tkbio_charelem c;
+        int32_t i;
+    };
 };
 
 typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem, unsigned char toggle);

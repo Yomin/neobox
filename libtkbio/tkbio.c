@@ -492,10 +492,10 @@ void tkbio_set_pause()
     }
 }
 
-struct tkbio_charelem tkbio_handle_event()
+struct tkbio_return tkbio_handle_event()
 {
-    struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
-    struct tkbio_charelem ret = (struct tkbio_charelem) {{0, 0, 0, 0}};
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    struct tkbio_return ret = { .type = TKBIO_RETURN_ERROR, .i = 0 };
     
     struct tsp_event event;
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
@@ -622,9 +622,10 @@ struct tkbio_charelem tkbio_handle_event()
                     if(!elem->elem.c[0])
                         break;
                     if(tkbio.layout.fun)
-                        ret = tkbio.layout.fun(tkbio.parser.map, elem->elem, tkbio.parser.toggle);
+                        ret.c = tkbio.layout.fun(tkbio.parser.map, elem->elem, tkbio.parser.toggle);
                     else
-                        ret = elem->elem;
+                        ret.c = elem->elem;
+                    ret.type = TKBIO_RETURN_CHAR;
                     if(!tkbio.parser.hold)
                         tkbio.parser.map = tkbio.layout.start;
                     tkbio.parser.toggle = 0;
@@ -641,7 +642,7 @@ struct tkbio_charelem tkbio_handle_event()
                     else
                         tkbio.parser.hold = 1;
                     break;
-                case TKBIO_LAYOUT_TYPE_TOGG:
+                case TKBIO_LAYOUT_TYPE_TOGGLE:
                     if(!tkbio.parser.hold)
                         tkbio.parser.map = tkbio.layout.start;
                     tkbio.parser.toggle ^= elem->elem.c[0];
