@@ -35,48 +35,57 @@
 
 #define VERBOSE(x)  if(tkbio.verbose) { x; }
 
-#define RPCNAME     "tspd"
-#define SCREENMAX   830
-#define DENSITY     1       // pixel
-#define INCREASE    33      // percent
-#define DELAY       100000  // us
+#define SCREENMAX   830     // screen size in pixel
+#define DENSITY     1       // button draw density in pixel
+#define INCREASE    33      // button size increase in percent
+#define DELAY       100000  // debouncer pause delay in us
 
-#define FB_STATUS_NOP  0
-#define FB_STATUS_COPY 1
-#define FB_STATUS_FILL 2
+#define FB_STATUS_NOP  0    // last button not drawn
+#define FB_STATUS_COPY 1    // last button saved/drawn
+#define FB_STATUS_FILL 2    // last button drawn
 
 struct tkbio_fb
 {
-    int fd, sock;
+    int fd;   // framebuffer file descriptor
+    int sock; // unix socket descriptor for sim
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
-    int size, bpp;
-    char shm[20];
-    unsigned char *ptr;
-    int copySize;
-    unsigned char *copy, fillColor;
+    int size; // framebuffer size
+    int bpp;  // bytes per pixel
+    unsigned char *ptr; // mmap'ed framebuffer pointer
+    
+    char shm[20]; // shared memory segment name for sim
+    
+    int copy_size;       // allocated copy size
+    unsigned char *copy; // copy buf pointer
+    
     int status; // last button nop/copy/fill
 };
 
 struct tkbio_parser
 {
-    int pressed; // button currently pressed
-    int y, x;    // last pos
-    int py, px;  // last pressed pos
-    int map;
-    int hold;
-    unsigned char toggle;
+    int pressed;          // button currently pressed
+    int y, x;             // last pos (layout format)
+    int map;              // current map
+    int hold;             // hold mode active
+    unsigned char toggle; // active toggle buttons
 };
 
 struct tkbio_global
 {
-    const char* name, *tsp;
-    int format, pause, verbose;
-    int sock, sim;
+    const char *name;   // application name
+    const char *tsp;    // tsp directory
+    int format;         // portrait or landscape
+    int pause;          // pause for debouncer
+    int verbose;        // verbose messages
+    int sock;           // unix socket to tsp
+    int sim;            // sim enabled
+    
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
-    struct vector ***connect;
+    
+    struct vector ***connect; // button partner array
     void (*custom_signal_handler)(int signal);
 };
 

@@ -35,7 +35,7 @@
 int handler(struct tkbio_return ret, void *state)
 {
     int fd = *(int*) state;
-    char *ptr = ret.c.c;
+    char *ptr = ret.value.c.c;
     int i = 0;
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {

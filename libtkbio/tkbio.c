@@ -20,6 +20,8 @@
  * THE SOFTWARE.
  */
 
+#define _BSD_SOURCE
+
 #include "tkbio.h"
 #include "tkbio_def.h"
 #include "tkbio_fb.h"
@@ -84,8 +86,21 @@ void tkbio_signal_handler(int signal)
 
 void tkbio_init_connect()
 {
-    tkbio.connect = malloc(tkbio.layout.size*sizeof(struct vector**));
     int i, j, k, width, size;
+    
+    const struct tkbio_mapelem *map;
+    const struct tkbio_mapelem *elem;
+    struct tkbio_point p, p2, *pp;
+    struct vector *v, *v2;
+    
+    // create for every group of buttons a vector
+    // filled with tkbio_points of all buttons
+    // every tkbio.connect[i][x] of a button points
+    // to the same vector
+    // the vectors and points are saved in layout format
+    
+    tkbio.connect = malloc(tkbio.layout.size*sizeof(struct vector**));
+    
     for(i=0; i<tkbio.layout.size; i++)
     {
         width = tkbio.layout.maps[i].width;
@@ -94,10 +109,9 @@ void tkbio_init_connect()
         memset(tkbio.connect[i], 0, size*sizeof(struct vector*));
         for(j=0; j<size; j++)
         {
-            const struct tkbio_mapelem *map = tkbio.layout.maps[i].map;
-            const struct tkbio_mapelem *elem = &map[j];
-            struct tkbio_point p = {j/width, j%width, elem}, p2, *pp;
-            struct vector *v, *v2;
+            map = tkbio.layout.maps[i].map;
+            elem = &map[j];
+            p = (struct tkbio_point){j/width, j%width, elem};
             
             if(j%width>0 && elem->connect & TKBIO_LAYOUT_CONNECT_LEFT)
             {
@@ -162,16 +176,16 @@ void tkbio_init_connect()
 
 int tkbio_open_socket(int tries)
 {
+    struct sockaddr_un addr;
+    
     VERBOSE(printf("[TKBIO] Connecting to rpc socket\n"));
     
-    tkbio.sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if(tkbio.sock == -1)
+    if((tkbio.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to open rpc socket"));
         return TKBIO_ERROR_RPC_OPEN;
     }
     
-    struct sockaddr_un addr;
     addr.sun_family = AF_UNIX;
     sprintf(addr.sun_path, "%s/%s", tkbio.tsp, TSP_RPC);
     
@@ -196,9 +210,9 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
 {
     struct option fboption[] =
     {
-        { "tkbio-fb", 1, 0, 'f' },
-        { "tkbio-tsp", 1, 0, 't' },
-        { "tkbio-verbose", 0, 0, 'v' },
+        { "tkbio-fb", 1, 0, 'f' },      // path to framebuffer
+        { "tkbio-tsp", 1, 0, 't' },     // path to tsp directory
+        { "tkbio-verbose", 0, 0, 'v' }, // verbose messages
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -231,9 +245,46 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
     return config;
 }
 
+void tkbio_init_screen()
+{
+    const struct tkbio_map *const map = &tkbio.layout.maps[tkbio.parser.map];
+    const struct tkbio_mapelem *elem;
+    int y, x, height = map->height, width = map->width;
+    char sim_tmp = 'x'; // content irrelevant
+    
+    tkbio_layout_to_fb_sizes(&height, &width, 0, 0);
+    
+    for(y=0; y<map->height; y++)
+        for(x=0; x<map->width; x++)
+        {
+            elem = &map->map[y*map->width+x];
+            
+            if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
+            {
+                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                    tkbio_layout_draw_connect(y, x, height, width,
+                        elem->color, elem->connect, DENSITY, 0);
+            }
+            else
+            {
+                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                    tkbio_layout_draw_rect_connect(y, x, height, width,
+                        elem->color, elem->connect, DENSITY, 0);
+                else
+                    tkbio_layout_draw_rect(y, x, height, width,
+                        elem->color >> 4, DENSITY, 0);
+            }
+        }
+    
+    // notify framebuffer for redraw
+    if(tkbio.sim)
+        send(tkbio.fb.sock, &sim_tmp, 1, 0);
+}
+
 int tkbio_init_custom(const char *name, struct tkbio_config config)
 {
     int ret;
+    struct sockaddr_un addr;
     
     tkbio.verbose = config.verbose;
     
@@ -242,9 +293,11 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         printf("[TKBIO] init\n");
         printf("[TKBIO] fb: %s\n", config.fb);
         printf("[TKBIO] tsp: %s\n", config.tsp);
-        printf("[TKBIO] format: %s\n", config.format == TKBIO_FORMAT_LANDSCAPE ? "landscape" : "portrait");
+        printf("[TKBIO] format: %s\n", config.format
+            == TKBIO_FORMAT_LANDSCAPE ? "landscape" : "portrait");
         printf("[TKBIO] options:\n");
-        printf("[TKBIO]   initial print: %s\n", config.options & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
+        printf("[TKBIO]   initial print: %s\n", config.options
+            & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
     }
     
     tkbio.tsp = config.tsp;
@@ -291,7 +344,6 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
             return TKBIO_ERROR_FB_OPEN;
         }
         
-        struct sockaddr_un addr;
         addr.sun_family = AF_UNIX;
         strcpy(addr.sun_path, config.fb);
         
@@ -329,7 +381,8 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
         return TKBIO_ERROR_FB_OPEN;
     }
     
-    if((tkbio.fb.ptr = (unsigned char*) mmap(0, tkbio.fb.size, PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
+    if((tkbio.fb.ptr = (unsigned char*) mmap(0, tkbio.fb.size,
+        PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
     {
         VERBOSE(perror("[TKBIO] Failed to mmap framebuffer"));
         close(tkbio.sock);
@@ -362,41 +415,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     
     // print initial screen
     if(!(config.options & TKBIO_OPTION_NO_INITIAL_PRINT))
-    {
-        struct tkbio_map *map = (struct tkbio_map*) &tkbio.layout.maps[tkbio.parser.map];
-        struct tkbio_mapelem *elem;
-        int y, x, fy, fx, fheight = map->height, fwidth = map->width;
-        tkbio_layout_to_fb_sizes(&fheight, &fwidth, 0, 0);
-        for(y=0; y<map->height; y++)
-            for(x=0; x<map->width; x++)
-            {
-                fy = y; fx = x;
-                tkbio_layout_to_fb_cords(&fy, &fx);
-                elem = (struct tkbio_mapelem*) &map->map[y*map->width+x];
-                unsigned char borders = tkbio_fb_connect_to_borders(fy, fx, elem->connect);
-                if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
-                {
-                    if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                        tkbio_fb_draw_border(fy*fheight, fx*fwidth, fheight,
-                            fwidth, elem->color >> 4, borders, DENSITY, 0);
-                }
-                else
-                {
-                    if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                        tkbio_fb_draw_rect_border(fy*fheight, fx*fwidth,
-                            fheight, fwidth, elem->color, borders, DENSITY, 0);
-                    else
-                        tkbio_fb_draw_rect(fy*fheight, fx*fwidth, fheight,
-                            fwidth, elem->color >> 4, DENSITY, 0);
-                }
-            }
-        // notify framebuffer for redraw
-        if(tkbio.sim)
-        {
-            unsigned char tmp = 'x';
-            send(tkbio.fb.sock, &tmp, 1, 0);
-        }
-    }
+        tkbio_init_screen();
     
     VERBOSE(printf("[TKBIO] init done\n"));
     
@@ -452,15 +471,19 @@ int tkbio_init_layout_args(const char *name, struct tkbio_layout layout, int *ar
 
 void tkbio_finish()
 {
+    unsigned char cmd = TSP_CMD_REMOVE;
+    
+    int i, j, k, width, size;
+    struct vector *v;
+    struct tkbio_point *p;
+    
     VERBOSE(printf("[TKBIO] finish\n"));
     
-    unsigned char cmd = TSP_CMD_REMOVE;
     send(tkbio.sock, &cmd, sizeof(unsigned char), 0);
     close(tkbio.sock);
     
     if(tkbio.sim)
     {
-        shm_unlink(tkbio.fb.shm);
         close(tkbio.fb.fd);
         close(tkbio.fb.sock);
     }
@@ -469,9 +492,6 @@ void tkbio_finish()
     if(tkbio.fb.copy)
         free(tkbio.fb.copy);
     
-    int i, j, k, width, size;
-    struct vector *v, **v2;
-    struct tkbio_point *p;
     for(i=0; i<tkbio.layout.size; i++)
     {
         width = tkbio.layout.maps[i].width;
@@ -484,10 +504,9 @@ void tkbio_finish()
             for(k=0; k<vector_size(v); k++)
             {
                 p = vector_at(k, v);
-                v2 = &tkbio.connect[i][p->y*width+p->x];
-                vector_finish(*v2);
-                *v2 = 0;
+                tkbio.connect[i][p->y*width+p->x] = 0;
             }
+            vector_finish(v);
         }
         free(tkbio.connect[i]);
     }
@@ -496,8 +515,9 @@ void tkbio_finish()
 
 void tkbio_set_pause()
 {
-    tkbio.pause = 1;
     struct itimerval timerval;
+    
+    tkbio.pause = 1;
     timerval.it_interval.tv_sec = 0;
     timerval.it_interval.tv_usec = 0;
     timerval.it_value.tv_sec = 0;
@@ -509,12 +529,224 @@ void tkbio_set_pause()
     }
 }
 
+void tkbio_event_cleanup(int height, int width)
+{
+    // current map
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    
+    // partner vector of last button
+    struct vector *vec = tkbio.connect
+        [tkbio.parser.map][tkbio.parser.y*map->width+tkbio.parser.x];
+    
+    // mapelem of last button
+    const struct tkbio_mapelem *elem = &map->map
+        [tkbio.parser.y*map->width+tkbio.parser.x];
+    
+    int i, size;
+    struct tkbio_point *p;
+    unsigned char *ptr;
+    
+    switch(tkbio.fb.status)
+    {
+    case FB_STATUS_NOP: // no cleanup
+        break;
+    case FB_STATUS_COPY: // write back saved contents of last button
+        if(!vec)
+            tkbio_layout_fill_rect(tkbio.parser.y, tkbio.parser.x,
+                height, width, DENSITY, tkbio.fb.copy);
+        else
+        {
+            // bytes of one button
+            size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp;
+            ptr = tkbio.fb.copy;
+            for(i=0; i<vector_size(vec); i++, ptr += size)
+            {
+                p = vector_at(i, vec);
+                tkbio_layout_fill_rect(p->y, p->x, height, width, DENSITY, ptr);
+            }
+        }
+        break;
+    case FB_STATUS_FILL: // overdraw last button
+        if(!vec)
+        {
+            if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                tkbio_layout_draw_rect_connect(tkbio.parser.y, tkbio.parser.x,
+                    height, width, elem->color, elem->connect, DENSITY, 0);
+            else
+                tkbio_layout_draw_rect(tkbio.parser.y, tkbio.parser.x,
+                    height, width, elem->color & 15, DENSITY, 0);
+        }
+        else
+            for(i=0; i<vector_size(vec); i++)
+            {
+                p = vector_at(i, vec);
+                if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
+                    tkbio_layout_draw_rect_connect(p->y, p->x, height, width,
+                        p->elem->color, p->elem->connect, DENSITY, 0);
+                else
+                    tkbio_layout_draw_rect(p->y, p->x, height, width,
+                        p->elem->color & 15, DENSITY, 0);
+            }
+        break;
+    }
+}
+
+int tkbio_event_move(int y, int x)
+{
+    // current map
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    
+    // partner vector of last button
+    struct vector *vec = tkbio.connect
+        [tkbio.parser.map][tkbio.parser.y*map->width+tkbio.parser.x];
+    
+    int i;
+    struct tkbio_point *p;
+    
+    // when moved to partner only update coordinates
+    if(vec)
+        for(i=0; i<vector_size(vec); i++)
+        {
+            p = vector_at(i, vec);
+            if(p->y == y && p->x == x)
+            {
+                tkbio.parser.y = y;
+                tkbio.parser.x = x;
+                return 1;
+            }
+        }
+    return 0;
+}
+
+struct tkbio_return tkbio_event_released(int y, int x, int height, int width)
+{
+    // current map
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    
+    // mapelem of current button
+    const struct tkbio_mapelem *elem = &map->map[y*map->width+x];
+    
+    struct tkbio_return ret = { .type = TKBIO_RETURN_NOP, .value.i = 0 };
+    
+    switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
+    {
+    case TKBIO_LAYOUT_TYPE_CHAR:
+        if(!elem->elem.c[0]) // charelem unused
+            break;
+        if(tkbio.layout.fun) // layout specific convert function
+            ret.value.c = tkbio.layout.fun(tkbio.parser.map,
+                elem->elem, tkbio.parser.toggle);
+        else
+            ret.value.c = elem->elem;
+        ret.type = TKBIO_RETURN_CHAR;
+        if(!tkbio.parser.hold) // reset map to default if not on hold
+            tkbio.parser.map = tkbio.layout.start;
+        tkbio.parser.toggle = 0;
+        break;
+    case TKBIO_LAYOUT_TYPE_GOTO:
+        tkbio.parser.map = (int) elem->elem.c[0];
+        break;
+    case TKBIO_LAYOUT_TYPE_HOLD:
+        if(tkbio.parser.hold)
+            tkbio.parser.map = tkbio.layout.start;
+        tkbio.parser.hold = !tkbio.parser.hold;
+        break;
+    case TKBIO_LAYOUT_TYPE_TOGGLE:
+        if(!tkbio.parser.hold)
+            tkbio.parser.map = tkbio.layout.start;
+        tkbio.parser.toggle ^= elem->elem.c[0];
+        break;
+    }
+    
+    return ret;
+}
+
+void tkbio_event_pressed(int y, int x, int height, int width)
+{
+    // current map
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    
+    // partner vector of current button
+    struct vector *vec = tkbio.connect[tkbio.parser.map][y*map->width+x];
+    
+    // mapelem of current button
+    const struct tkbio_mapelem *elem = &map->map[y*map->width+x];
+    
+    int i, size, allsize;
+    struct tkbio_point *p;
+    unsigned char *ptr;
+    
+    switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
+    {
+    case TKBIO_LAYOUT_TYPE_CHAR:
+        if(!elem->elem.c[0]) // if charelem unused dont draw anything
+        {
+            tkbio.fb.status = FB_STATUS_NOP;
+            break;
+        }
+    default:
+        if(elem->type & TKBIO_LAYOUT_OPTION_COPY) // first save then draw button
+        {
+            // bytes of one button / all buttons
+            size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp;
+            allsize = size * (vec ? vector_size(vec) : 1);
+            
+            if(!tkbio.fb.copy)
+            {
+                tkbio.fb.copy = malloc(allsize);
+                tkbio.fb.copy_size = allsize;
+            }
+            else if(tkbio.fb.copy_size < allsize)
+            {
+                tkbio.fb.copy = realloc(tkbio.fb.copy, allsize);
+                tkbio.fb.copy_size = allsize;
+            }
+            
+            if(!vec)
+                tkbio_layout_draw_rect(y, x, height, width,
+                    elem->color >> 4, DENSITY, tkbio.fb.copy);
+            else
+            {
+                ptr = tkbio.fb.copy;
+                for(i=0; i<vector_size(vec); i++, ptr += size)
+                {
+                    p = vector_at(i, vec);
+                    tkbio_layout_draw_rect(p->y, p->x, height, width,
+                        p->elem->color >> 4, DENSITY, ptr);
+                }
+            }
+            tkbio.fb.status = FB_STATUS_COPY;
+        }
+        else // draw button
+        {
+            if(!vec)
+                tkbio_layout_draw_rect(y, x, height, width,
+                    elem->color >> 4, DENSITY, 0);
+            else
+            {
+                for(i=0; i<vector_size(vec); i++)
+                {
+                    p = vector_at(i, vec);
+                    tkbio_layout_draw_rect(p->y, p->x, height, width,
+                        p->elem->color >> 4, DENSITY, 0);
+                }
+            }
+            tkbio.fb.status = FB_STATUS_FILL;
+        }
+    }
+}
+
 struct tkbio_return tkbio_handle_event()
 {
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
-    struct tkbio_return ret = { .type = TKBIO_RETURN_ERROR, .i = 0 };
+    struct tkbio_return ret = { .type = TKBIO_RETURN_NOP, .value.i = 0 };
     
     struct tsp_event event;
+    
+    int y, x;
+    int fb_y, fb_x, width, height, width_screen, height_screen;
+    char sim_tmp = 'x'; // content irrelevant
+    
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to receive event"));
@@ -524,213 +756,64 @@ struct tkbio_return tkbio_handle_event()
     if(event.x >= SCREENMAX || event.y >= SCREENMAX)
         return ret;
     
-    int width = map->width, height = map->height, scrWidth, scrHeight;
-    tkbio_layout_to_fb_sizes(&height, &width, &scrHeight, &scrWidth);
+    // calculate framebuffer/screen height and width
+    width = map->width;
+    height = map->height;
+    tkbio_layout_to_fb_sizes(&height, &width, &height_screen, &width_screen);
     
-    int y, x;
+    // last coordinates are saved in layout format
+    fb_y = tkbio.parser.y;
+    fb_x = tkbio.parser.x;
+    tkbio_layout_to_fb_cords(&fb_y, &fb_x);
     
+    // if event coordinates within increased last button, same button
     if(tkbio.parser.pressed
-        && event.x >= scrWidth*tkbio.parser.x - scrWidth*(INCREASE/100.0)
-        && event.x <= scrWidth*(tkbio.parser.x+1) + scrWidth*(INCREASE/100.0)
-        && (SCREENMAX - event.y) >= scrHeight*tkbio.parser.y - scrHeight*(INCREASE/100.0)
-        && (SCREENMAX - event.y) <= scrHeight*(tkbio.parser.y+1) + scrHeight*(INCREASE/100.0))
+        && event.x >= width_screen*fb_x - width_screen*(INCREASE/100.0)
+        && event.x <= width_screen*(fb_x+1) + width_screen*(INCREASE/100.0)
+        && (SCREENMAX - event.y) >= height_screen*fb_y - height_screen*(INCREASE/100.0)
+        && (SCREENMAX - event.y) <= height_screen*(fb_y+1) + height_screen*(INCREASE/100.0))
     {
         x = tkbio.parser.x;
         y = tkbio.parser.y;
     }
-    else
+    else // calculate layout position of new button
     {
-        x = event.x / scrWidth;
-        y = (SCREENMAX - event.y -1) / scrHeight;
+        x = event.x / width_screen;
+        y = (SCREENMAX - event.y -1) / height_screen;
+        tkbio_fb_to_layout_cords(&y, &x);
     }
     
-    int mapY = y, mapX = x;
-    tkbio_fb_to_layout_cords(&mapY, &mapX);
-    struct tkbio_mapelem *elem = (struct tkbio_mapelem*) &map->map[mapY*map->width+mapX];
-    struct tkbio_mapelem *pelem = (struct tkbio_mapelem*) &map->map[tkbio.parser.py*map->width+tkbio.parser.px];
+    // ! NOTICE !
+    // the following code uses y, x in layout format
+    // whereas height, width are in framebuffer format
     
     if(event.event & TSP_EVENT_MOVED)
     {
-        if(tkbio.parser.pressed && !tkbio.pause &&
-          (tkbio.parser.y != y || tkbio.parser.x != x))
+        if( tkbio.parser.pressed // move only possible if button pressed
+            && !tkbio.pause // avoid toggling between two buttons
+            && (tkbio.parser.y != y || tkbio.parser.x != x)) // skip if same button
         {
-            struct vector *vec = tkbio.connect
-                [tkbio.parser.map][tkbio.parser.py*map->width+tkbio.parser.px];
-            
-            int i;
-            struct tkbio_point *p;
-            
-            if(vec)
-                for(i=0; i<vector_size(vec); i++)
-                {
-                    p = vector_at(i, vec);
-                    if(p->y == mapY && p->x == mapX)
-                    {
-                        VERBOSE(printf("[TKBIO] Move to partner (%i,%i)\n", mapY, mapX));
-                        tkbio.parser.y = y;
-                        tkbio.parser.x = x;
-                        return ret;
-                    }
-                }
-            
-            VERBOSE(printf("[TKBIO] Move (%i,%i)\n", mapY, mapX));
-            switch(tkbio.fb.status)
+            if(tkbio_event_move(y, x))
             {
-                case FB_STATUS_NOP:
-                    break;
-                case FB_STATUS_COPY:
-                    if(!vec)
-                        tkbio_fill_rect_field(tkbio.parser.py, tkbio.parser.px,
-                            height, width, DENSITY, tkbio.fb.copy);
-                    else
-                    {
-                        int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(unsigned char);
-                        unsigned char *ptr = tkbio.fb.copy+size;
-                        for(i=0; i<vector_size(vec); i++, ptr += size)
-                        {
-                            p = vector_at(i, vec);
-                            tkbio_fill_rect_field(p->y, p->x, height, width, DENSITY, ptr);
-                        }
-                    }
-                    break;
-                case FB_STATUS_FILL:
-                    if(!vec)
-                    {
-                        if(pelem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                        {
-                            unsigned char borders = tkbio_fb_connect_to_borders(
-                                tkbio.parser.y, tkbio.parser.x, pelem->connect);
-                            tkbio_fb_draw_rect_border(tkbio.parser.y*height,
-                                tkbio.parser.x*width, height, width, pelem->color,
-                                borders, DENSITY, 0);
-                        }
-                        else
-                            tkbio_fb_draw_rect(tkbio.parser.y*height, tkbio.parser.x*width,
-                                height, width, pelem->color & 15, DENSITY, 0);
-                    }
-                    else
-                        for(i=0; i<vector_size(vec); i++)
-                        {
-                            p = vector_at(i, vec);
-                            if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                            {
-                                unsigned char borders = tkbio_connect_to_borders(
-                                    p->y, p->x, p->elem->connect);
-                                tkbio_draw_rect_border_field(p->y, p->x,
-                                    height, width, p->elem->color, borders, DENSITY, 0);
-                            }
-                            else
-                                tkbio_draw_rect_field(p->y, p->x, height,
-                                    width, p->elem->color & 15, DENSITY, 0);
-                        }
-                    break;
+                VERBOSE(printf("[TKBIO] Move to partner (%i,%i)\n", y, x));
+                return ret;
             }
-            goto pressed;
+            else
+            {
+                VERBOSE(printf("[TKBIO] Move (%i,%i)\n", y, x));
+                tkbio_event_cleanup(height, width);
+                goto pressed;
+            }
         }
     }
     else if(!(event.event & TSP_EVENT_PRESSED))
     {
-        if(tkbio.parser.pressed)
+        if(tkbio.parser.pressed) // release only possible if button pressed
         {
-            VERBOSE(printf("[TKBIO] Release (%i,%i)\n", mapY, mapX));
-            switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
-            {
-                case TKBIO_LAYOUT_TYPE_CHAR:
-                    if(!elem->elem.c[0])
-                        break;
-                    if(tkbio.layout.fun)
-                        ret.c = tkbio.layout.fun(tkbio.parser.map, elem->elem, tkbio.parser.toggle);
-                    else
-                        ret.c = elem->elem;
-                    ret.type = TKBIO_RETURN_CHAR;
-                    if(!tkbio.parser.hold)
-                        tkbio.parser.map = tkbio.layout.start;
-                    tkbio.parser.toggle = 0;
-                    break;
-                case TKBIO_LAYOUT_TYPE_GOTO:
-                    tkbio.parser.map = (int) elem->elem.c[0];
-                    break;
-                case TKBIO_LAYOUT_TYPE_HOLD:
-                    if(tkbio.parser.hold)
-                    {
-                        tkbio.parser.map = tkbio.layout.start;
-                        tkbio.parser.hold = 0;
-                    }
-                    else
-                        tkbio.parser.hold = 1;
-                    break;
-                case TKBIO_LAYOUT_TYPE_TOGGLE:
-                    if(!tkbio.parser.hold)
-                        tkbio.parser.map = tkbio.layout.start;
-                    tkbio.parser.toggle ^= elem->elem.c[0];
-                    break;
-            }
+            VERBOSE(printf("[TKBIO] Release (%i,%i)\n", y, x));
             
-            struct vector *vec = tkbio.connect
-                [tkbio.parser.map][tkbio.parser.py*map->width+tkbio.parser.px];
-            
-            switch(tkbio.fb.status)
-            {
-                case FB_STATUS_NOP:
-                    break;
-                case FB_STATUS_COPY:
-                    if(tkbio.fb.copy)
-                    {
-                        if(!vec)
-                            tkbio_fb_fill_rect(tkbio.parser.y*height, tkbio.parser.x*width,
-                                height, width, DENSITY, tkbio.fb.copy);
-                        else
-                        {
-                            int i;
-                            struct tkbio_point *p;
-                            int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(unsigned char);
-                            unsigned char *ptr = tkbio.fb.copy+size;
-                            for(i=0; i<vector_size(vec); i++, ptr += size)
-                            {
-                                p = vector_at(i, vec);
-                                tkbio_fill_rect_field(p->y, p->x, height, width, DENSITY, ptr);
-                            }
-                        }
-                    }
-                    break;
-                case FB_STATUS_FILL:
-                    if(!vec)
-                    {
-                        if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                        {
-                            unsigned char borders = tkbio_fb_connect_to_borders(
-                                tkbio.parser.y, tkbio.parser.x, elem->connect);
-                            tkbio_fb_draw_rect_border(tkbio.parser.y*height,
-                                tkbio.parser.x*width, height, width,
-                                elem->color, borders, DENSITY, 0);
-                        }
-                        else
-                            tkbio_fb_draw_rect(tkbio.parser.y*height,
-                                tkbio.parser.x*width, height, width,
-                                elem->color & 15, DENSITY, 0);
-                    }
-                    else
-                    {
-                        int i;
-                        struct tkbio_point *p;
-                        unsigned char borders;
-                        for(i=0; i<vector_size(vec); i++)
-                        {
-                            p = vector_at(i, vec);
-                            if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                            {
-                                borders = tkbio_connect_to_borders(
-                                    p->y, p->x, p->elem->connect);
-                                tkbio_draw_rect_border_field(p->y, p->x,
-                                    height, width, elem->color, borders, DENSITY, 0);
-                            }
-                            else
-                                tkbio_draw_rect_field(p->y, p->x, height,
-                                    width, elem->color >> 4, DENSITY, 0);
-                        }
-                    }
-                    break;
-            }
+            ret = tkbio_event_released(y, x, height, width);
+            tkbio_event_cleanup(height, width);
             
             tkbio.fb.status = FB_STATUS_NOP;
             tkbio.parser.pressed = 0;
@@ -738,80 +821,14 @@ struct tkbio_return tkbio_handle_event()
     }
     else // pressed
     {
-        if(!tkbio.parser.pressed)
+        if(!tkbio.parser.pressed) // press only possible if button not pressed
         {
-            VERBOSE(printf("[TKBIO] Press (%i,%i)\n", mapY, mapX));
-pressed:
-            switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
-            {
-                case TKBIO_LAYOUT_TYPE_CHAR:
-                    if(!elem->elem.c[0])
-                    {
-                        tkbio.fb.status = FB_STATUS_NOP;
-                        break;
-                    }
-                default:
-                {
-                    struct vector *vec = tkbio.connect[tkbio.parser.map][mapY*map->width+mapX];
-                    
-                    if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
-                    {
-                        int size = (width/DENSITY)*(height/DENSITY)*tkbio.fb.bpp*sizeof(unsigned char);
-                        int allsize = size * (vec ? (vector_size(vec)+1) : 1);
-                        
-                        if(!tkbio.fb.copy)
-                        {
-                            tkbio.fb.copy = malloc(allsize);
-                            tkbio.fb.copySize = allsize;
-                        }
-                        else if(tkbio.fb.copySize < allsize)
-                        {
-                            tkbio.fb.copy = realloc(tkbio.fb.copy, allsize);
-                            tkbio.fb.copySize = allsize;
-                        }
-                        
-                        if(!vec)
-                            tkbio_fb_draw_rect(y*height, x*width, height,
-                                width, elem->color >> 4, DENSITY, tkbio.fb.copy);
-                        else
-                        {
-                            int i;
-                            struct tkbio_point *p;
-                            unsigned char *ptr = tkbio.fb.copy+size;
-                            for(i=0; i<vector_size(vec); i++, ptr += size)
-                            {
-                                p = vector_at(i, vec);
-                                tkbio_draw_rect_field(p->y, p->x, height, width,
-                                    p->elem->color >> 4, DENSITY, ptr);
-                            }
-                        }
-                        tkbio.fb.status = FB_STATUS_COPY;
-                    }
-                    else
-                    {
-                        if(!vec)
-                            tkbio_fb_draw_rect(y*height, x*width, height,
-                                width, elem->color >> 4, DENSITY, 0);
-                        else
-                        {
-                            int i;
-                            struct tkbio_point *p;
-                            for(i=0; i<vector_size(vec); i++)
-                            {
-                                p = vector_at(i, vec);
-                                tkbio_draw_rect_field(p->y, p->x, height, width,
-                                    p->elem->color >> 4, DENSITY, 0);
-                            }
-                        }
-                        tkbio.fb.status = FB_STATUS_FILL;
-                    }
-                }
-            }
+            VERBOSE(printf("[TKBIO] Press (%i,%i)\n", y, x));
+            
+pressed:    tkbio_event_pressed(y, x, height, width);
             
             tkbio.parser.y = y;
             tkbio.parser.x = x;
-            tkbio.parser.py = mapY;
-            tkbio.parser.px = mapX;
             tkbio.parser.pressed = 1;
             
             tkbio_set_pause();
@@ -820,10 +837,7 @@ pressed:
     
     // notify framebuffer for redraw
     if(tkbio.sim)
-    {
-        unsigned char tmp = 'x';
-        send(tkbio.fb.sock, &tmp, 1, 0);
-    }
+        send(tkbio.fb.sock, &sim_tmp, 1, 0);
     
     return ret;
 }
@@ -831,10 +845,10 @@ pressed:
 int tkbio_run(tkbio_handler *handler, void *state)
 {
     struct pollfd pfds[1];
+    int ret;
+    
     pfds[0].fd = tkbio.sock;
     pfds[0].events = POLLIN;
-    
-    int ret;
     
     VERBOSE(printf("[TKBIO] run\n"));
     

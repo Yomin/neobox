@@ -40,7 +40,7 @@
 
 #define TKBIO_CHARELEM_MAX          4
 
-#define TKBIO_RETURN_ERROR          0
+#define TKBIO_RETURN_NOP            0
 #define TKBIO_RETURN_CHAR           1
 #define TKBIO_RETURN_INT            2
 
@@ -52,11 +52,11 @@ struct tkbio_charelem
 struct tkbio_return
 {
     char type;
-    union
+    union tkbio_value
     {
         struct tkbio_charelem c;
         int32_t i;
-    };
+    } value;
 };
 
 typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem, unsigned char toggle);

@@ -3,32 +3,32 @@
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
 
-CFLAGS = -Wall
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=c99
 INCLUDES = -I$(LIBTKBIOPATH)
 SOURCES = *.c
 LIBS = -L$(LIBTKBIOPATH) -ltkbio $(shell make -sC $(LIBTKBIOPATH) libs)
 NAME = console
 
-all: debug1 = -DNDEBUG
-all: debug2 =
+all: CFLAGS := $(CFLAGS) -DNDEBUG
+all: debug =
 all: touch $(NAME)
 
-debug: debug1 = -ggdb
-debug: debug2 = debug
+debug: CFLAGS := $(CFLAGS) -ggdb
+debug: debug = debug
 debug: touch $(NAME)
 
 $(NAME): $(LIBTKBIO) $(SOURCES)
-	gcc $(SOURCES) -o $@ $(CFLAGS) $(debug1) $(INCLUDES) $(LIBS)
+	gcc $(SOURCES) -o $@ $(CFLAGS) $(INCLUDES) $(LIBS)
 
 $(LIBTKBIO): $(LIBTKBIOPATH)/*.c
-	@make -C $(LIBTKBIOPATH) $(debug2)
+	@make -C $(LIBTKBIOPATH) $(debug)
 
 clean:
 	find . ! -type d \( -perm -111 -or -name "*\.o" \) -exec rm {} \;
 
 touch:
-	$(shell [ -f debug -a -z "$(debug2)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
-	$(shell [ ! -f debug -a -n "$(debug2)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
+	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
+	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
 sim: debug
 	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose $(shell tty)

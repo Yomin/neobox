@@ -9,13 +9,14 @@ NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
 INCLUDES = -I$(LIBALGPATH) -I$(TSP)
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=c99
 
 all: DEBUG =
-all: CFLAGS = -D NDEBUG
+all: CFLAGS := $(CFLAGS) -D NDEBUG
 all: touch $(LIBALG) lib$(NAME).a
 
 debug: DEBUG = debug
-debug: CFLAGS = -ggdb
+debug: CFLAGS := $(CFLAGS) -ggdb
 debug: touch $(LIBALG) lib$(NAME).a
 
 clean:
@@ -23,11 +24,11 @@ clean:
 
 libs:
 	@for l in $(shell ls lib); do echo -n "-L../lib$(NAME)/lib/$$l -l$${l:3} "; done
-	@echo "-lrt"
+	@echo "-lrt" # needed by shared memory
 
 
 %.o: %.c
-	gcc -Wall -c $(CFLAGS) $(INCLUDES) -o $@ $<
+	gcc $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 lib$(NAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
