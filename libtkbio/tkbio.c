@@ -247,12 +247,12 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
 
 void tkbio_init_screen()
 {
-    const struct tkbio_map *const map = &tkbio.layout.maps[tkbio.parser.map];
+    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     const struct tkbio_mapelem *elem;
-    int y, x, height = map->height, width = map->width;
+    int y, x, height, width;
     char sim_tmp = 'x'; // content irrelevant
     
-    tkbio_layout_to_fb_sizes(&height, &width, 0, 0);
+    tkbio_get_sizes(&height, &width, 0, 0, 0, 0);
     
     for(y=0; y<map->height; y++)
         for(x=0; x<map->width; x++)
@@ -262,17 +262,19 @@ void tkbio_init_screen()
             if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
             {
                 if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_layout_draw_connect(y, x, height, width,
-                        elem->color, elem->connect, DENSITY, 0);
+                    tkbio_layout_draw_connect(y*height, x*width, y, x,
+                        height, width, elem->color, elem->connect,
+                        DENSITY, 0);
             }
             else
             {
                 if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_layout_draw_rect_connect(y, x, height, width,
-                        elem->color, elem->connect, DENSITY, 0);
+                    tkbio_layout_draw_rect_connect(y*height, x*width,
+                        y, x, height, width, elem->color,
+                        elem->connect, DENSITY, 0);
                 else
-                    tkbio_layout_draw_rect(y, x, height, width,
-                        elem->color >> 4, DENSITY, 0);
+                    tkbio_layout_draw_rect(y*height, x*width,
+                        height, width, elem->color >> 4, DENSITY, 0);
             }
         }
     
@@ -552,8 +554,9 @@ void tkbio_event_cleanup(int height, int width)
         break;
     case FB_STATUS_COPY: // write back saved contents of last button
         if(!vec)
-            tkbio_layout_fill_rect(tkbio.parser.y, tkbio.parser.x,
-                height, width, DENSITY, tkbio.fb.copy);
+            tkbio_layout_fill_rect(tkbio.parser.y*height,
+                tkbio.parser.x*width, height, width, DENSITY,
+                tkbio.fb.copy);
         else
         {
             // bytes of one button
@@ -562,7 +565,8 @@ void tkbio_event_cleanup(int height, int width)
             for(i=0; i<vector_size(vec); i++, ptr += size)
             {
                 p = vector_at(i, vec);
-                tkbio_layout_fill_rect(p->y, p->x, height, width, DENSITY, ptr);
+                tkbio_layout_fill_rect(p->y*height, p->x*width,
+                    height, width, DENSITY, ptr);
             }
         }
         break;
@@ -570,22 +574,26 @@ void tkbio_event_cleanup(int height, int width)
         if(!vec)
         {
             if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                tkbio_layout_draw_rect_connect(tkbio.parser.y, tkbio.parser.x,
-                    height, width, elem->color, elem->connect, DENSITY, 0);
+                tkbio_layout_draw_rect_connect(tkbio.parser.y*height,
+                    tkbio.parser.x*width, tkbio.parser.y,
+                    tkbio.parser.x, height, width, elem->color,
+                    elem->connect, DENSITY, 0);
             else
-                tkbio_layout_draw_rect(tkbio.parser.y, tkbio.parser.x,
-                    height, width, elem->color & 15, DENSITY, 0);
+                tkbio_layout_draw_rect(tkbio.parser.y*height,
+                    tkbio.parser.x*width, height, width,
+                    elem->color & 15, DENSITY, 0);
         }
         else
             for(i=0; i<vector_size(vec); i++)
             {
                 p = vector_at(i, vec);
                 if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_layout_draw_rect_connect(p->y, p->x, height, width,
+                    tkbio_layout_draw_rect_connect(p->y*height,
+                        p->x*width, p->y, p->x, height, width,
                         p->elem->color, p->elem->connect, DENSITY, 0);
                 else
-                    tkbio_layout_draw_rect(p->y, p->x, height, width,
-                        p->elem->color & 15, DENSITY, 0);
+                    tkbio_layout_draw_rect(p->y*height, p->x*width,
+                        height, width, p->elem->color & 15, DENSITY, 0);
             }
         break;
     }
@@ -703,7 +711,7 @@ void tkbio_event_pressed(int y, int x, int height, int width)
             }
             
             if(!vec)
-                tkbio_layout_draw_rect(y, x, height, width,
+                tkbio_layout_draw_rect(y*height, x*width, height, width,
                     elem->color >> 4, DENSITY, tkbio.fb.copy);
             else
             {
@@ -711,8 +719,8 @@ void tkbio_event_pressed(int y, int x, int height, int width)
                 for(i=0; i<vector_size(vec); i++, ptr += size)
                 {
                     p = vector_at(i, vec);
-                    tkbio_layout_draw_rect(p->y, p->x, height, width,
-                        p->elem->color >> 4, DENSITY, ptr);
+                    tkbio_layout_draw_rect(p->y*height, p->x*width,
+                        height, width, p->elem->color >> 4, DENSITY, ptr);
                 }
             }
             tkbio.fb.status = FB_STATUS_COPY;
@@ -720,15 +728,15 @@ void tkbio_event_pressed(int y, int x, int height, int width)
         else // draw button
         {
             if(!vec)
-                tkbio_layout_draw_rect(y, x, height, width,
+                tkbio_layout_draw_rect(y*height, x*width, height, width,
                     elem->color >> 4, DENSITY, 0);
             else
             {
                 for(i=0; i<vector_size(vec); i++)
                 {
                     p = vector_at(i, vec);
-                    tkbio_layout_draw_rect(p->y, p->x, height, width,
-                        p->elem->color >> 4, DENSITY, 0);
+                    tkbio_layout_draw_rect(p->y*height, p->x*width,
+                        height, width, p->elem->color >> 4, DENSITY, 0);
                 }
             }
             tkbio.fb.status = FB_STATUS_FILL;
@@ -738,13 +746,12 @@ void tkbio_event_pressed(int y, int x, int height, int width)
 
 struct tkbio_return tkbio_handle_event()
 {
-    const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     struct tkbio_return ret = { .type = TKBIO_RETURN_NOP, .value.i = 0 };
     
     struct tsp_event event;
     
-    int y, x;
-    int fb_y, fb_x, width, height, width_screen, height_screen;
+    int y, x, fb_y, fb_x;
+    int width, height, fb_height, fb_width, screen_width, screen_height;
     char sim_tmp = 'x'; // content irrelevant
     
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
@@ -756,36 +763,36 @@ struct tkbio_return tkbio_handle_event()
     if(event.x >= SCREENMAX || event.y >= SCREENMAX)
         return ret;
     
-    // calculate framebuffer/screen height and width
-    width = map->width;
-    height = map->height;
-    tkbio_layout_to_fb_sizes(&height, &width, &height_screen, &width_screen);
+    // calculate height and width
+    tkbio_get_sizes(&height, &width, &fb_height, &fb_width,
+        &screen_height, &screen_width);
     
     // last coordinates are saved in layout format
     fb_y = tkbio.parser.y;
     fb_x = tkbio.parser.x;
     tkbio_layout_to_fb_cords(&fb_y, &fb_x);
     
+    // screen coordinates to button coordinates
+    button_y = fb_height*(((SCREENMAX-event.y)%screen_height)/(screen_height*1.0));
+    button_x = fb_width*((event.x%screen_width)/(screen_width*1.0));
+    tkbio_fb_to_layout_pos(&button_y, &button_x);
+    
     // if event coordinates within increased last button, same button
     if(tkbio.parser.pressed
-        && event.x >= width_screen*fb_x - width_screen*(INCREASE/100.0)
-        && event.x <= width_screen*(fb_x+1) + width_screen*(INCREASE/100.0)
-        && (SCREENMAX - event.y) >= height_screen*fb_y - height_screen*(INCREASE/100.0)
-        && (SCREENMAX - event.y) <= height_screen*(fb_y+1) + height_screen*(INCREASE/100.0))
+        && event.x >= screen_width*fb_x - screen_width*(INCREASE/100.0)
+        && event.x <= screen_width*(fb_x+1) + screen_width*(INCREASE/100.0)
+        && (SCREENMAX - event.y) >= screen_height*fb_y - screen_height*(INCREASE/100.0)
+        && (SCREENMAX - event.y) <= screen_height*(fb_y+1) + screen_height*(INCREASE/100.0))
     {
         x = tkbio.parser.x;
         y = tkbio.parser.y;
     }
     else // calculate layout position of new button
     {
-        x = event.x / width_screen;
-        y = (SCREENMAX - event.y -1) / height_screen;
+        x = event.x / screen_width;
+        y = (SCREENMAX - event.y -1) / screen_height;
         tkbio_fb_to_layout_cords(&y, &x);
     }
-    
-    // ! NOTICE !
-    // the following code uses y, x in layout format
-    // whereas height, width are in framebuffer format
     
     if(event.event & TSP_EVENT_MOVED)
     {
