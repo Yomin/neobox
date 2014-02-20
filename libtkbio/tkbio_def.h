@@ -83,6 +83,13 @@ struct tkbio_parser
     unsigned char toggle; // active toggle buttons
 };
 
+struct tkbio_partner
+{
+    unsigned char active;   // slider used
+    int y, x;               // slider save data
+    struct vector *connect; // partner array
+};
+
 struct tkbio_global
 {
     const char *name;   // application name
@@ -96,8 +103,8 @@ struct tkbio_global
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
+    struct tkbio_partner ***partner; // button partner array
     
-    struct vector ***connect; // button partner array
     void (*custom_signal_handler)(int signal);
 };
 
