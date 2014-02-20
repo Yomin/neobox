@@ -44,6 +44,18 @@
 #define FB_STATUS_COPY 1    // last button saved/drawn
 #define FB_STATUS_FILL 2    // last button drawn
 
+#define PARSER_STATUS_NOP     0 // no action
+#define PARSER_STATUS_PRESSED 1 // button pressed
+#define PARSER_STATUS_HSLIDER 2 // horz slider active
+#define PARSER_STATUS_VSLIDER 3 // vert slider active
+#define PARSER_STATUS_SLIDER  2 // some slider active hack
+
+#define MOVE_NOP     0  // no move
+#define MOVE_NEXT    1  // move to next button
+#define MOVE_PARTNER 2  // move to partner
+#define MOVE_HSLIDER 3  // hslide on button/partners
+#define MOVE_VSLIDER 4  // vslide on button/partners
+
 struct tkbio_fb
 {
     int fd;   // framebuffer file descriptor
@@ -64,7 +76,7 @@ struct tkbio_fb
 
 struct tkbio_parser
 {
-    int pressed;          // button currently pressed
+    int status;           // button pressed or slider
     int y, x;             // last pos (layout format)
     int map;              // current map
     int hold;             // hold mode active

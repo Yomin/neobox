@@ -106,7 +106,7 @@ void tkbio_fb_to_layout_cords(int *cord_y, int *cord_x)
     }
 }
 
-void tkbio_layout_to_fb_pos(int *pos_y, int *pos_x)
+void tkbio_layout_to_fb_pos_width(int *pos_y, int *pos_x, int width)
 {
     int tmp;
     
@@ -114,20 +114,30 @@ void tkbio_layout_to_fb_pos(int *pos_y, int *pos_x)
     {
         tmp = *pos_y;
         *pos_y = *pos_x;
-        *pos_x = tkbio.fb.vinfo.xres - tmp;
+        *pos_x = width - tmp;
     }
 }
 
-void tkbio_fb_to_layout_pos(int *pos_y, int *pos_x)
+void tkbio_fb_to_layout_pos_width(int *pos_y, int *pos_x, int width)
 {
     int tmp;
     
     if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
     {
         tmp = *pos_y;
-        *pos_y = tkbio.fb.vinfo.xres - *pos_x;
+        *pos_y = width - *pos_x;
         *pos_x = tmp;
     }
+}
+
+void tkbio_layout_to_fb_pos(int *pos_y, int *pos_x)
+{
+    tkbio_layout_to_fb_pos_width(pos_y, pos_x, tkbio.fb.vinfo.xres);
+}
+
+void tkbio_fb_to_layout_pos(int *pos_y, int *pos_x)
+{
+    tkbio_fb_to_layout_pos_width(pos_y, pos_x, tkbio.fb.vinfo.xres);
 }
 
 void tkbio_layout_to_fb_pos_rel(int *pos_y, int *pos_x)

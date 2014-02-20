@@ -51,7 +51,7 @@ struct tkbio_charelem
 
 struct tkbio_return
 {
-    char type;
+    unsigned char type, id;
     union tkbio_value
     {
         struct tkbio_charelem c;
@@ -63,7 +63,7 @@ typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem
 
 struct tkbio_mapelem
 {
-    unsigned char type;
+    unsigned char type, id;
     struct tkbio_charelem elem;
     unsigned char color;
     unsigned char connect;

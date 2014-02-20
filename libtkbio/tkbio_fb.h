@@ -39,6 +39,8 @@ void tkbio_layout_to_fb_cords(int *cord_y, int *cord_x);
 void tkbio_fb_to_layout_cords(int *cord_y, int *cord_x);
 void tkbio_layout_to_fb_pos(int *pos_y, int *pos_x);
 void tkbio_fb_to_layout_pos(int *pos_y, int *pos_x);
+void tkbio_layout_to_fb_pos_width(int *pos_y, int *pos_x, int width);
+void tkbio_fb_to_layout_pos_width(int *pos_y, int *pos_x, int width);
 void tkbio_layout_to_fb_pos_rel(int *pos_y, int *pos_x);
 void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x);
 
