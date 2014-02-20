@@ -213,6 +213,7 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
         { "tkbio-fb", 1, 0, 'f' },      // path to framebuffer
         { "tkbio-tsp", 1, 0, 't' },     // path to tsp directory
         { "tkbio-verbose", 0, 0, 'v' }, // verbose messages
+        { "tkbio-format", 1, 0, 'r' },  // p: portrait, l: landscape
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -230,6 +231,11 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
             break;
         case 'v':
             config.verbose = 1;
+            break;
+        case 'r':
+            config.format = TKBIO_FORMAT_LANDSCAPE;
+            if(optarg[0] == 'p')
+                config.format = TKBIO_FORMAT_PORTRAIT;
             break;
         default:
             continue;
@@ -736,7 +742,7 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
     
     int button_height = height;
     int button_width = width;
-    int hwidth = 0, vheight = 0;
+    int hwidth = 0, vheight = 0, voffset_l = 0, voffset_p = 0;
     
     int slider = 0, hslider = 0, vslider = 0;
     
@@ -759,6 +765,10 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
         break;
     case TKBIO_LAYOUT_TYPE_VSLIDER:
         height = vheight = height-button_y;
+        if(tkbio.format == TKBIO_FORMAT_PORTRAIT)
+            voffset_p = button_y;
+        else
+            voffset_l = height;
         slider = vslider = PARSER_STATUS_VSLIDER;
         break;
     }
@@ -782,7 +792,7 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
         
         if(!vec)
             tkbio_layout_draw_rect(y*button_height, x*button_width,
-                button_height, button_width, elem->color >> 4,
+                button_height-vheight, button_width, elem->color >> 4,
                 DENSITY, tkbio.fb.copy);
         else
         {
@@ -801,15 +811,16 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
     {
         if(!vec)
         {
-            tkbio_layout_draw_rect(y*button_height, x*button_width,
-                height, width, elem->color >> 4, DENSITY, 0);
+            tkbio_layout_draw_rect(y*button_height+voffset_p,
+                x*button_width, height, width, elem->color >> 4,
+                DENSITY, 0);
             if(slider && elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                tkbio_layout_draw_rect_connect(y*button_height-vheight,
+                tkbio_layout_draw_rect_connect(y*button_height-voffset_l,
                     x*button_width+hwidth, y, x, button_height-vheight,
                     button_width-hwidth, elem->color, elem->connect,
                     DENSITY, 0);
             else if(slider)
-                tkbio_layout_draw_rect(y*button_height-vheight,
+                tkbio_layout_draw_rect(y*button_height-voffset_l,
                     x*button_width+hwidth, button_height-vheight,
                     button_width-hwidth, elem->color & 15, DENSITY, 0);
         }
@@ -824,19 +835,19 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
                         p->elem->color >> 4, DENSITY, 0);
                 else if((hslider && p->x == x) || (vslider && p->y == y))
                 {
-                    tkbio_layout_draw_rect(p->y*button_height,
+                    tkbio_layout_draw_rect(p->y*button_height+voffset_p,
                         p->x*button_width, height, width,
                         p->elem->color >> 4, DENSITY, 0);
                     if(p->elem->type & TKBIO_LAYOUT_OPTION_BORDER)
                         tkbio_layout_draw_rect_connect(
-                            p->y*button_height-vheight,
+                            p->y*button_height-voffset_l,
                             p->x*button_width+hwidth, p->y, p->x,
                             button_height-vheight, button_width-hwidth,
                             p->elem->color, p->elem->connect,
                             DENSITY, 0);
                     else
                         tkbio_layout_draw_rect(
-                            p->y*button_height-vheight,
+                            p->y*button_height-voffset_l,
                             p->x*button_width+hwidth,
                             button_height-vheight, button_width-hwidth,
                             p->elem->color & 15, DENSITY, 0);

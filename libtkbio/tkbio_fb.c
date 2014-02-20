@@ -145,9 +145,12 @@ void tkbio_layout_to_fb_pos_rel(int *pos_y, int *pos_x)
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     int width = tkbio.fb.vinfo.xres/map->height;
     
-    tkbio_layout_to_fb_pos(pos_y, pos_x);
-    *pos_x -= width;
-    // fixme: this works only for points at button corners
+    if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
+    {
+        tkbio_layout_to_fb_pos(pos_y, pos_x);
+        *pos_x -= width;
+        // fixme: this works only for points at button corners
+    }
 }
 
 void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x)
@@ -155,9 +158,12 @@ void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x)
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     int height = tkbio.fb.vinfo.xres/map->height;
     
-    tkbio_fb_to_layout_pos(pos_y, pos_x);
-    *pos_y -= height;
-    // fixme: this works only for points at button corners
+    if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
+    {
+        tkbio_fb_to_layout_pos(pos_y, pos_x);
+        *pos_y -= height;
+        // fixme: this works only for points at button corners
+    }
 }
 
 unsigned char tkbio_layout_connect_to_borders(int cord_y, int cord_x, unsigned char connect)
