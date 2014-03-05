@@ -671,13 +671,13 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
     switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
     {
     case TKBIO_LAYOUT_TYPE_CHAR:
-        if(!elem->elem.c[0]) // charelem unused
+        if(!elem->elem.i) // elem unused
             break;
         if(tkbio.layout.fun) // layout specific convert function
-            ret.value.c = tkbio.layout.fun(tkbio.parser.map,
+            ret.value = tkbio.layout.fun(tkbio.parser.map,
                 elem->elem, tkbio.parser.toggle);
         else
-            ret.value.c = elem->elem;
+            ret.value = elem->elem;
         ret.type = TKBIO_RETURN_CHAR;
         ret.id = elem->id;
         if(!tkbio.parser.hold) // reset map to default if not on hold
@@ -685,7 +685,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         tkbio.parser.toggle = 0;
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
-        tkbio.parser.map = (int) elem->elem.c[0];
+        tkbio.parser.map = (int) elem->elem.i;
         break;
     case TKBIO_LAYOUT_TYPE_HOLD:
         if(tkbio.parser.hold)
@@ -695,7 +695,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
     case TKBIO_LAYOUT_TYPE_TOGGLE:
         if(!tkbio.parser.hold)
             tkbio.parser.map = tkbio.layout.start;
-        tkbio.parser.toggle ^= elem->elem.c[0];
+        tkbio.parser.toggle ^= elem->elem.i;
         break;
     case TKBIO_LAYOUT_TYPE_HSLIDER:
         if(partner)
@@ -767,7 +767,7 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
     switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
     {
     case TKBIO_LAYOUT_TYPE_CHAR:
-        if(!elem->elem.c[0]) // if charelem unused dont draw anything
+        if(!elem->elem.i) // if elem unused dont draw anything
         {
             tkbio.fb.status = FB_STATUS_NOP;
             return 0;

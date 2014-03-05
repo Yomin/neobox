@@ -52,19 +52,20 @@ const unsigned char tkbio_colors[10][4] =
 #define TKBIO_COLOR_HOLD      8
 #define TKBIO_COLOR_TOGGLE    9
 
-#define ONE(C)               {{C,  0,  0,  0}}
-#define TWO(C1, C2)          {{C1, C2, 0,  0}}
-#define THREE(C1, C2, C3)    {{C1, C2, C3, 0}}
-#define FOUR(C1, C2, C3, C4) {{C1, C2, C3, C4}}
+#define VALUE(V)             { .i = V }
+#define ONE(C)               { .c = {{C,  0,  0,  0}} }
+#define TWO(C1, C2)          { .c = {{C1, C2, 0,  0}} }
+#define THREE(C1, C2, C3)    { .c = {{C1, C2, C3, 0}} }
+#define FOUR(C1, C2, C3, C4) { .c = {{C1, C2, C3, C4}} }
 
 #define COLOR(Color)    (Color << 4 | TKBIO_COLOR_BLACK)
 #define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER|TKBIO_LAYOUT_OPTION_COPY
 
 #define CHAR(C, Color)  {TKBIO_LAYOUT_TYPE_CHAR|DEFAULT_OPTIONS, 0, C, COLOR(Color), 0}
-#define GOTO(T)         {TKBIO_LAYOUT_TYPE_GOTO|DEFAULT_OPTIONS, 0, ONE(TKBIO_TYPE_ ## T), COLOR(TKBIO_TYPE_ ## T), 0}
-#define TOGG(T)         {TKBIO_LAYOUT_TYPE_TOGGLE|DEFAULT_OPTIONS, 0, ONE(T), COLOR(TKBIO_COLOR_TOGGLE), 0}
-#define HOLD            {TKBIO_LAYOUT_TYPE_HOLD|DEFAULT_OPTIONS, 0, ONE(0), COLOR(TKBIO_COLOR_HOLD), 0}
-#define NOP             {TKBIO_LAYOUT_TYPE_CHAR, 0, ONE(0), 0, 0}
+#define GOTO(T)         {TKBIO_LAYOUT_TYPE_GOTO|DEFAULT_OPTIONS, 0, VALUE(TKBIO_TYPE_ ## T), COLOR(TKBIO_TYPE_ ## T), 0}
+#define TOGG(T)         {TKBIO_LAYOUT_TYPE_TOGGLE|DEFAULT_OPTIONS, 0, VALUE(T), COLOR(TKBIO_COLOR_TOGGLE), 0}
+#define HOLD            {TKBIO_LAYOUT_TYPE_HOLD|DEFAULT_OPTIONS, 0, VALUE(0), COLOR(TKBIO_COLOR_HOLD), 0}
+#define NOP             {TKBIO_LAYOUT_TYPE_CHAR, 0, VALUE(0), 0, 0}
 
 #define PRIM(C)          CHAR(ONE(C), TKBIO_TYPE_PRIMARY)
 #define SHIFT(C)         CHAR(ONE(C), TKBIO_TYPE_SHIFT)
@@ -156,18 +157,18 @@ const struct tkbio_map tkbio_maps[7] =
         {5, 6, tkbio_map_fk}
     };
 
-struct tkbio_charelem tkbio_parse(int map, struct tkbio_charelem elem, unsigned char toggle)
+union tkbio_elem tkbio_parse(int map, union tkbio_elem elem, unsigned char toggle)
 {
     if(toggle & CTRLL && !(toggle & ~CTRLL))
     {
         switch(map)
         {
             case TKBIO_TYPE_PRIMARY:
-                if(elem.c[0] != '\b')
-                    elem.c[0] -= 96;
+                if(elem.c.c[0] != '\b')
+                    elem.c.c[0] -= 96;
                 break;
             case TKBIO_TYPE_SHIFT:
-                elem.c[0] -= 64;
+                elem.c.c[0] -= 64;
                 break;
         }
     }
@@ -177,11 +178,11 @@ struct tkbio_charelem tkbio_parse(int map, struct tkbio_charelem elem, unsigned 
         {
             case TKBIO_TYPE_PRIMARY:
             case TKBIO_TYPE_SHIFT:
-                if(elem.c[0] != '\b')
+                if(elem.c.c[0] != '\b')
                 {
-                    elem.c[2] = elem.c[0];
-                    elem.c[0] = 27;
-                    elem.c[1] = '[';
+                    elem.c.c[2] = elem.c.c[0];
+                    elem.c.c[0] = 27;
+                    elem.c.c[1] = '[';
                 }
                 break;
         }
@@ -198,6 +199,7 @@ struct tkbio_layout tkbLayoutDefault =
         .fun    = tkbio_parse
     };
 
+#undef VALUE
 #undef ONE
 #undef TWO
 #undef THREE

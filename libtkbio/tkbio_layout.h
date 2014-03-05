@@ -23,8 +23,6 @@
 #ifndef __TKBIO_LAYOUT_H__
 #define __TKBIO_LAYOUT_H__
 
-#include <stdint.h>
-
 #define TKBIO_LAYOUT_TYPE_CHAR      0
 #define TKBIO_LAYOUT_TYPE_GOTO      1
 #define TKBIO_LAYOUT_TYPE_HOLD      2
@@ -49,22 +47,24 @@ struct tkbio_charelem
     char c[TKBIO_CHARELEM_MAX];
 };
 
+union tkbio_elem
+{
+    struct tkbio_charelem c;
+    int i;
+};
+
 struct tkbio_return
 {
     unsigned char type, id;
-    union tkbio_value
-    {
-        struct tkbio_charelem c;
-        int32_t i;
-    } value;
+    union tkbio_elem value;
 };
 
-typedef struct tkbio_charelem tkbio_parsefun(int map, struct tkbio_charelem elem, unsigned char toggle);
+typedef union tkbio_elem tkbio_parsefun(int map, union tkbio_elem elem, unsigned char toggle);
 
 struct tkbio_mapelem
 {
     unsigned char type, id;
-    struct tkbio_charelem elem;
+    union tkbio_elem elem;
     unsigned char color;
     unsigned char connect;
 };
