@@ -63,7 +63,7 @@
 #define EVENT_RELEASED  3
 
 unsigned char screen_buf[BYTES_PER_CMD];
-int screen, tkbio, fb_sock, fb_shm;
+int screen, fb_sock, fb_shm;
 unsigned char *fb_ptr;
 
 GtkWidget *window;
@@ -74,7 +74,6 @@ void cleanup()
 {
     printf("Cleanup\n");
     close(screen);
-    close(tkbio);
     close(fb_sock);
     shm_unlink(FB_SHM);
     cairo_surface_destroy(surface);
@@ -123,10 +122,8 @@ void sent_event(int event, short int data)
     write(screen, screen_buf, BYTES_PER_CMD);
 }
 
-void send_fb_info()
+void send_fb_info(int fd)
 {
-    printf("Sending framebuffer info\n");
-    
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
     vinfo.bits_per_pixel = FB_VINFO_BITS_PER_PIXEL;
@@ -138,9 +135,9 @@ void send_fb_info()
     
     const char *shm = FB_SHM;
     
-    send(tkbio, shm, 20, 0);
-    send(tkbio, &vinfo, sizeof(struct fb_var_screeninfo), 0);
-    send(tkbio, &finfo, sizeof(struct fb_fix_screeninfo), 0);
+    send(fd, shm, 20, 0);
+    send(fd, &vinfo, sizeof(struct fb_var_screeninfo), 0);
+    send(fd, &finfo, sizeof(struct fb_fix_screeninfo), 0);
 }
 
 gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer data)
@@ -212,31 +209,30 @@ gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
     return FALSE;
 }
 
-gboolean tkbio_chan_ready(GIOChannel *channel, GIOCondition cond, gpointer data)
+gboolean tkbio_event(GIOChannel *channel, GIOCondition cond, gpointer data)
 {
     char tmp;
     if(cond == G_IO_IN)
     {
-        read(tkbio, &tmp, 1);
+        g_io_channel_read_chars(channel, &tmp, 1, NULL, NULL);
         cairo_surface_mark_dirty(surface);
         gtk_widget_queue_draw(window);
         return TRUE;
     }
-    printf("application disconnected\n");
-    tkbio = -1;
+    printf("Disconnect [%i]\n", g_io_channel_unix_get_fd(channel));
     return FALSE;
 }
 
-gboolean fb_chan_ready(GIOChannel *channel, GIOCondition cond, gpointer data)
+gboolean fb_event(GIOChannel *channel, GIOCondition cond, gpointer data)
 {
-    if(tkbio == -1)
-        if((tkbio = accept(fb_sock, 0, 0)) != -1)
-        {
-            printf("application connected\n");
-            GIOChannel *tkbio_chan = g_io_channel_unix_new(tkbio);
-            g_io_add_watch(tkbio_chan, G_IO_IN|G_IO_HUP, tkbio_chan_ready, NULL);
-            send_fb_info();
-        }
+    int tkbio;
+    if((tkbio = accept(fb_sock, 0, 0)) != -1)
+    {
+        printf("Connect [%i]\n", tkbio);
+        GIOChannel *tkbio_chan = g_io_channel_unix_new(tkbio);
+        g_io_add_watch(tkbio_chan, G_IO_IN|G_IO_HUP, tkbio_event, NULL);
+        send_fb_info(tkbio);
+    }
     return TRUE;
 }
 
@@ -322,16 +318,6 @@ int main(int argc, char* argv[])
         return 8;
     }
     
-    printf("Waiting for application\n");
-    
-    if((tkbio = accept(fb_sock, 0, 0)) == -1)
-    {
-        perror("Failed to accept tkbio");
-        return 9;
-    }
-    
-    send_fb_info();
-    
     signal(SIGINT, signal_handler);
     signal(SIGPIPE, signal_handler);
     
@@ -356,9 +342,7 @@ int main(int argc, char* argv[])
     g_signal_connect(window, "motion-notify-event", G_CALLBACK(on_move), NULL);
     
     GIOChannel *fb_chan = g_io_channel_unix_new(fb_sock);
-    GIOChannel *tkbio_chan = g_io_channel_unix_new(tkbio);
-    g_io_add_watch(fb_chan, G_IO_IN, fb_chan_ready, NULL);
-    g_io_add_watch(tkbio_chan, G_IO_IN|G_IO_HUP, tkbio_chan_ready, NULL);
+    g_io_add_watch(fb_chan, G_IO_IN, fb_event, NULL);
     
     gtk_widget_show(window);
     
