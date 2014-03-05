@@ -78,7 +78,7 @@ struct tkbio_parser
 {
     int status;           // button pressed or slider
     int y, x;             // last pos (layout format)
-    int map;              // current map
+    int map, nmap;        // current/next map
     int hold;             // hold mode active
     unsigned char toggle; // active toggle buttons
 };

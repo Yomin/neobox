@@ -234,9 +234,9 @@ void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, int color, int
     int i, j, k;
     
     if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.colors[color]);
+        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
     else
-        memcpy(col, tkbio.layout.colors[color], 4);
+        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     for(i=0; i<height; i+=density, ptr = base)
     {
@@ -286,9 +286,9 @@ void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, u
     int i, j, k, skipped;
     
     if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.colors[color]);
+        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
     else
-        memcpy(col, tkbio.layout.colors[color], 4);
+        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     for(i=0, skipped=0; i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
     {
@@ -362,13 +362,13 @@ void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int col
     
     if(tkbio.fb.bpp == 2)
     {
-        tkbio_color32to16(fg, tkbio.layout.colors[color>>4]);
-        tkbio_color32to16(bg, tkbio.layout.colors[color&15]);
+        tkbio_color32to16(fg, tkbio.layout.maps[tkbio.parser.map].colors[color>>4]);
+        tkbio_color32to16(bg, tkbio.layout.maps[tkbio.parser.map].colors[color&15]);
     }
     else
     {
-        memcpy(fg, tkbio.layout.colors[color>>4], 4);
-        memcpy(bg, tkbio.layout.colors[color&15], 4);
+        memcpy(fg, tkbio.layout.maps[tkbio.parser.map].colors[color>>4], 4);
+        memcpy(bg, tkbio.layout.maps[tkbio.parser.map].colors[color&15], 4);
     }
     
     for(i=0; i<height; i+=density, ptr = base, col = bg)

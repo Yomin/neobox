@@ -609,6 +609,8 @@ void tkbio_event_cleanup(int height, int width)
             }
         break;
     }
+    
+    tkbio.parser.map = tkbio.parser.nmap;
 }
 
 int tkbio_event_move(int y, int x)
@@ -684,7 +686,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         ret.type = TKBIO_RETURN_CHAR;
         ret.id = elem->id;
         if(!tkbio.parser.hold) // reset map to default if not on hold
-            tkbio.parser.map = tkbio.layout.start;
+            tkbio.parser.nmap = tkbio.layout.start;
         tkbio.parser.toggle = 0;
         VERBOSE(if(elem->name)
             printf("[%s]\n", elem->name);
@@ -692,19 +694,19 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
             printf("[%c]\n", elem->elem.c.c[0]));
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
-        tkbio.parser.map = elem->elem.i;
+        tkbio.parser.nmap = elem->elem.i;
         tkbio.parser.hold = 0;
         VERBOSE(printf("goto %s\n", elem->name));
         break;
     case TKBIO_LAYOUT_TYPE_HOLD:
         if(tkbio.parser.hold)
-            tkbio.parser.map = tkbio.layout.start;
+            tkbio.parser.nmap = tkbio.layout.start;
         tkbio.parser.hold = !tkbio.parser.hold;
         VERBOSE(printf("hold %s\n", tkbio.parser.hold ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_TOGGLE:
         if(!tkbio.parser.hold)
-            tkbio.parser.map = tkbio.layout.start;
+            tkbio.parser.nmap = tkbio.layout.start;
         tkbio.parser.toggle ^= elem->elem.i;
         VERBOSE(printf("%s %s\n", elem->name,
             tkbio.parser.toggle&elem->elem.i ? "on" : "off"));

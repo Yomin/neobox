@@ -29,6 +29,7 @@
 #define TKBIO_LAYOUT_TYPE_TOGGLE    3
 #define TKBIO_LAYOUT_TYPE_HSLIDER   4
 #define TKBIO_LAYOUT_TYPE_VSLIDER   5
+#define TKBIO_LAYOUT_TYPE_SYSTEM    6
 #define TKBIO_LAYOUT_MASK_TYPE      7
 #define TKBIO_LAYOUT_OPTION_BORDER  8
 #define TKBIO_LAYOUT_OPTION_COPY    16
@@ -37,6 +38,12 @@
 #define TKBIO_LAYOUT_CONNECT_UP     2
 
 #define TKBIO_CHARELEM_MAX          4
+
+#define TKBIO_SYSTEM_PREV           0
+#define TKBIO_SYSTEM_NEXT           1
+#define TKBIO_SYSTEM_QUIT           2
+#define TKBIO_SYSTEM_ACTIVATE       3
+#define TKBIO_SYSTEM_MENU           4
 
 #define TKBIO_RETURN_NOP            0
 #define TKBIO_RETURN_CHAR           1
@@ -74,13 +81,13 @@ struct tkbio_map
 {
     int height, width;
     const struct tkbio_mapelem *map;
+    const unsigned char (*colors)[4];
 };
 
 struct tkbio_layout
 {
     int start, size;
     const struct tkbio_map *maps;
-    const unsigned char (*colors)[4];
     tkbio_parsefun *fun;
 };
 

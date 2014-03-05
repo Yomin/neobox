@@ -34,10 +34,20 @@ const unsigned char tkbio_colors[][4] =
         {0xFF, 0x88, 0x00, 0x00},   // META
         {0xDE, 0xB8, 0x87, 0x00},   // GER
         {0x88, 0x88, 0x88, 0x00},   // FK
+        {0x00, 0xCC, 0xCC, 0x00},   // ADMIN
         
         {0x00, 0x00, 0x00, 0x00},   // BLACK
         {0xFF, 0x00, 0x00, 0x00},   // HOLD
         {0xFF, 0xFF, 0x00, 0x00}    // TOGGLE
+    };
+
+const unsigned char admin_colors[][4] =
+    {
+        {0x00, 0x00, 0x00, 0x00},   // BG
+        {0xFF, 0xFF, 0x00, 0x00},   // SWITCH
+        {0xFF, 0x00, 0x00, 0x00},   // QUIT
+        {0x00, 0xFF, 0x00, 0x00},   // ACTIVATE
+        {0x00, 0x00, 0xFF, 0x00}    // MENU
     };
 
 #define TKBIO_TYPE_PRIMARY    0
@@ -47,10 +57,17 @@ const unsigned char tkbio_colors[][4] =
 #define TKBIO_TYPE_META       4
 #define TKBIO_TYPE_GER        5
 #define TKBIO_TYPE_FK         6
+#define TKBIO_TYPE_ADMIN      7
 
-#define TKBIO_COLOR_BLACK     7
-#define TKBIO_COLOR_HOLD      8
-#define TKBIO_COLOR_TOGGLE    9
+#define TKBIO_COLOR_BLACK     8
+#define TKBIO_COLOR_HOLD      9
+#define TKBIO_COLOR_TOGGLE    10
+
+#define ADMIN_COLOR_BG        0
+#define ADMIN_COLOR_SWITCH    1
+#define ADMIN_COLOR_QUIT      2
+#define ADMIN_COLOR_ACTIVATE  3
+#define ADMIN_COLOR_MENU      4
 
 #define VALUE(V)             { .i = V }
 #define ONE(C)               { .c = {{C,  0,  0,  0}} }
@@ -59,6 +76,7 @@ const unsigned char tkbio_colors[][4] =
 #define FOUR(C1, C2, C3, C4) { .c = {{C1, C2, C3, C4}} }
 
 #define COLOR(Color)    (Color << 4 | TKBIO_COLOR_BLACK)
+#define ADCOLOR(Color)  (Color << 4 | ADMIN_COLOR_BG)
 #define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER|TKBIO_LAYOUT_OPTION_COPY
 
 #define CHAR(N, C, Color)  {N, TKBIO_LAYOUT_TYPE_CHAR|DEFAULT_OPTIONS, 0, C, COLOR(Color), 0}
@@ -67,6 +85,8 @@ const unsigned char tkbio_colors[][4] =
 #define TOGG(N, T)         {N, TKBIO_LAYOUT_TYPE_TOGGLE|DEFAULT_OPTIONS, 0, VALUE(T), COLOR(TKBIO_COLOR_TOGGLE), 0}
 #define HOLD               {"Hold", TKBIO_LAYOUT_TYPE_HOLD|DEFAULT_OPTIONS, 0, VALUE(0), COLOR(TKBIO_COLOR_HOLD), 0}
 #define NOP                {0, TKBIO_LAYOUT_TYPE_CHAR, 0, VALUE(0), 0, 0}
+#define SYS(N, V, Color)   {N, TKBIO_LAYOUT_TYPE_SYSTEM|DEFAULT_OPTIONS, 0, VALUE(V), ADCOLOR(Color), 0}
+#define USYS(N, V, Color)  {N, TKBIO_LAYOUT_TYPE_SYSTEM|DEFAULT_OPTIONS, 0, VALUE(V), ADCOLOR(Color), TKBIO_LAYOUT_CONNECT_UP}
 
 #define PRIM(C)             CHAR(0, ONE(C), TKBIO_TYPE_PRIMARY)
 #define NPRIM(N, C)         CHAR(N, ONE(C), TKBIO_TYPE_PRIMARY)
@@ -81,6 +101,9 @@ const unsigned char tkbio_colors[][4] =
 #define GER2(N, C1, C2)     CHAR(N, TWO(C1, C2), TKBIO_TYPE_GER)
 #define GER3(N, C1, C2, C3) CHAR(N, THREE(C1, C2, C3), TKBIO_TYPE_GER)
 #define FK(N, C1, C2)       CHAR(N, FOUR(27, '[', C1, C2), TKBIO_TYPE_FK)
+#define ADMIN(N, T)         SYS(N, TKBIO_SYSTEM_ ## T, ADMIN_COLOR_ ## T)
+#define VADMIN(N, V, T)     SYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
+#define UVADMIN(N, V, T)    USYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
 
 #define ALT     1
 #define CTRLL   2
@@ -124,11 +147,11 @@ const struct tkbio_mapelem tkbio_map_snum[5*6] =
 
 const struct tkbio_mapelem tkbio_map_meta[5*6] =
     {
-        META1("Esc", 27),    NOP,              NOP,                NOP,                     NOP,                    META2("PgUp", '6', '~'),
-        META1("Tab", '\t'),  NOP,              NOP,                NOP,                     META2("Up", 'A', 0),    META2("PgDn", '5', '~'),
-        TOGG("Supr", SUPER), GOTO("FK", FK),   NOP,                META2("Left", 'D', 0),   META2("Down", 'B', 0),  META2("Rght", 'C', 0),
-        TOGG("Ctrl", CTRLL), GOTO("Ger", GER), NOP,                META2("Home", '1', '~'), META2("Ins", '2', '~'), META2("End", '4', '~'),
-        HOLD,                TOGG("Alt", ALT), META1("Spce", ' '), LMETA1("Spce", ' '),     META2("Del", '3', '~'), META1("Entr", '\n')
+        META1("Esc", 27),    NOP,                 NOP,                NOP,                     NOP,                    META2("PgUp", '6', '~'),
+        META1("Tab", '\t'),  GOTO("FK", FK),      NOP,                NOP,                     META2("Up", 'A', 0),    META2("PgDn", '5', '~'),
+        TOGG("Supr", SUPER), GOTO("Ger", GER),    NOP,                META2("Left", 'D', 0),   META2("Down", 'B', 0),  META2("Rght", 'C', 0),
+        TOGG("Ctrl", CTRLL), GOTO("Admn", ADMIN), NOP,                META2("Home", '1', '~'), META2("Ins", '2', '~'), META2("End", '4', '~'),
+        HOLD,                TOGG("Alt", ALT),    META1("Spce", ' '), LMETA1("Spce", ' '),     META2("Del", '3', '~'), META1("Entr", '\n')
     };
 
 const struct tkbio_mapelem tkbio_map_ger[5*6] =
@@ -149,16 +172,24 @@ const struct tkbio_mapelem tkbio_map_fk[5*6] =
         HOLD,               NOP,                NOP,               NOP,               NOP,                NOP
     };
 
+const struct tkbio_mapelem tkbio_map_admin[3*3] =
+    {
+        VADMIN("prev", PREV, SWITCH),  ADMIN("quit", QUIT),     VADMIN("next", NEXT, SWITCH),
+        UVADMIN("prev", PREV, SWITCH), ADMIN("actv", ACTIVATE), UVADMIN("next", NEXT, SWITCH),
+        UVADMIN("prev", PREV, SWITCH), ADMIN("menu", MENU),     UVADMIN("next", NEXT, SWITCH)
+    };
+
 
 const struct tkbio_map tkbio_maps[] =
     {
-        {5, 6, tkbio_map_primary},
-        {5, 6, tkbio_map_shift},
-        {5, 6, tkbio_map_num},
-        {5, 6, tkbio_map_snum},
-        {5, 6, tkbio_map_meta},
-        {5, 6, tkbio_map_ger},
-        {5, 6, tkbio_map_fk}
+        {5, 6, tkbio_map_primary, tkbio_colors},
+        {5, 6, tkbio_map_shift, tkbio_colors},
+        {5, 6, tkbio_map_num, tkbio_colors},
+        {5, 6, tkbio_map_snum, tkbio_colors},
+        {5, 6, tkbio_map_meta, tkbio_colors},
+        {5, 6, tkbio_map_ger, tkbio_colors},
+        {5, 6, tkbio_map_fk, tkbio_colors},
+        {3, 3, tkbio_map_admin, admin_colors}
     };
 
 union tkbio_elem tkbio_parse(int map, union tkbio_elem elem, unsigned char toggle)
@@ -200,7 +231,6 @@ struct tkbio_layout tkbLayoutDefault =
         .start  = TKBIO_TYPE_PRIMARY,
         .size   = sizeof(tkbio_maps)/sizeof(struct tkbio_map),
         .maps   = tkbio_maps,
-        .colors = tkbio_colors,
         .fun    = tkbio_parse
     };
 
@@ -219,6 +249,8 @@ struct tkbio_layout tkbLayoutDefault =
 #undef TOGG
 #undef HOLD
 #undef NOP
+#undef SYS
+#undef USYS
 
 #undef PRIM
 #undef SHIFT
@@ -233,6 +265,9 @@ struct tkbio_layout tkbLayoutDefault =
 #undef GER2
 #undef GER3
 #undef FK
+#undef ADMIN
+#undef VADMIN
+#undef UVADMIN
 
 #undef ALT
 #undef CTRLL
