@@ -63,6 +63,7 @@ typedef union tkbio_elem tkbio_parsefun(int map, union tkbio_elem elem, unsigned
 
 struct tkbio_mapelem
 {
+    char *name;
     unsigned char type, id;
     union tkbio_elem elem;
     unsigned char color;

@@ -672,7 +672,10 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
     {
     case TKBIO_LAYOUT_TYPE_CHAR:
         if(!elem->elem.i) // elem unused
+        {
+            VERBOSE(printf("NOP\n"));
             break;
+        }
         if(tkbio.layout.fun) // layout specific convert function
             ret.value = tkbio.layout.fun(tkbio.parser.map,
                 elem->elem, tkbio.parser.toggle);
@@ -683,19 +686,28 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         if(!tkbio.parser.hold) // reset map to default if not on hold
             tkbio.parser.map = tkbio.layout.start;
         tkbio.parser.toggle = 0;
+        VERBOSE(if(elem->name)
+            printf("[%s]\n", elem->name);
+        else
+            printf("[%c]\n", elem->elem.c.c[0]));
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
-        tkbio.parser.map = (int) elem->elem.i;
+        tkbio.parser.map = elem->elem.i;
+        tkbio.parser.hold = 0;
+        VERBOSE(printf("goto %s\n", elem->name));
         break;
     case TKBIO_LAYOUT_TYPE_HOLD:
         if(tkbio.parser.hold)
             tkbio.parser.map = tkbio.layout.start;
         tkbio.parser.hold = !tkbio.parser.hold;
+        VERBOSE(printf("hold %s\n", tkbio.parser.hold ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_TOGGLE:
         if(!tkbio.parser.hold)
             tkbio.parser.map = tkbio.layout.start;
         tkbio.parser.toggle ^= elem->elem.i;
+        VERBOSE(printf("%s %s\n", elem->name,
+            tkbio.parser.toggle&elem->elem.i ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_HSLIDER:
         if(partner)
@@ -716,6 +728,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         partner->active = 1;
         partner->y = y*height+button_y;
         partner->x = x*width+button_x;
+        VERBOSE(printf("hslider %i: %02i%%\n", ret.id, ret.value.i));
         break;
     case TKBIO_LAYOUT_TYPE_VSLIDER:
         if(partner)
@@ -736,6 +749,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         partner->active = 1;
         partner->y = y*height+button_y;
         partner->x = x*width+button_x;
+        VERBOSE(printf("vslider %i: %02i%%\n", ret.id, ret.value.i));
         break;
     }
     
@@ -1012,7 +1026,7 @@ struct tkbio_return tkbio_handle_event()
     {
         if(tkbio.parser.status) // release only possible if pressed/slider
         {
-            VERBOSE(printf("[TKBIO] Release (%i,%i)\n", y, x));
+            VERBOSE(printf("[TKBIO] Release (%i,%i) ", y, x));
             
             ret = tkbio_event_released(y, x, button_y, button_x, height, width);
             if(!(tkbio.parser.status & PARSER_STATUS_SLIDER))
