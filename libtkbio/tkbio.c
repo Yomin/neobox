@@ -695,7 +695,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
             printf("[%c]\n", elem->elem.c.c[0]));
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
-        tkbio.parser.nmap = elem->elem.i;
+        tkbio.parser.nmap = elem->elem.i + map->offset;
         tkbio.parser.hold = 0;
         VERBOSE(printf("goto %s\n", elem->name));
         break;

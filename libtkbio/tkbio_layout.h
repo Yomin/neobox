@@ -84,6 +84,7 @@ struct tkbio_map
     int height, width;
     const struct tkbio_mapelem *map;
     const unsigned char (*colors)[4];
+    unsigned char offset; // map offset for goto
 };
 
 struct tkbio_layout
