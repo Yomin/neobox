@@ -48,10 +48,10 @@
 
 struct chain_socket
 {
-    LIST_ENTRY(chain_socket) chain;
-    int sock, pfds_pos;
+    CIRCLEQ_ENTRY(chain_socket) chain;
+    int sock;
 };
-LIST_HEAD(client_sockets, chain_socket);
+CIRCLEQ_HEAD(client_sockets, chain_socket);
 
 
 int client_count, pfds_cap;
@@ -91,9 +91,8 @@ int open_rpc_socket(int *sock, struct sockaddr_un *addr)
 void add_client(int fd)
 {
     struct chain_socket *cs = malloc(sizeof(struct chain_socket));
-    LIST_INSERT_HEAD(&client_list, cs, chain);
+    CIRCLEQ_INSERT_HEAD(&client_list, cs, chain);
     cs->sock = fd;
-    cs->pfds_pos = client_count+2;
     if(client_count+2 == pfds_cap)
     {
         pfds_cap += 10;
@@ -107,30 +106,38 @@ void add_client(int fd)
 
 void send_client(struct tsp_event *event)
 {
-    if(!client_list.lh_first)
+    if(client_list.cqh_first == (void*)&client_list)
         return;
-    int sock = client_list.lh_first->sock;
+    int sock = client_list.cqh_first->sock;
     send(sock, event, sizeof(struct tsp_event), 0);
 }
 
-int rem_client(int num)
+int rem_client(int pos, unsigned int fd)
 {
-    struct chain_socket *cs = client_list.lh_first;
-    DEBUG(int fd);
+    struct chain_socket *cs = client_list.cqh_first;
     
-    while(cs && cs->pfds_pos != num)
-        cs = cs->chain.le_next;
-    if(!cs)
+    if(!fd)
+        fd = pfds[pos].fd;
+    else
+        for(pos=2; pos < client_count+2; pos++)
+            if(pfds[pos].fd == fd)
+                break;
+    
+    if(pos == client_count+2)
         return 0;
-    DEBUG(fd = pfds[cs->pfds_pos].fd);
     
-    memcpy(pfds+cs->pfds_pos, pfds+cs->pfds_pos+1, client_count+2-cs->pfds_pos-1);
-    LIST_REMOVE(cs, chain);
+    while(cs != (void*)&client_list && cs->sock != fd)
+        cs = cs->chain.cqe_next;
+    if(cs == (void*)&client_list)
+        return 0;
+    
+    memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
+    CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
     client_count--;
-    if((cs = client_list.lh_first))
+    if((cs = client_list.cqh_first) != (void*)&client_list)
     {
-        DEBUG(printf("Client removed [%i], switch [%i]\n", fd, pfds[cs->pfds_pos].fd));
+        DEBUG(printf("Client removed [%i], switch [%i]\n", fd, cs->sock));
         return 1;
     }
     else
@@ -140,19 +147,61 @@ int rem_client(int num)
     }
 }
 
+void client_list_rotate(int dir)
+{
+    client_list.cqh_last->chain.cqe_next = client_list.cqh_first;
+    client_list.cqh_first->chain.cqe_prev = client_list.cqh_last;
+    if(dir > 0)
+    {
+        client_list.cqh_last = client_list.cqh_first;
+        client_list.cqh_first = client_list.cqh_first->chain.cqe_next;
+    }
+    else
+    {
+        client_list.cqh_first = client_list.cqh_last;
+        client_list.cqh_last = client_list.cqh_last->chain.cqe_prev;
+    }
+    client_list.cqh_last->chain.cqe_next = (void*)&client_list;
+    client_list.cqh_first->chain.cqe_prev = (void*)&client_list;
+}
+
+int switch_client(int mod, unsigned int fd)
+{
+    struct chain_socket *cs = client_list.cqh_first;
+    
+    if(cs == (void*)&client_list || cs->chain.cqe_next == (void*)&client_list)
+        return 0;
+    
+    if(!mod)
+        while(client_list.cqh_first->sock != fd)
+        {
+            client_list_rotate(+1);
+            if(cs == client_list.cqh_first)
+                return 0;
+        }
+    else
+        client_list_rotate(mod);
+    
+    DEBUG(printf("client switched [%i]\n", client_list.cqh_first->sock));
+    
+    return 1;
+}
+
 void free_clients()
 {
     struct chain_socket *cs;
-    while((cs = client_list.lh_first))
+    while((cs = client_list.cqh_first) != (void*)&client_list)
     {
-        LIST_REMOVE(cs, chain);
+        CIRCLEQ_REMOVE(&client_list, cs, chain);
         free(cs);
     }
 }
 
 void signal_handler(int signal)
 {
+    DEBUG(printf("cleanup\n"));
     free_clients();
+    free(pfds);
     exit(0);
 }
 
@@ -170,6 +219,7 @@ int main(int argc, char* argv[])
     struct sockaddr_un rpc_addr;
     
     unsigned char screen_buf[BYTES_PER_CMD];
+    struct tsp_cmd cmd;
     struct tsp_event event;
     
     memset(&event, 0, sizeof(struct tsp_event));
@@ -260,7 +310,7 @@ int main(int argc, char* argv[])
     pfds[1].events = POLLIN;
     
     client_count = 0;
-    LIST_INIT(&client_list);
+    CIRCLEQ_INIT(&client_list);
     
     signal(SIGINT, signal_handler);
     
@@ -362,26 +412,36 @@ int main(int argc, char* argv[])
                 if(pfds[x].revents & POLLHUP || pfds[x].revents & POLLERR)
                 {
                     DEBUG(printf("pollhup/pollerr on client socket [%i]\n", pfds[x].fd));
-                    goto client_remove;
+                    if(rem_client(x, 0))
+                        goto client_activate;
                 }
                 else if(pfds[x].revents & POLLIN)
                 {
-                    char cmd;
-                    recv(pfds[x].fd, &cmd, sizeof(char), 0);
-                    switch(cmd)
+                    recv(pfds[x].fd, &cmd, sizeof(struct tsp_cmd), 0);
+                    switch(cmd.cmd)
                     {
                     case TSP_CMD_REMOVE:
-client_remove:          if(rem_client(x))
+                        if(rem_client(x, cmd.value))
                         {
-                            event.event |= TSP_EVENT_ACTIVATED;
+client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                             send_client(&event);
                             event.event &= ~TSP_EVENT_ACTIVATED;
                         }
                         break;
                     case TSP_CMD_SWITCH:
+                        if(switch_client(0, cmd.value))
+                            goto client_activate;
+                        break;
+                    case TSP_CMD_PREV:
+                        if(switch_client(-1, 0))
+                            goto client_activate;
+                        break;
+                    case TSP_CMD_NEXT:
+                        if(switch_client(+1, 0))
+                            goto client_activate;
                         break;
                     default:
-                        DEBUG(printf("Unrecognized command 0x%02x\n", cmd));
+                        DEBUG(printf("Unrecognized command 0x%02x\n", cmd.cmd));
                     }
                 }
         }

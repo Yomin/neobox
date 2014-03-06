@@ -29,14 +29,21 @@
 
 #define TSP_CMD_REMOVE      1
 #define TSP_CMD_SWITCH      2
+#define TSP_CMD_PREV        3
+#define TSP_CMD_NEXT        4
 
 #define TSP_EVENT_PRESSED   1
 #define TSP_EVENT_MOVED     2
 #define TSP_EVENT_ACTIVATED 4
 
+struct tsp_cmd
+{
+    unsigned char cmd, value;
+};
+
 struct tsp_event
 {
-    char event;
+    unsigned char event;
     int y, x;
 };
 
