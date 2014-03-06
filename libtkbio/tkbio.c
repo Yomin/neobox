@@ -669,6 +669,7 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
     
     int i, min, max;
     struct tkbio_point *p;
+    struct tsp_cmd cmd;
     
     switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
     {
@@ -752,6 +753,38 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
         partner->y = y*height+button_y;
         partner->x = x*width+button_x;
         VERBOSE(printf("vslider %i: %02i%%\n", ret.id, ret.value.i));
+        break;
+    case TKBIO_LAYOUT_TYPE_SYSTEM:
+        switch(elem->elem.i)
+        {
+        case TKBIO_SYSTEM_NEXT:
+            VERBOSE(printf("app switch next\n"));
+            ret.type = TKBIO_RETURN_SWITCH;
+            cmd.cmd = TSP_CMD_NEXT;
+            break;
+        case TKBIO_SYSTEM_PREV:
+            VERBOSE(printf("app switch prev\n"));
+            ret.type = TKBIO_RETURN_SWITCH;
+            cmd.cmd = TSP_CMD_PREV;
+            break;
+        case TKBIO_SYSTEM_QUIT:
+            VERBOSE(printf("app quit\n"));
+            ret.type = TKBIO_RETURN_QUIT;
+            cmd.cmd = TSP_CMD_REMOVE;
+            break;
+        case TKBIO_SYSTEM_ACTIVATE:
+            VERBOSE(printf("app activate\n"));
+            goto done;
+        case TKBIO_SYSTEM_MENU:
+            VERBOSE(printf("app menu\n"));
+            // todo
+            goto done;
+        }
+        
+        cmd.value = 0;
+        send(tkbio.sock, &cmd, sizeof(struct tsp_cmd), 0);
+        
+done:   tkbio.parser.nmap = tkbio.layout.start;
         break;
     }
     
@@ -1070,6 +1103,7 @@ struct tkbio_return tkbio_handle_event()
 int tkbio_run(tkbio_handler *handler, void *state)
 {
     struct pollfd pfds[1];
+    struct tkbio_return tret;
     int ret;
     
     pfds[0].fd = tkbio.sock;
@@ -1083,8 +1117,10 @@ int tkbio_run(tkbio_handler *handler, void *state)
         
         if(pfds[0].revents & POLLIN)
         {
-            if((ret = handler(tkbio_handle_event(), state)) != 0)
+            if((ret = handler((tret = tkbio_handle_event()), state)))
                 return ret;
+            if(tret.type == TKBIO_RETURN_QUIT)
+                return 0;
         }
         else if(pfds[0].revents & POLLHUP)
         {

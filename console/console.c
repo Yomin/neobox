@@ -37,6 +37,10 @@ int handler(struct tkbio_return ret, void *state)
     int fd = *(int*) state;
     char *ptr = ret.value.c.c;
     int i = 0;
+    
+    if(ret.type == TKBIO_RETURN_QUIT)
+        return 0;
+    
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {
         if(ioctl(fd, TIOCSTI, ptr) < 0)
