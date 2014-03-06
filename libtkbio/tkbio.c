@@ -95,17 +95,17 @@ void tkbio_init_partner()
     
     // create for every group of buttons a vector
     // filled with tkbio_points of all buttons
-    // every tkbio.partner[i][x]->connect of a button points
+    // every tkbio.save[i][x].partner->connect of a button points
     // to the same vector
     // the vectors and points are saved in layout format
     
-    tkbio.partner = malloc(tkbio.layout.size*sizeof(struct tkbio_partner**));
+    tkbio.save = malloc(tkbio.layout.size*sizeof(struct tkbio_save*));
     
     for(i=0; i<tkbio.layout.size; i++)
     {
         width = tkbio.layout.maps[i].width;
         size = tkbio.layout.maps[i].height*width;
-        tkbio.partner[i] = calloc(size, sizeof(struct tkbio_partner*));
+        tkbio.save[i] = calloc(size, sizeof(struct tkbio_save));
         
         for(j=0; j<size; j++)
         {
@@ -115,7 +115,7 @@ void tkbio_init_partner()
             
             if(j%width>0 && elem->connect & TKBIO_LAYOUT_CONNECT_LEFT)
             {
-                partner_prev = &tkbio.partner[i][j-1];
+                partner_prev = &tkbio.save[i][j-1].partner;
                 if(!*partner_prev) // left unconnected
                 {
                     *partner_prev = calloc(1, sizeof(struct tkbio_partner));
@@ -125,13 +125,13 @@ void tkbio_init_partner()
                         (j-1)%width, &map[j-1]};
                     vector_push(&p2, (*partner_prev)->connect);
                 }
-                tkbio.partner[i][j] = *partner_prev;
+                tkbio.save[i][j].partner = *partner_prev;
                 vector_push(&p, (*partner_prev)->connect);
             }
             if(j>=width && elem->connect & TKBIO_LAYOUT_CONNECT_UP)
             {
-                partner_prev = &tkbio.partner[i][j-width];
-                partner = &tkbio.partner[i][j];
+                partner_prev = &tkbio.save[i][j-width].partner;
+                partner = &tkbio.save[i][j].partner;
                 if(*partner) // already left connected
                 {
                     if(!*partner_prev) // up unconnected
@@ -146,16 +146,17 @@ void tkbio_init_partner()
                         continue;
                     // merge vectors
                     if(vector_size((*partner_prev)->connect)
-                         > vector_size((*partner)->connect))
+                        > vector_size((*partner)->connect))
                     {
                         *partner = *partner_prev;
-                        partner_prev = &tkbio.partner[i][j];
+                        partner_prev = &tkbio.save[i][j].partner;
                     }
                     for(k=0; k<vector_size((*partner)->connect); k++)
                     {
                         pp = vector_at(k, (*partner)->connect);
                         vector_push(pp, (*partner_prev)->connect);
-                        tkbio.partner[i][pp->y*width+pp->x] = *partner_prev;
+                        tkbio.save[i][pp->y*width+pp->x].partner
+                            = *partner_prev;
                     }
                     vector_finish((*partner)->connect);
                     free(*partner);
@@ -174,6 +175,91 @@ void tkbio_init_partner()
                     *partner = *partner_prev;
                     vector_push(&p, (*partner)->connect);
                 }
+            }
+        }
+    }
+}
+
+void tkbio_init_save_data()
+{
+    int i, j, k, height, width, size, height_px, width_px;
+    int hslider, h_y, v_y, h_x, v_x, h_max, v_max;
+    struct tkbio_save *save;
+    struct tkbio_save_slider *slider;
+    struct tkbio_point *p;
+    
+    for(i=0; i<tkbio.layout.size; i++)
+    {
+        width = tkbio.layout.maps[i].width;
+        height = tkbio.layout.maps[i].height;
+        size = height*width;
+        tkbio_get_sizes(&height_px, &width_px, 0, 0, 0, 0);
+        
+        for(j=0; j<size; j++)
+        {
+            save = &tkbio.save[i][j];
+            
+            if(!save->partner)
+            {
+                switch(tkbio.layout.maps[i].map[j].type & TKBIO_LAYOUT_MASK_TYPE)
+                {
+                case TKBIO_LAYOUT_TYPE_HSLIDER:
+                case TKBIO_LAYOUT_TYPE_VSLIDER:
+                    save->data.slider = slider =
+                        malloc(sizeof(struct tkbio_save_slider));
+                    slider->y = 0;
+                    slider->x = 0;
+                    break;
+                }
+                continue;
+            }
+            
+            if(save->partner->data.data)
+                continue;
+            
+            hslider = 0;
+            
+            switch(tkbio.layout.maps[i].map[j].type & TKBIO_LAYOUT_MASK_TYPE)
+            {
+            case TKBIO_LAYOUT_TYPE_HSLIDER:
+                hslider = 1;
+            case TKBIO_LAYOUT_TYPE_VSLIDER:
+                save->partner->data.slider = slider =
+                    malloc(sizeof(struct tkbio_save_slider));
+                h_x = v_x = width-1;
+                h_y = v_max = height-1;
+                v_y = h_max = 0;
+                for(k=0; k<vector_size(save->partner->connect); k++)
+                {
+                    p = vector_at(k, save->partner->connect);
+                    if(p->x < h_x)
+                    {
+                        h_x = p->x;
+                        h_y = p->y;
+                    }
+                    if(p->y > v_y)
+                    {
+                        v_y = p->y;
+                        v_x = p->x;
+                    }
+                    if(p->x > h_max)
+                        h_max = p->x;
+                    if(p->y < v_max)
+                        v_max = p->y;
+                }
+                if(hslider)
+                {
+                    slider->y = h_y*height_px;
+                    slider->x = slider->start = h_x*width_px;
+                    slider->size = (h_max-h_x+1)*width_px;
+                }
+                else
+                {
+                    slider->y = slider->start = (v_y+1)*height_px;
+                    slider->x = v_x*width_px;
+                    slider->size = (v_y-v_max+1)*height_px;
+                }
+                break;
             }
         }
     }
@@ -411,8 +497,9 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     tkbio.layout = config.layout;
     tkbio.format = config.format;
     
-    // calculate partner connects
+    // calculate partner connects, init save data
     tkbio_init_partner();
+    tkbio_init_save_data();
     
     // init parser
     tkbio.parser.map = config.layout.start;
@@ -489,6 +576,7 @@ void tkbio_finish()
     int i, j, k, width, size;
     struct tkbio_point *p;
     struct tkbio_partner *partner;
+    struct tkbio_save *save;
     
     VERBOSE(printf("[TKBIO] finish\n"));
     
@@ -511,20 +599,25 @@ void tkbio_finish()
         size = tkbio.layout.maps[i].height * width;
         for(j=0; j<size; j++)
         {
-            partner = tkbio.partner[i][j];
+            save = &tkbio.save[i][j];
+            partner = save->partner;
+            if(save->data.data)
+                free(save->data.data);
             if(!partner)
                 continue;
             for(k=0; k<vector_size(partner->connect); k++)
             {
                 p = vector_at(k, partner->connect);
-                tkbio.partner[i][p->y*width+p->x] = 0;
+                tkbio.save[i][p->y*width+p->x].partner = 0;
             }
+            if(partner->data.data)
+                free(partner->data.data);
             vector_finish(partner->connect);
             free(partner);
         }
-        free(tkbio.partner[i]);
+        free(tkbio.save[i]);
     }
-    free(tkbio.partner);
+    free(tkbio.save);
 }
 
 void tkbio_set_pause()
@@ -549,8 +642,8 @@ void tkbio_event_cleanup(int height, int width)
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
     // partner vector of last button
-    struct tkbio_partner *partner = tkbio.partner[tkbio.parser.map]
-        [tkbio.parser.y*map->width+tkbio.parser.x];
+    struct tkbio_partner *partner = tkbio.save[tkbio.parser.map]
+        [tkbio.parser.y*map->width+tkbio.parser.x].partner;
     
     // mapelem of last button
     const struct tkbio_mapelem *elem = &map->map
@@ -619,8 +712,8 @@ int tkbio_event_move(int y, int x)
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
     // partner vector of last button
-    struct tkbio_partner *partner = tkbio.partner[tkbio.parser.map]
-        [tkbio.parser.y*map->width+tkbio.parser.x];
+    struct tkbio_partner *partner = tkbio.save[tkbio.parser.map]
+        [tkbio.parser.y*map->width+tkbio.parser.x].partner;
     
     // mapelem of current button
     const struct tkbio_mapelem *elem = &map->map[y*map->width+x];
@@ -658,18 +751,16 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
     // current map
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
-    // partner of current button
-    struct tkbio_partner *partner = tkbio.partner[tkbio.parser.map]
-        [y*map->width+x];
+    // save of current button
+    struct tkbio_save *save = &tkbio.save[tkbio.parser.map][y*map->width+x];
     
     // mapelem of current button
     const struct tkbio_mapelem *elem = &map->map[y*map->width+x];
     
     struct tkbio_return ret = { .type = TKBIO_RETURN_NOP, .id = 0, .value.i = 0 };
     
-    int i, min, max;
-    struct tkbio_point *p;
     struct tsp_cmd cmd;
+    struct tkbio_save_slider *slider;
     
     switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
     {
@@ -713,45 +804,39 @@ struct tkbio_return tkbio_event_released(int y, int x, int button_y, int button_
             tkbio.parser.toggle&elem->elem.i ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_HSLIDER:
-        if(partner)
+        if(save->partner)
         {
-            for(i=0, min=max=x; i<vector_size(partner->connect); i++)
-            {
-                p = vector_at(i, partner->connect);
-                min = p->x < min ? p->x : min;
-                max = p->x > max ? p->x : max;
-            }
-            ret.value.i = ((x-min)*width+button_x)*100;
-            ret.value.i /= (max-min+1)*width;
+            slider = save->partner->data.slider;
+            ret.value.i = (x*width-slider->start+button_x)*100;
+            ret.value.i /= slider->size;
         }
         else
+        {
+            slider = save->data.slider;
             ret.value.i = (button_x*100)/width;
+        }
         ret.type = TKBIO_RETURN_INT;
         ret.id = elem->id;
-        partner->active = 1;
-        partner->y = y*height+button_y;
-        partner->x = x*width+button_x;
+        slider->y = y*height+button_y;
+        slider->x = x*width+button_x;
         VERBOSE(printf("hslider %i: %02i%%\n", ret.id, ret.value.i));
         break;
     case TKBIO_LAYOUT_TYPE_VSLIDER:
-        if(partner)
+        if(save->partner)
         {
-            for(i=0, min=max=y; i<vector_size(partner->connect); i++)
-            {
-                p = vector_at(i, partner->connect);
-                min = p->y < min ? p->y : min;
-                max = p->y > max ? p->y : max;
-            }
-            ret.value.i = ((max-y)*height+(height-button_y))*100;
-            ret.value.i /= (max-min+1)*height;
+            slider = save->partner->data.slider;
+            ret.value.i = (slider->start-(y*height)-button_y)*100;
+            ret.value.i /= slider->size;
         }
         else
+        {
+            slider = save->data.slider;
             ret.value.i = ((height-button_y)*100)/height;
+        }
         ret.type = TKBIO_RETURN_INT;
         ret.id = elem->id;
-        partner->active = 1;
-        partner->y = y*height+button_y;
-        partner->x = x*width+button_x;
+        slider->y = y*height+button_y;
+        slider->x = x*width+button_x;
         VERBOSE(printf("vslider %i: %02i%%\n", ret.id, ret.value.i));
         break;
     case TKBIO_LAYOUT_TYPE_SYSTEM:
@@ -797,8 +882,8 @@ int tkbio_event_pressed(int y, int x, int button_y, int button_x, int height, in
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
     // partner vector of current button
-    struct tkbio_partner *partner = tkbio.partner[tkbio.parser.map]
-        [y*map->width+x];
+    struct tkbio_partner *partner = tkbio.save[tkbio.parser.map]
+        [y*map->width+x].partner;
     
     // mapelem of current button
     const struct tkbio_mapelem *elem = &map->map[y*map->width+x];
@@ -944,8 +1029,8 @@ struct tkbio_return tkbio_handle_event()
     // current map
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
     
-    // partner of last button
-    struct tkbio_partner *partner = tkbio.partner[tkbio.parser.map]
+    // save of last button
+    struct tkbio_save *save = &tkbio.save[tkbio.parser.map]
         [tkbio.parser.y*map->width+tkbio.parser.x];
     
     int y, x, fb_y, fb_x, button_y, button_x;
@@ -954,6 +1039,7 @@ struct tkbio_return tkbio_handle_event()
     
     int tmp;
     int hslider = PARSER_STATUS_HSLIDER, vslider = PARSER_STATUS_VSLIDER;
+    struct tkbio_save_slider *slider;
     
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
@@ -1040,12 +1126,15 @@ struct tkbio_return tkbio_handle_event()
                 break;
             case MOVE_NEXT:
                 VERBOSE(printf("[TKBIO] Move (%i,%i)\n", y, x));
-                if(tkbio.parser.status & PARSER_STATUS_SLIDER
-                    && partner->active)
+                if(tkbio.parser.status & PARSER_STATUS_SLIDER)
                 {
-                    tkbio_event_pressed(partner->y/height,
-                        partner->x/width, partner->y%height,
-                        partner->x%width, height, width);
+                    if(save->partner)
+                        slider = save->partner->data.slider;
+                    else
+                        slider = save->data.slider;
+                    tkbio_event_pressed(slider->y/height,
+                        slider->x/width, slider->y%height,
+                        slider->x%width, height, width);
                 }
                 else
                     tkbio_event_cleanup(height, width);

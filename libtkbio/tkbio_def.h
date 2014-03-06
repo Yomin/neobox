@@ -83,11 +83,29 @@ struct tkbio_parser
     unsigned char toggle; // active toggle buttons
 };
 
+struct tkbio_save_slider
+{
+    int y, x;   // last pos in pixel
+    int start;  // start pos in pixel, only used for partner slider
+    int size;   // size in pixel, only used for partner slider
+};
+
+union tkbio_save_data
+{
+    void *data;
+    struct tkbio_save_slider *slider;
+};
+
 struct tkbio_partner
 {
-    unsigned char active;   // slider used
-    int y, x;               // slider save data
-    struct vector *connect; // partner array
+    union tkbio_save_data data;
+    struct vector *connect;
+};
+
+struct tkbio_save
+{
+    union tkbio_save_data data;
+    struct tkbio_partner *partner;
 };
 
 struct tkbio_global
@@ -103,7 +121,7 @@ struct tkbio_global
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
-    struct tkbio_partner ***partner; // button partner array
+    struct tkbio_save **save; // button save array
     
     void (*custom_signal_handler)(int signal);
 };
