@@ -40,21 +40,11 @@
 #define INCREASE    33      // button size increase in percent
 #define DELAY       100000  // debouncer pause delay in us
 
-#define FB_STATUS_NOP  0    // last button not drawn
-#define FB_STATUS_COPY 1    // last button saved/drawn
-#define FB_STATUS_FILL 2    // last button drawn
-
-#define PARSER_STATUS_NOP     0 // no action
-#define PARSER_STATUS_PRESSED 1 // button pressed
-#define PARSER_STATUS_HSLIDER 2 // horz slider active
-#define PARSER_STATUS_VSLIDER 3 // vert slider active
-#define PARSER_STATUS_SLIDER  2 // some slider active hack
-
-#define MOVE_NOP     0  // no move
-#define MOVE_NEXT    1  // move to next button
-#define MOVE_PARTNER 2  // move to partner
-#define MOVE_HSLIDER 3  // hslide on button/partners
-#define MOVE_VSLIDER 4  // vslide on button/partners
+struct tkbio_point
+{
+    int y, x;
+    const struct tkbio_mapelem *elem;
+};
 
 struct tkbio_fb
 {
@@ -67,44 +57,26 @@ struct tkbio_fb
     unsigned char *ptr; // mmap'ed framebuffer pointer
     
     char shm[20]; // shared memory segment name for sim
-    
-    int copy_size;       // allocated copy size
-    unsigned char *copy; // copy buf pointer
-    
-    int status; // last button nop/copy/fill
 };
 
 struct tkbio_parser
 {
-    int status;           // button pressed or slider
+    int pressed;          // button pressed
     int y, x;             // last pos (layout format)
-    int map, nmap;        // current/next map
+    int map;              // current map
     int hold;             // hold mode active
     unsigned char toggle; // active toggle buttons
 };
 
-struct tkbio_save_slider
-{
-    int y, x;   // last pos in pixel
-    int start;  // start pos in pixel, only used for partner slider
-    int size;   // size in pixel, only used for partner slider
-};
-
-union tkbio_save_data
-{
-    void *data;
-    struct tkbio_save_slider *slider;
-};
-
 struct tkbio_partner
 {
-    union tkbio_save_data data;
+    void *data;
     struct vector *connect;
 };
 
 struct tkbio_save
 {
-    union tkbio_save_data data;
+    void *data;
     struct tkbio_partner *partner;
 };
 

@@ -66,11 +66,5 @@ struct tkbio_return tkbio_handle_event();
 
 void tkbio_set_signal_handler(void handler(int signal));
 
-// from tkbio_fb.c
-void tkbio_draw_rect(int y, int x, int height, int width, int color, int density, unsigned char *copy);
-void tkbio_draw_rect_border(int y, int x, int height, int width, int color, unsigned char borders, int density, unsigned char *copy);
-void tkbio_fill_rect(int y, int x, int height, int width, int density, unsigned char *copy);
-void tkbio_fill_rect_border(int y, int x, int height, int width, unsigned char borders, int density, unsigned char *copy);
-
 #endif
 

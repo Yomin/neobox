@@ -38,8 +38,15 @@ int handler(struct tkbio_return ret, void *state)
     char *ptr = ret.value.c.c;
     int i = 0;
     
-    if(ret.type == TKBIO_RETURN_QUIT)
+    switch(ret.type)
+    {
+    case TKBIO_RETURN_CHAR:
+        break;
+    case TKBIO_RETURN_NOP:
+    case TKBIO_RETURN_QUIT:
+    default:
         return 0;
+    }
     
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {
