@@ -44,8 +44,8 @@ void tkbio_layout_to_fb_pos(int *pos_y, int *pos_x);
 void tkbio_fb_to_layout_pos(int *pos_y, int *pos_x);
 void tkbio_layout_to_fb_pos_width(int *pos_y, int *pos_x, int width);
 void tkbio_fb_to_layout_pos_width(int *pos_y, int *pos_x, int width);
-void tkbio_layout_to_fb_pos_rel(int *pos_y, int *pos_x);
-void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x);
+void tkbio_layout_to_fb_pos_rel(int *pos_y, int *pos_x, int height);
+void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x, int width);
 
 unsigned char tkbio_fb_connect_to_borders(int y, int x, unsigned char connect);
 unsigned char tkbio_layout_connect_to_borders(int y, int x, unsigned char connect);

@@ -63,6 +63,8 @@ void tkbio_type_slider_init(int y, int x, const struct tkbio_map *map, const str
         slider = save->data = malloc(sizeof(struct tkbio_save_slider));
         slider->y = HSLIDER(elem) ? y*height : (y+1)*height-1;
         slider->x = x*width;
+        slider->start = HSLIDER(elem) ? slider->x : slider->y;
+        slider->size = HSLIDER(elem) ? width : height;
     }
     else
     {
@@ -175,7 +177,8 @@ void tkbio_type_slider_press(int y, int x, int button_y, int button_x, const str
 
 void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    int i, height, width, offset_l, offset_p;
+    int i, height, width, pos, partner_x, partner_y, hticks;
+    float tick;
     unsigned char *ptr;
     struct vector *connect;
     struct tkbio_point *p;
@@ -190,8 +193,17 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
     {
         slider = save->data;
         ptr = slider->copy;
+        
         if(HSLIDER(elem))
         {
+            if(elem->elem.i)
+            {
+                tick = width/(elem->elem.i*1.0);
+                hticks = button_x/(tick/2);
+                slider->pos_tmp = (hticks+1)/2;
+                button_x = slider->pos_tmp*tick;
+            }
+            
             tkbio_layout_draw_rect(y*height, x*width, height, button_x,
                 elem->color >> 4, DENSITY, &ptr);
             if(BORDER(elem))
@@ -205,78 +217,110 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
         }
         else
         {
-            offset_l = LANDSCAPE ? height-button_y : 0;
-            offset_p = !LANDSCAPE ? button_y : 0;
+            if(elem->elem.i)
+            {
+                tick = height/(elem->elem.i*1.0);
+                hticks = (height-button_y)/(tick/2);
+                slider->pos_tmp = (hticks+1)/2;
+                button_y = height-slider->pos_tmp*tick;
+            }
             
-            tkbio_layout_draw_rect(y*height+offset_p, x*width,
+            tkbio_layout_draw_rect(y*height+button_y, x*width,
                 height-button_y, width, elem->color >> 4, DENSITY, &ptr);
             if(BORDER(elem))
-                tkbio_layout_draw_rect_connect(y*height-offset_l,
-                    x*width, y, x, button_y, width,
-                    elem->color, elem->connect, DENSITY, &ptr);
+                tkbio_layout_draw_rect_connect(y*height, x*width,
+                    y, x, button_y, width, elem->color,
+                    elem->connect, DENSITY, &ptr);
             else
-                tkbio_layout_draw_rect(y*height-offset_l, x*width,
-                    button_y, width, elem->color & 15, DENSITY, &ptr);
+                tkbio_layout_draw_rect(y*height, x*width, button_y,
+                    width, elem->color & 15, DENSITY, &ptr);
         }
+        slider->y_tmp = y*height+button_y;
+        slider->x_tmp = x*width+button_x;
     }
     else
     {
         slider = save->partner->data;
         ptr = slider->copy;
         connect = save->partner->connect;
-        offset_l = LANDSCAPE ? height-button_y : 0;
-        offset_p = !LANDSCAPE ? button_y : 0;
+        tick = slider->size/(elem->elem.i*1.0);
+        
+        if(HSLIDER(elem))
+        {
+            pos = x*width+button_x;
+            if(elem->elem.i)
+            {
+                hticks = (pos-slider->start)/(tick/2);
+                slider->pos_tmp = (hticks+1)/2;
+                pos = slider->pos_tmp*tick+slider->start;
+            }
+            slider->y_tmp = y+height+button_y;
+            slider->x_tmp = pos;
+        }
+        else
+        {
+            pos = y*height+button_y;
+            if(elem->elem.i)
+            {
+                hticks = (slider->start-pos)/(tick/2);
+                slider->pos_tmp = (hticks+1)/2;
+                pos = slider->start-slider->pos_tmp*tick;
+            }
+            slider->y_tmp = pos;
+            slider->x_tmp = x*width+button_x;
+        }
         
         for(i=0; i<vector_size(connect); i++)
         {
             p = vector_at(i, connect);
-            if( ( HSLIDER(p->elem) && p->x < x) ||
-                (!HSLIDER(p->elem) && p->y > y))
+            partner_y = p->y*height;
+            partner_x = p->x*width;
+            
+            if( ( HSLIDER(elem) && partner_x+width  < pos) ||
+                (!HSLIDER(elem) && partner_y        > pos))
             {
-                tkbio_layout_draw_rect(p->y*height, p->x*width,
+                tkbio_layout_draw_rect(partner_y, partner_x,
                     height, width, p->elem->color >> 4,
                     DENSITY, &ptr);
             }
-            else if(HSLIDER(p->elem) && p->x == x)
+            else if(HSLIDER(elem) && partner_x < pos)
             {
-                tkbio_layout_draw_rect(p->y*height, p->x*width,
-                    height, button_x, p->elem->color >> 4,
+                tkbio_layout_draw_rect(partner_y, partner_x,
+                    height, pos-partner_x, p->elem->color >> 4,
                     DENSITY, &ptr);
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(p->y*height,
-                        p->x*width+button_x, p->y, p->x,
-                        height, width-button_x, p->elem->color,
+                    tkbio_layout_draw_rect_connect(partner_y,
+                        pos, p->y, p->x, height,
+                        width-(pos-partner_x), p->elem->color,
                         p->elem->connect, DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(p->y*height,
-                        p->x*width+button_x, height,
-                        width-button_x, p->elem->color & 15,
-                        DENSITY, &ptr);
+                    tkbio_layout_draw_rect(partner_y,
+                        pos, height, width-(pos-partner_x),
+                        p->elem->color & 15, DENSITY, &ptr);
             }
-            else if(!HSLIDER(p->elem) && p->y == y)
+            else if(!HSLIDER(p->elem) && partner_y+height > pos)
             {
-                tkbio_layout_draw_rect(p->y*height+offset_p,
-                    p->x*width, height-button_y, width,
+                tkbio_layout_draw_rect(pos, partner_x,
+                    height-(pos-partner_y), width,
                     p->elem->color >> 4, DENSITY, &ptr);
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(p->y*height-offset_l,
-                        p->x*width, p->y, p->x,
-                        button_y, width, p->elem->color,
+                    tkbio_layout_draw_rect_connect(partner_y,
+                        partner_x, p->y, p->x, pos-partner_y,
+                        width, p->elem->color,
                         p->elem->connect, DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(p->y*height-offset_l,
-                        p->x*width, button_y, width,
-                        p->elem->color & 15, DENSITY, &ptr);
+                    tkbio_layout_draw_rect(partner_y, partner_x,
+                        pos-partner_y, width, p->elem->color & 15,
+                        DENSITY, &ptr);
             }
             else
             {
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(p->y*height,
-                        p->x*width, p->y, p->x, height, width,
-                        p->elem->color, p->elem->connect,
-                        DENSITY, &ptr);
+                    tkbio_layout_draw_rect_connect(partner_y, partner_x,
+                        p->y, p->x, height, width, p->elem->color,
+                        p->elem->connect, DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(p->y*height, p->x*width,
+                    tkbio_layout_draw_rect(partner_y, partner_x,
                         height, width, p->elem->color & 15,
                         DENSITY, &ptr);
             }
@@ -295,40 +339,42 @@ struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int bu
     ret.type = TKBIO_RETURN_INT;
     ret.id = elem->id;
     
+    slider = save->partner ? save->partner->data : save->data;
+    
     if(HSLIDER(elem))
     {
-        if(save->partner)
+        if(elem->elem.i)
         {
-            slider = save->partner->data;
-            ret.value.i = (x*width-slider->start+button_x)*100;
-            ret.value.i /= slider->size;
+            ret.value.i = slider->pos_tmp;
+            VERBOSE(printf("hslider %i: %i/%i",
+                ret.id, ret.value.i, elem->elem.i));
         }
         else
         {
-            slider = save->data;
-            ret.value.i = (button_x*100)/width;
+            ret.value.i = (slider->x_tmp-slider->start)*100;
+            ret.value.i /= slider->size;
+            VERBOSE(printf("hslider %i: %02i%%", ret.id, ret.value.i));
         }
-        slider->y = y*height+button_y;
-        slider->x = x*width+button_x;
-        VERBOSE(printf("hslider %i: %02i%%", ret.id, ret.value.i));
     }
     else
     {
-        if(save->partner)
+        if(elem->elem.i)
         {
-            slider = save->partner->data;
-            ret.value.i = (slider->start-(y*height)-button_y)*100;
-            ret.value.i /= slider->size;
+            ret.value.i = slider->pos_tmp;
+            VERBOSE(printf("vslider %i: %i/%i",
+                ret.id, ret.value.i, elem->elem.i));
         }
         else
         {
-            slider = save->data;
-            ret.value.i = ((height-button_y)*100)/height;
+            ret.value.i = (slider->start-slider->y_tmp)*100;
+            ret.value.i /= slider->size;
+            VERBOSE(printf("vslider %i: %02i%%", ret.id, ret.value.i));
         }
-        slider->y = y*height+button_y;
-        slider->x = x*width+button_x;
-        VERBOSE(printf("vslider %i: %02i%%", ret.id, ret.value.i));
     }
+    
+    slider->y = slider->y_tmp;
+    slider->x = slider->x_tmp;
+    slider->pos = slider->pos_tmp;
     
     return ret;
 }

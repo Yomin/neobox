@@ -618,8 +618,8 @@ struct tkbio_return tkbio_handle_event()
         &scr_height, &scr_width);
     
     // screen coordinates to button coordinates
-    button_y = fb_height*(((SCREENMAX-event.y)%scr_height)/(scr_height*1.0));
-    button_x = fb_width*(((event.x+1)%scr_width)/(scr_width*1.0));
+    button_y = fb_height*(((SCREENMAX-event.y-1)%scr_height)/(scr_height*1.0));
+    button_x = fb_width*(((event.x-1)%scr_width)/(scr_width*1.0));
     tkbio_fb_to_layout_pos_width(&button_y, &button_x, fb_width);
     
     // current map

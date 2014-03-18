@@ -31,6 +31,8 @@ struct tkbio_save_slider
     int y, x;   // last pos in pixel
     int start;  // start pos in pixel, only used for partner slider
     int size;   // size in pixel, only used for partner slider
+    int pos;    // current pos in ticks
+    int y_tmp, x_tmp, pos_tmp; // keep old values to restore on focus_out
     unsigned char *copy; // copy save buffer
 };
 
