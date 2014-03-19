@@ -52,12 +52,14 @@ inline static void restore_copy(int size, unsigned char *copy, struct tkbio_save
 
 void tkbio_type_select_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    void *ptr = calloc(1, sizeof(struct tkbio_save_select));
     
     if(save->partner)
-        save->partner->data = ptr;
+    {
+        if(!save->partner->data)
+            save->partner->data = calloc(1, sizeof(struct tkbio_save_select));
+    }
     else
-        save->data = ptr;
+        save->data = calloc(1, sizeof(struct tkbio_save_select));
 }
 
 void tkbio_type_select_finish(struct tkbio_save *save)
@@ -66,9 +68,12 @@ void tkbio_type_select_finish(struct tkbio_save *save)
     
     select = save->partner ? save->partner->data : save->data;
     
-    if(select->size)
-        free(select->copy);
-    free(select);
+    if(select)
+    {
+        if(select->size)
+            free(select->copy);
+        free(select);
+    }
 }
 
 int tkbio_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem)
