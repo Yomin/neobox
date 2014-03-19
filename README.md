@@ -1,6 +1,6 @@
 # neobox
 
-Userland replacement developed for the one and only smartphone, the Openmoko Neo Freerunner.
+X replacement developed for the Openmoko Neo Freerunner.
 
 ## tsp - touch screen parser
 Provides touch screen events for applications.
