@@ -44,5 +44,6 @@ struct tkbio_return tkbio_type_select_release(int y, int x, int button_y, int bu
 struct tkbio_return tkbio_type_select_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_select_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
-#endif
+void tkbio_type_select_set_status(int status, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
+#endif

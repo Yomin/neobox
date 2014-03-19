@@ -22,20 +22,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
 
 #include "tkbio.h"
 #include "tkbio_fb.h"
 #include "tkbio_slider.h"
 #include "tkbio_type_slider.h"
+#include "tkbio_type_help.h"
 
-#define COPY(e)       ((e)->type & TKBIO_LAYOUT_OPTION_COPY)
-#define BORDER(e)     ((e)->type & TKBIO_LAYOUT_OPTION_BORDER)
-#define LANDSCAPE     (tkbio.format == TKBIO_FORMAT_LANDSCAPE)
-#define TSLIDER(e, t) (((e)->type & TKBIO_LAYOUT_MASK_TYPE) == t)
-#define HSLIDER(e)    TSLIDER(e, TKBIO_LAYOUT_TYPE_HSLIDER)
-#define SLIDER(e)     (TSLIDER(e, TKBIO_LAYOUT_TYPE_HSLIDER) || TSLIDER(e, TKBIO_LAYOUT_TYPE_VSLIDER))
-#define NOP           (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
+#define COPY(e)    ((e)->type & TKBIO_LAYOUT_OPTION_COPY)
+#define BORDER(e)  ((e)->type & TKBIO_LAYOUT_OPTION_BORDER)
+#define LANDSCAPE  (tkbio.format == TKBIO_FORMAT_LANDSCAPE)
+#define HSLIDER(e) (((e)->type & TKBIO_LAYOUT_MASK_TYPE) == TKBIO_LAYOUT_TYPE_HSLIDER)
+#define NOP        (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
 extern struct tkbio_global tkbio;
 
@@ -459,63 +457,40 @@ void tkbio_type_slider_set_pos(int pos, const struct tkbio_map *map, const struc
         tkbio_type_slider_focus_out(map, elem, save);
 }
 
-static int find_slider(int mappos, int id)
+void tkbio_slider_set_ticks(int id, int mappos, int ticks)
 {
-    const struct tkbio_map *map = &tkbio.layout.maps[mappos];
-    const struct tkbio_mapelem *elem;
-    int size = map->height*map->width;
-    int i;
+    int tpos = tkbio_type_help_find_type(
+        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
+    if(tpos == -1)
+        tpos = tkbio_type_help_find_type(
+            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
     
-    for(i=0; i<size; i++)
-    {
-        elem = &map->map[i];
-        if(SLIDER(elem) && elem->id == id)
-            return i;
-    }
-    
-    return -1;
+    tkbio_type_help_set_pos_value(tpos, mappos, ticks, 1,
+        tkbio_type_slider_set_ticks);
 }
 
-typedef void setfunc(int value, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-
-static void set_value(int mappos, int id, int value, int redraw, setfunc f)
+void tkbio_slider_set_pos(int id, int mappos, int pos)
 {
-    const struct tkbio_map *map = &tkbio.layout.maps[mappos];
-    const struct tkbio_mapelem *elem;
-    struct tkbio_save *save;
-    unsigned char sim_tmp = 'x';
-    int i;
+    int tpos = tkbio_type_help_find_type(
+        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
+    if(tpos == -1)
+        tpos = tkbio_type_help_find_type(
+            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
     
-    if((i = find_slider(mappos, id)) == -1)
-        return;
-    
-    elem = &map->map[i];
-    save = &tkbio.save[mappos][i];
-    
-    // only redraw if map is active
-    if(redraw && tkbio.parser.map == mappos)
-    {
-        f(value, map, elem, save);
-        // notify framebuffer for redraw
-        if(tkbio.sim)
-            send(tkbio.fb.sock, &sim_tmp, 1, 0);
-    }
-    else
-        f(value, 0, elem, save);
+    tkbio_type_help_set_pos_value(tpos, mappos, pos, 1,
+        tkbio_type_slider_set_pos);
 }
 
-void tkbio_slider_set_ticks(int mappos, int id, int ticks)
+void tkbio_slider_set_ticks_pos(int id, int mappos, int ticks, int pos)
 {
-    set_value(mappos, id, ticks, 1, tkbio_type_slider_set_ticks);
-}
-
-void tkbio_slider_set_pos(int mappos, int id, int pos)
-{
-    set_value(mappos, id, pos, 1, tkbio_type_slider_set_pos);
-}
-
-void tkbio_slider_set_ticks_pos(int mappos, int id, int ticks, int pos)
-{
-    set_value(mappos, id, ticks, 0, tkbio_type_slider_set_ticks);
-    set_value(mappos, id, pos, 1, tkbio_type_slider_set_pos);
+    int tpos = tkbio_type_help_find_type(
+        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
+    if(tpos == -1)
+        tpos = tkbio_type_help_find_type(
+            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
+    
+    tkbio_type_help_set_pos_value(tpos, mappos, ticks, 0,
+        tkbio_type_slider_set_ticks);
+    tkbio_type_help_set_pos_value(tpos, mappos, pos, 1,
+        tkbio_type_slider_set_pos);
 }

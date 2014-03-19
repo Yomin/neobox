@@ -23,8 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "tkbio_select.h"
 #include "tkbio_type_select.h"
 #include "tkbio_type_button.h"
+#include "tkbio_type_help.h"
 
 #define NOP (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
@@ -134,4 +136,22 @@ struct tkbio_return tkbio_type_select_focus_out(const struct tkbio_map *map, con
     restore_copy(size, copy, select);
     
     return NOP;
+}
+
+void tkbio_type_select_set_status(int status, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    struct tkbio_save_select *select;
+    
+    status = status ? 1 : 0; // normalize
+    select = save->partner ? save->partner->data : save->data;
+    select->status = status;
+    
+    if(map)
+        tkbio_type_select_focus_out(map, elem, save);
+}
+
+void tkbio_select_set_status(int id, int mappos, int status)
+{
+    tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
+        status, 1, tkbio_type_select_set_status);
 }
