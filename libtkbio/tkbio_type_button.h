@@ -31,11 +31,11 @@ void tkbio_type_button_finish(struct tkbio_save *save);
 
 int tkbio_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem);
 
-void tkbio_type_button_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-void tkbio_type_button_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_button_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-void tkbio_type_button_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-void tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_button_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
 #endif
 

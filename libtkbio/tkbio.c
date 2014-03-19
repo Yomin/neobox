@@ -603,7 +603,15 @@ struct tkbio_return tkbio_handle_event()
     int y, x, button_y, button_x, i;
     int width, height, fb_height, fb_width, scr_height, scr_width;
     char sim_tmp = 'x'; // content irrelevant
-
+    
+    // return 2nd event from focus out-in
+    if(tkbio.ret.type != TKBIO_RETURN_NOP)
+    {
+        ret = tkbio.ret;
+        tkbio.ret.type = TKBIO_RETURN_NOP;
+        return ret;
+    }
+    
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to receive event"));
@@ -618,8 +626,8 @@ struct tkbio_return tkbio_handle_event()
         &scr_height, &scr_width);
     
     // screen coordinates to button coordinates
-    button_y = fb_height*(((SCREENMAX-event.y-1)%scr_height)/(scr_height*1.0));
-    button_x = fb_width*(((event.x-1)%scr_width)/(scr_width*1.0));
+    button_y = fb_height*(((SCREENMAX-event.y)%scr_height)/(scr_height*1.0));
+    button_x = fb_width*((event.x%scr_width)/(scr_width*1.0));
     tkbio_fb_to_layout_pos_width(&button_y, &button_x, fb_width);
     
     // current map
@@ -635,7 +643,7 @@ struct tkbio_return tkbio_handle_event()
         TYPEFUNC(elem_last, broader, i=, &y, &x, event.y, event.x, elem_last);
     if(!tkbio.parser.pressed || i)
     {
-        x = event.x / scr_width;
+        x = (event.x) / scr_width;
         y = (SCREENMAX - event.y) / scr_height;
         tkbio_fb_to_layout_cords(&y, &x);
     }
@@ -658,7 +666,8 @@ struct tkbio_return tkbio_handle_event()
         {
             // move on same button
             if(tkbio.parser.y == y && tkbio.parser.x == x)
-move:           TYPEFUNC(elem_last, move, , y, x, button_y, button_x, map, elem_last, save_last);
+move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
+                    button_x, map, elem_last, save_last);
             else
             {
                 // check if moved to partner
@@ -667,17 +676,18 @@ move:           TYPEFUNC(elem_last, move, , y, x, button_y, button_x, map, elem_
                     {
                         p = vector_at(i, partner_last->connect);
                         if(p->y == y && p->x == x)
-                        {
-                            VERBOSE(printf("[TKBIO] Move to partner (%i,%i)\n", y, x));
                             goto move;
-                        }
                     }
                 
                 // move to other button
-                VERBOSE(printf("[TKBIO] Move (%i,%i)\n", y, x));
-                
-                TYPEFUNC(elem_last, focus_out, , map, elem_last, save_last);
-                TYPEFUNC(elem_curr, focus_in, , y, x, button_y, button_x, map, elem_curr, save_curr);
+                TYPEFUNC(elem_last, focus_out, ret=, map, elem_last,
+                    save_last);
+                if(ret.type == TKBIO_RETURN_NOP)
+                    TYPEFUNC(elem_curr, focus_in, ret=, y, x,
+                        button_y, button_x, map, elem_curr, save_curr);
+                else
+                    TYPEFUNC(elem_curr, focus_in, tkbio.ret=, y, x,
+                        button_y, button_x, map, elem_curr, save_curr);
             }
         }
     }
@@ -685,11 +695,8 @@ move:           TYPEFUNC(elem_last, move, , y, x, button_y, button_x, map, elem_
     {
         if(tkbio.parser.pressed)
         {
-            VERBOSE(printf("[TKBIO] Release (%i,%i) ", y, x));
-            
-            TYPEFUNC(elem_curr, release, ret=, y, x, button_y, button_x, map, elem_curr, save_curr);
-            
-            VERBOSE(printf("\n"));
+            TYPEFUNC(elem_curr, release, ret=, y, x, button_y,
+                button_x, map, elem_curr, save_curr);
             
             tkbio.parser.pressed = 0;
         }
@@ -698,9 +705,8 @@ move:           TYPEFUNC(elem_last, move, , y, x, button_y, button_x, map, elem_
     {
         if(!tkbio.parser.pressed)
         {
-            VERBOSE(printf("[TKBIO] Press (%i,%i)\n", y, x));
-            
-            TYPEFUNC(elem_curr, press, , y, x, button_y, button_x, map, elem_curr, save_curr);
+            TYPEFUNC(elem_curr, press, ret=, y, x, button_y, button_x,
+                map, elem_curr, save_curr);
             
             tkbio.parser.pressed = 1;
             

@@ -94,6 +94,7 @@ struct tkbio_global
     struct tkbio_layout layout;
     struct tkbio_parser parser;
     struct tkbio_save **save; // button save array
+    struct tkbio_return ret;  // 2nd event from focus out-in
     
     void (*custom_signal_handler)(int signal);
 };

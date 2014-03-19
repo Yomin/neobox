@@ -31,6 +31,7 @@
 
 #define COPY(e)   ((e)->type & TKBIO_LAYOUT_OPTION_COPY)
 #define BORDER(e) ((e)->type & TKBIO_LAYOUT_OPTION_BORDER)
+#define NOP       (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
 extern struct tkbio_global tkbio;
 
@@ -92,7 +93,7 @@ int tkbio_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struct
     return 1;
 }
 
-void tkbio_type_button_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     int i, height, width;
     unsigned char *ptr = 0;
@@ -120,11 +121,13 @@ void tkbio_type_button_press(int y, int x, int button_y, int button_x, const str
                 height, width, p->elem->color >> 4, DENSITY, &ptr);
         }
     }
+    
+    return NOP;
 }
 
-void tkbio_type_button_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_button_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    
+    return NOP;
 }
 
 struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
@@ -147,47 +150,48 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
             ret.value = elem->elem;
         tkbio.parser.toggle = 0;
         VERBOSE(if(elem->name)
-            printf("[%s]", elem->name);
+            printf("[TKBIO] button [%s]\n", elem->name);
         else
-            printf("[%c]", elem->elem.c.c[0]));
+            printf("[TKBIO] button [%c]\n", elem->elem.c.c[0]));
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
         nmap = elem->elem.i + map->offset;
         tkbio.parser.hold = 0;
-        VERBOSE(printf("goto %s", elem->name));
+        VERBOSE(printf("[TKBIO] goto %s\n", elem->name));
         goto ret;
     case TKBIO_LAYOUT_TYPE_HOLD:
         tkbio.parser.hold = !tkbio.parser.hold;
-        VERBOSE(printf("hold %s", tkbio.parser.hold ? "on" : "off"));
+        VERBOSE(printf("[TKBIO] hold %s\n",
+            tkbio.parser.hold ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_TOGGLE:
         tkbio.parser.toggle ^= elem->elem.i;
-        VERBOSE(printf("%s %s", elem->name,
+        VERBOSE(printf("[TKBIO] %s %s\n", elem->name,
             tkbio.parser.toggle & elem->elem.i ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_SYSTEM:
         switch(elem->elem.i)
         {
         case TKBIO_SYSTEM_NEXT:
-            VERBOSE(printf("app switch next"));
+            VERBOSE(printf("[TKBIO] app switch next\n"));
             ret.type = TKBIO_RETURN_SWITCH;
             cmd.cmd = TSP_CMD_NEXT;
             break;
         case TKBIO_SYSTEM_PREV:
-            VERBOSE(printf("app switch prev"));
+            VERBOSE(printf("[TKBIO] app switch prev\n"));
             ret.type = TKBIO_RETURN_SWITCH;
             cmd.cmd = TSP_CMD_PREV;
             break;
         case TKBIO_SYSTEM_QUIT:
-            VERBOSE(printf("app quit"));
+            VERBOSE(printf("[TKBIO] app quit\n"));
             ret.type = TKBIO_RETURN_QUIT;
             cmd.cmd = TSP_CMD_REMOVE;
             break;
         case TKBIO_SYSTEM_ACTIVATE:
-            VERBOSE(printf("app activate"));
+            VERBOSE(printf("[TKBIO] app activate\n"));
             break;
         case TKBIO_SYSTEM_MENU:
-            VERBOSE(printf("app menu"));
+            VERBOSE(printf("[TKBIO] app menu\n"));
             // todo
             break;
         }
@@ -212,12 +216,12 @@ ret:
     return ret;
 }
 
-void tkbio_type_button_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_button_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
+    return tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
 }
 
-void tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     int i, height, width;
     unsigned char *ptr;
@@ -273,4 +277,6 @@ void tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio
             }
         }
     }
+    
+    return NOP;
 }

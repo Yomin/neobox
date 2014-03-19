@@ -35,6 +35,7 @@
 #define TSLIDER(e, t) (((e)->type & TKBIO_LAYOUT_MASK_TYPE) == t)
 #define HSLIDER(e)    TSLIDER(e, TKBIO_LAYOUT_TYPE_HSLIDER)
 #define SLIDER(e)     (TSLIDER(e, TKBIO_LAYOUT_TYPE_HSLIDER) || TSLIDER(e, TKBIO_LAYOUT_TYPE_VSLIDER))
+#define NOP           (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
 extern struct tkbio_global tkbio;
 
@@ -176,12 +177,12 @@ int tkbio_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct
     return 1;
 }
 
-void tkbio_type_slider_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_slider_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     int i, height, width, pos, partner_x, partner_y, hticks;
     float tick;
@@ -189,6 +190,7 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
     struct vector *connect;
     struct tkbio_point *p;
     struct tkbio_save_slider *slider;
+    struct tkbio_return ret;
     
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
@@ -206,6 +208,10 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
             {
                 tick = width/(slider->ticks*1.0);
                 hticks = button_x/(tick/2);
+                
+                if(slider->pos_tmp == (hticks+1)/2)
+                    return NOP;
+                
                 slider->pos_tmp = (hticks+1)/2;
                 button_x = slider->pos_tmp*tick;
             }
@@ -227,6 +233,10 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
             {
                 tick = height/(slider->ticks*1.0);
                 hticks = (height-button_y)/(tick/2);
+                
+                if(slider->pos_tmp == (hticks+1)/2)
+                    return NOP;
+                
                 slider->pos_tmp = (hticks+1)/2;
                 button_y = height-slider->pos_tmp*tick;
             }
@@ -257,6 +267,10 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
             {
                 tick = slider->size/(slider->ticks*1.0);
                 hticks = (pos-slider->start)/(tick/2);
+                
+                if(slider->pos_tmp == (hticks+1)/2)
+                    return NOP;
+                
                 slider->pos_tmp = (hticks+1)/2;
                 pos = slider->pos_tmp*tick+slider->start;
             }
@@ -270,6 +284,10 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
             {
                 tick = slider->size/(slider->ticks*1.0);
                 hticks = (slider->start-pos)/(tick/2);
+                
+                if(slider->pos_tmp == (hticks+1)/2)
+                    return NOP;
+                
                 slider->pos_tmp = (hticks+1)/2;
                 pos = slider->start-slider->pos_tmp*tick;
             }
@@ -333,65 +351,54 @@ void tkbio_type_slider_move(int y, int x, int button_y, int button_x, const stru
             }
         }
     }
-}
-
-struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
-{
-    struct tkbio_return ret;
-    struct tkbio_save_slider *slider;
-    int height, width;
-    
-    tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
     ret.type = TKBIO_RETURN_INT;
     ret.id = elem->id;
     
-    slider = save->partner ? save->partner->data : save->data;
-    
-    if(HSLIDER(elem))
+    if(slider->ticks)
     {
-        if(slider->ticks)
-        {
-            ret.value.i = slider->pos_tmp;
-            VERBOSE(printf("hslider %i: %i/%i",
-                ret.id, ret.value.i, slider->ticks));
-        }
-        else
-        {
-            ret.value.i = (slider->x_tmp-slider->start)*100;
-            ret.value.i /= slider->size;
-            VERBOSE(printf("hslider %i: %02i%%", ret.id, ret.value.i));
-        }
+        ret.value.i = slider->pos_tmp;
+        VERBOSE(printf("[TKBIO] slider %i: %i/%i\n",
+            ret.id, ret.value.i, slider->ticks));
     }
     else
     {
-        if(slider->ticks)
+        if(HSLIDER(elem))
         {
-            ret.value.i = slider->pos_tmp;
-            VERBOSE(printf("vslider %i: %i/%i",
-                ret.id, ret.value.i, slider->ticks));
+            ret.value.i = (slider->x_tmp-slider->start)*100;
+            ret.value.i /= slider->size;
         }
         else
         {
             ret.value.i = (slider->start-slider->y_tmp)*100;
             ret.value.i /= slider->size;
-            VERBOSE(printf("vslider %i: %02i%%", ret.id, ret.value.i));
         }
+        VERBOSE(printf("[TKBIO] slider %i: %02i%%\n",
+            ret.id, ret.value.i));
     }
+    
+    return ret;
+}
+
+struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    struct tkbio_save_slider *slider;
+    
+    slider = save->partner ? save->partner->data : save->data;
     
     slider->y = slider->y_tmp;
     slider->x = slider->x_tmp;
     slider->pos = slider->pos_tmp;
     
-    return ret;
+    return NOP;
 }
 
-void tkbio_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-void tkbio_type_slider_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_slider_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_slider *slider;
     int height, width;
@@ -399,7 +406,7 @@ void tkbio_type_slider_focus_out(const struct tkbio_map *map, const struct tkbio
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     slider = save->partner ? save->partner->data : save->data;
     
-    tkbio_type_slider_move(slider->y/height, slider->x/width,
+    return tkbio_type_slider_move(slider->y/height, slider->x/width,
         slider->y%height, slider->x%width, map, elem, save);
 }
 
