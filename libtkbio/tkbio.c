@@ -325,7 +325,7 @@ void tkbio_init_screen()
                         elem->connect, DENSITY, 0);
                 else
                     tkbio_layout_draw_rect(y*height, x*width,
-                        height, width, elem->color >> 4, DENSITY, 0);
+                        height, width, elem->color & 15, DENSITY, 0);
             }
         }
     
