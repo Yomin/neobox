@@ -49,6 +49,7 @@
 
 #include "tkbio_type_button.h"
 #include "tkbio_type_slider.h"
+#include "tkbio_type_select.h"
 
 #define TYPEFUNC(e, m, r, ...) \
     do { \
@@ -66,6 +67,9 @@
         case TKBIO_LAYOUT_TYPE_HSLIDER: \
         case TKBIO_LAYOUT_TYPE_VSLIDER: \
             r tkbio_type_slider_ ## m (__VA_ARGS__); \
+            break; \
+        case TKBIO_LAYOUT_TYPE_SELECT: \
+            r tkbio_type_select_ ## m (__VA_ARGS__); \
             break; \
         } \
     } \

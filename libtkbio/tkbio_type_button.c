@@ -35,8 +35,8 @@
 
 extern struct tkbio_global tkbio;
 
-static int copy_size;
-static unsigned char *copy;
+int button_copy_size;
+unsigned char *button_copy;
 
 static void alloc_copy(int height, int width, struct tkbio_partner *partner)
 {
@@ -45,29 +45,29 @@ static void alloc_copy(int height, int width, struct tkbio_partner *partner)
     if(partner)
         size *= vector_size(partner->connect);
     
-    if(!copy_size)
+    if(!button_copy_size)
     {
-        copy = malloc(size);
-        copy_size = size;
+        button_copy = malloc(size);
+        button_copy_size = size;
     }
-    else if(copy_size < size)
+    else if(button_copy_size < size)
     {
-        copy = realloc(copy, size);
-        copy_size = size;
+        button_copy = realloc(button_copy, size);
+        button_copy_size = size;
     }
 }
 
 void tkbio_type_button_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
-    copy_size = 0;
+    button_copy_size = 0;
 }
 
 void tkbio_type_button_finish(struct tkbio_save *save)
 {
-    if(copy_size)
+    if(button_copy_size)
     {
-        free(copy);
-        copy_size = 0;
+        free(button_copy);
+        button_copy_size = 0;
     }
 }
 
@@ -105,7 +105,7 @@ struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int butt
     if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
     {
         alloc_copy(height, width, save->partner);
-        ptr = copy;
+        ptr = button_copy;
     }
     
     if(!save->partner)
@@ -232,7 +232,7 @@ struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, con
     
     if(COPY(elem))
     {
-        ptr = copy;
+        ptr = button_copy;
         if(!save->partner)
             tkbio_layout_fill_rect(tkbio.parser.y*height,
                 tkbio.parser.x*width, height, width, DENSITY, &ptr);
