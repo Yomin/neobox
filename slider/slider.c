@@ -65,9 +65,10 @@ int main(int argc, char* argv[])
 {
     int err;
     
-    tkbio_init_layout_args(NAME, sliderLayout, &argc, argv);
+    tkbio_init_layout(NAME, sliderLayout, &argc, argv);
 
-    if(argc != 4) {
+    if(argc != 4)
+    {
         printf("Usage: %s <max> <ticks> <file>\n", argv[0]);
         return 0;
     }

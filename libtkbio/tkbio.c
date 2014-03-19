@@ -476,12 +476,7 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     return tkbio.sock;
 }
 
-int tkbio_init_custom_args(const char *name, struct tkbio_config config, int *argc, char *argv[])
-{
-    return tkbio_init_custom(name, tkbio_args(argc, argv, config));
-}
-
-struct tkbio_config tkbio_config_default()
+struct tkbio_config tkbio_config_default(int *argc, char *argv[])
 {
     struct tkbio_config config;
     config.fb = "/dev/fb0";
@@ -490,36 +485,19 @@ struct tkbio_config tkbio_config_default()
     config.format = TKBIO_FORMAT_LANDSCAPE;
     config.options = 0;
     config.verbose = 0;
-    return config;
+    return tkbio_args(argc, argv, config);
 }
 
-struct tkbio_config tkbio_config_args(int *argc, char *argv[])
+int tkbio_init_default(const char *name, int *argc, char *argv[])
 {
-    return tkbio_args(argc, argv, tkbio_config_default());
+    return tkbio_init_custom(name, tkbio_config_default(argc, argv));
 }
 
-int tkbio_init_default(const char *name)
+int tkbio_init_layout(const char *name, struct tkbio_layout layout, int *argc, char *argv[])
 {
-    return tkbio_init_custom(name, tkbio_config_default());
-}
-
-int tkbio_init_args(const char *name, int *argc, char *argv[])
-{
-    return tkbio_init_custom(name, tkbio_args(argc, argv, tkbio_config_default()));
-}
-
-int tkbio_init_layout(const char *name, struct tkbio_layout layout)
-{
-    struct tkbio_config config = tkbio_config_default();
+    struct tkbio_config config = tkbio_config_default(argc, argv);
     config.layout = layout;
     return tkbio_init_custom(name, config);
-}
-
-int tkbio_init_layout_args(const char *name, struct tkbio_layout layout, int *argc, char *argv[])
-{
-    struct tkbio_config config = tkbio_config_default();
-    config.layout = layout;
-    return tkbio_init_custom(name, tkbio_args(argc, argv, config));
 }
 
 void tkbio_finish()

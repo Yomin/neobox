@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     int daemon = 0;
     char *tty;
     
-    struct tkbio_config config = tkbio_config_args(&argc, argv);
+    struct tkbio_config config = tkbio_config_default(&argc, argv);
     
     while((opt = getopt(argc, argv, "sd")) != -1)
     {
