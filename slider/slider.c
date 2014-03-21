@@ -32,8 +32,6 @@
 
 #include "slider_layout.h"
 
-#define NAME "slider"
-
 int fd, tick;
 char buf[100];
 
@@ -65,7 +63,7 @@ int main(int argc, char* argv[])
 {
     int err;
     
-    tkbio_init_layout(NAME, sliderLayout, &argc, argv);
+    tkbio_init_layout(sliderLayout, &argc, argv);
 
     if(argc != 4)
     {

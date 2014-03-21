@@ -49,9 +49,9 @@ struct tkbio_config
     int verbose;
 };
 
-int tkbio_init_default(const char *name, int *argc, char *argv[]);
-int tkbio_init_layout(const char *name, struct tkbio_layout layout, int *argc, char *argv[]);
-int tkbio_init_custom(const char *name, struct tkbio_config config);
+int tkbio_init_default(int *argc, char *argv[]);
+int tkbio_init_layout(struct tkbio_layout layout, int *argc, char *argv[]);
+int tkbio_init_custom(struct tkbio_config config);
 
 struct tkbio_config tkbio_config_default(int *argc, char *argv[]);
 

@@ -82,7 +82,6 @@ struct tkbio_save
 
 struct tkbio_global
 {
-    const char *name;   // application name
     const char *tsp;    // tsp directory
     int format;         // portrait or landscape
     int pause;          // pause for debouncer

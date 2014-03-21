@@ -338,7 +338,7 @@ void tkbio_init_screen()
         send(tkbio.fb.sock, &sim_tmp, 1, 0);
 }
 
-int tkbio_init_custom(const char *name, struct tkbio_config config)
+int tkbio_init_custom(struct tkbio_config config)
 {
     int ret;
     struct sockaddr_un addr;
@@ -360,7 +360,6 @@ int tkbio_init_custom(const char *name, struct tkbio_config config)
     tkbio.tsp = config.tsp;
     
     // open rpc socket
-    tkbio.name = name;
     if((ret = tkbio_open_socket(-1)) < 0)
         return ret;
     
@@ -492,16 +491,16 @@ struct tkbio_config tkbio_config_default(int *argc, char *argv[])
     return tkbio_args(argc, argv, config);
 }
 
-int tkbio_init_default(const char *name, int *argc, char *argv[])
+int tkbio_init_default(int *argc, char *argv[])
 {
-    return tkbio_init_custom(name, tkbio_config_default(argc, argv));
+    return tkbio_init_custom(tkbio_config_default(argc, argv));
 }
 
-int tkbio_init_layout(const char *name, struct tkbio_layout layout, int *argc, char *argv[])
+int tkbio_init_layout(struct tkbio_layout layout, int *argc, char *argv[])
 {
     struct tkbio_config config = tkbio_config_default(argc, argv);
     config.layout = layout;
-    return tkbio_init_custom(name, config);
+    return tkbio_init_custom(config);
 }
 
 void tkbio_finish()

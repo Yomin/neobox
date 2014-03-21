@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
     if(!show)
         config.options |= TKBIO_OPTION_NO_INITIAL_PRINT;
     
-    if((fd = tkbio_init_custom(NAME, config)) < 0)
+    if((fd = tkbio_init_custom(config)) < 0)
         return fd;
     
     if((fd = open(tty, O_RDONLY)) < 0)
