@@ -221,7 +221,7 @@ ret:
     
     if(system && ret.type != TKBIO_RETURN_NOP)
     {
-        cmd.value = 0;
+        cmd.pid = 0;
         send(tkbio.sock, &cmd, sizeof(struct tsp_cmd), 0);
     }
     

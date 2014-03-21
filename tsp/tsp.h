@@ -27,10 +27,11 @@
 #define TSP_PWD     "/var/" TSP_NAME
 #define TSP_RPC     "rpc"
 
-#define TSP_CMD_REMOVE      1
-#define TSP_CMD_SWITCH      2
-#define TSP_CMD_PREV        3
-#define TSP_CMD_NEXT        4
+#define TSP_CMD_REGISTER    1
+#define TSP_CMD_REMOVE      2
+#define TSP_CMD_SWITCH      3
+#define TSP_CMD_PREV        4
+#define TSP_CMD_NEXT        5
 
 #define TSP_EVENT_PRESSED   1
 #define TSP_EVENT_MOVED     2
@@ -38,7 +39,8 @@
 
 struct tsp_cmd
 {
-    unsigned char cmd, value;
+    unsigned char cmd;
+    pid_t pid;
 };
 
 struct tsp_event

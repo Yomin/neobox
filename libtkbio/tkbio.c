@@ -340,6 +340,7 @@ int tkbio_init_custom(struct tkbio_config config)
 {
     int ret;
     struct sockaddr_un addr;
+    struct tsp_cmd tsp;
     
     tkbio.verbose = config.verbose;
     
@@ -360,6 +361,11 @@ int tkbio_init_custom(struct tkbio_config config)
     // open rpc socket
     if((ret = tkbio_open_socket(-1)) < 0)
         return ret;
+    
+    // register
+    tsp.cmd = TSP_CMD_REGISTER;
+    tsp.pid = getpid();
+    send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
     
     // open framebuffer
     if(strncmp(config.fb+strlen(config.fb)-4, ".ipc", 4))

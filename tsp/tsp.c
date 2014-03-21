@@ -50,6 +50,7 @@ struct chain_socket
 {
     CIRCLEQ_ENTRY(chain_socket) chain;
     int sock;
+    pid_t pid;
 };
 CIRCLEQ_HEAD(client_sockets, chain_socket);
 
@@ -93,6 +94,7 @@ void add_client(int fd)
     struct chain_socket *cs = malloc(sizeof(struct chain_socket));
     CIRCLEQ_INSERT_HEAD(&client_list, cs, chain);
     cs->sock = fd;
+    cs->pid = 0;
     if(client_count+2 == pfds_cap)
     {
         pfds_cap += 10;
@@ -112,37 +114,52 @@ void send_client(struct tsp_event *event)
     send(sock, event, sizeof(struct tsp_event), 0);
 }
 
-int rem_client(int pos, unsigned int fd)
+int rem_client(int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
+    int fd;
     
-    if(!fd)
-        fd = pfds[pos].fd;
-    else
+    if(pid)
+    {
+        while(cs != (void*)&client_list && cs->pid != pid)
+            cs = cs->chain.cqe_next;
+        if(cs == (void*)&client_list)
+            return 0;
+        
+        fd = cs->sock;
+        
         for(pos=2; pos < client_count+2; pos++)
             if(pfds[pos].fd == fd)
                 break;
-    
-    if(pos == client_count+2)
-        return 0;
-    
-    while(cs != (void*)&client_list && cs->sock != fd)
-        cs = cs->chain.cqe_next;
-    if(cs == (void*)&client_list)
-        return 0;
+        if(pos == client_count+2)
+            return 0;
+    }
+    else
+    {
+        fd = pfds[pos].fd;
+        
+        while(cs != (void*)&client_list && cs->sock != fd)
+            cs = cs->chain.cqe_next;
+        if(cs == (void*)&client_list)
+            return 0;
+        
+        pid = cs->pid;
+    }
     
     memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
     CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
     client_count--;
+    
     if((cs = client_list.cqh_first) != (void*)&client_list)
     {
-        DEBUG(printf("Client removed [%i], switch [%i]\n", fd, cs->sock));
+        DEBUG(printf("Client removed [%i] %i, switch [%i] %i\n",
+            fd, pid, cs->sock, cs->pid));
         return 1;
     }
     else
     {
-        DEBUG(printf("Client removed [%i], last\n", fd));
+        DEBUG(printf("Client removed [%i] %i, last\n", fd, pid));
         return 0;
     }
 }
@@ -165,7 +182,7 @@ void client_list_rotate(int dir)
     client_list.cqh_first->chain.cqe_prev = (void*)&client_list;
 }
 
-int switch_client(int mod, unsigned int fd)
+int switch_client(int mod, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
     
@@ -173,7 +190,7 @@ int switch_client(int mod, unsigned int fd)
         return 0;
     
     if(!mod)
-        while(client_list.cqh_first->sock != fd)
+        while(client_list.cqh_first->pid != pid)
         {
             client_list_rotate(+1);
             if(cs == client_list.cqh_first)
@@ -182,9 +199,25 @@ int switch_client(int mod, unsigned int fd)
     else
         client_list_rotate(mod);
     
-    DEBUG(printf("client switched [%i]\n", client_list.cqh_first->sock));
+    DEBUG(printf("Client switched [%i] %i\n",
+        client_list.cqh_first->sock, client_list.cqh_first->pid));
     
     return 1;
+}
+
+void set_client(int pos, pid_t pid)
+{
+    struct chain_socket *cs = client_list.cqh_first;
+    int fd = pfds[pos].fd;
+    
+    while(cs != (void*)&client_list && cs->sock != fd)
+        cs = cs->chain.cqe_next;
+    if(cs == (void*)&client_list)
+        return;
+    
+    cs->pid = pid;
+    
+    DEBUG(printf("Client registered [%i] %i\n", fd, pid));
 }
 
 void free_clients()
@@ -420,8 +453,11 @@ int main(int argc, char* argv[])
                     recv(pfds[x].fd, &cmd, sizeof(struct tsp_cmd), 0);
                     switch(cmd.cmd)
                     {
+                    case TSP_CMD_REGISTER:
+                        set_client(x, cmd.pid);
+                        break;
                     case TSP_CMD_REMOVE:
-                        if(rem_client(x, cmd.value))
+                        if(rem_client(x, cmd.pid))
                         {
 client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                             send_client(&event);
@@ -429,7 +465,7 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                         }
                         break;
                     case TSP_CMD_SWITCH:
-                        if(switch_client(0, cmd.value))
+                        if(switch_client(0, cmd.pid))
                             goto client_activate;
                         break;
                     case TSP_CMD_PREV:
