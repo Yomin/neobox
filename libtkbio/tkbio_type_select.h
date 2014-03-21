@@ -36,14 +36,16 @@ struct tkbio_save_select
 void tkbio_type_select_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 void tkbio_type_select_finish(struct tkbio_save *save);
 
+void tkbio_type_select_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+
 int tkbio_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem);
 
 struct tkbio_return tkbio_type_select_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_select_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_select_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_select_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-struct tkbio_return tkbio_type_select_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
-void tkbio_type_select_set_status(int status, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+void tkbio_type_select_set_status(int status, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
 #endif

@@ -26,7 +26,7 @@
 #include "tkbio_def.h"
 #include "tkbio_layout.h"
 
-typedef void tkbio_type_help_set_func(int value, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+typedef void tkbio_type_help_set_func(int value, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
 int  tkbio_type_help_find_type(int type, int id, int map);
 void tkbio_type_help_set_pos_value(int pos, int map, int value, int redraw, tkbio_type_help_set_func f);

@@ -39,15 +39,17 @@ struct tkbio_save_slider
 void tkbio_type_slider_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 void tkbio_type_slider_finish(struct tkbio_save *save);
 
+void tkbio_type_slider_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+
 int tkbio_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem);
 
 struct tkbio_return tkbio_type_slider_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-struct tkbio_return tkbio_type_slider_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+struct tkbio_return tkbio_type_slider_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
-void tkbio_type_slider_set_ticks(int ticks, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-void tkbio_type_slider_set_pos(int pos, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+void tkbio_type_slider_set_ticks(int ticks, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+void tkbio_type_slider_set_pos(int pos, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
 #endif

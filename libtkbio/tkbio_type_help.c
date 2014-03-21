@@ -64,13 +64,13 @@ void tkbio_type_help_set_pos_value(int pos, int mappos, int value, int redraw, t
     // only redraw if map is active
     if(redraw && tkbio.parser.map == mappos)
     {
-        f(value, map, elem, save);
+        f(value, pos/map->width, pos%map->width, map, elem, save);
         // notify framebuffer for redraw
         if(tkbio.sim)
             send(tkbio.fb.sock, &sim_tmp, 1, 0);
     }
     else
-        f(value, 0, elem, save);
+        f(value, pos/map->width, pos%map->width, 0, elem, save);
 }
 
 void tkbio_type_help_set_value(int type, int id, int mappos, int value, int redraw, tkbio_type_help_set_func f)

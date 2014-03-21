@@ -70,6 +70,7 @@ struct tkbio_parser
 
 struct tkbio_partner
 {
+    char flag; // check if already processed
     void *data;
     struct vector *connect;
 };
@@ -86,8 +87,10 @@ struct tkbio_global
     int format;         // portrait or landscape
     int pause;          // pause for debouncer
     int verbose;        // verbose messages
+    int redraw;         // redraw screen on activate
     int sock;           // unix socket to tsp
     int sim;            // sim enabled
+    char flagstat;      // last partner flag
     
     struct tkbio_fb fb;
     struct tkbio_layout layout;

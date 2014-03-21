@@ -76,6 +76,11 @@ void tkbio_type_select_finish(struct tkbio_save *save)
     }
 }
 
+void tkbio_type_select_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    tkbio_type_select_focus_out(y, x, map, elem, save);
+}
+
 int tkbio_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem)
 {
     return tkbio_type_button_broader(y, x, scr_y, scr_x, elem);
@@ -91,7 +96,7 @@ struct tkbio_return tkbio_type_select_press(int y, int x, int button_y, int butt
     
     set_copy(&size, &copy, select);
     if(select->status)
-        tkbio_type_button_focus_out(map, elem, save);
+        tkbio_type_button_focus_out(y, x, map, elem, save);
     else
         tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
     restore_copy(size, copy, select);
@@ -124,7 +129,7 @@ struct tkbio_return tkbio_type_select_focus_in(int y, int x, int button_y, int b
     return tkbio_type_select_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct tkbio_return tkbio_type_select_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_select *select;
     int size;
@@ -134,16 +139,15 @@ struct tkbio_return tkbio_type_select_focus_out(const struct tkbio_map *map, con
     
     set_copy(&size, &copy, select);
     if(!select->status)
-        tkbio_type_button_focus_out(map, elem, save);
+        tkbio_type_button_focus_out(y, x, map, elem, save);
     else
-        tkbio_type_button_press(tkbio.parser.y, tkbio.parser.x,
-            0, 0, map, elem, save);
+        tkbio_type_button_press(y, x, 0, 0, map, elem, save);
     restore_copy(size, copy, select);
     
     return NOP;
 }
 
-void tkbio_type_select_set_status(int status, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_select_set_status(int status, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_select *select;
     
@@ -152,7 +156,7 @@ void tkbio_type_select_set_status(int status, const struct tkbio_map *map, const
     select->status = status;
     
     if(map)
-        tkbio_type_select_focus_out(map, elem, save);
+        tkbio_type_select_focus_out(y, x, map, elem, save);
 }
 
 void tkbio_select_set_status(int id, int mappos, int status)

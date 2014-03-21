@@ -35,6 +35,7 @@
 
 extern struct tkbio_global tkbio;
 
+static int docopy;
 int button_copy_size;
 unsigned char *button_copy;
 
@@ -60,6 +61,7 @@ static void alloc_copy(int height, int width, struct tkbio_partner *partner)
 void tkbio_type_button_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     button_copy_size = 0;
+    docopy = 1;
 }
 
 void tkbio_type_button_finish(struct tkbio_save *save)
@@ -69,6 +71,13 @@ void tkbio_type_button_finish(struct tkbio_save *save)
         free(button_copy);
         button_copy_size = 0;
     }
+}
+
+void tkbio_type_button_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    docopy = 0;
+    tkbio_type_button_focus_out(y, x, map, elem, save);
+    docopy = 1;
 }
 
 int tkbio_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem)
@@ -135,6 +144,7 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
     struct tkbio_return ret;
     struct tsp_cmd cmd;
     int nmap = tkbio.parser.map;
+    int system = 0;
     
     ret.type = TKBIO_RETURN_NOP;
     ret.id = elem->id;
@@ -196,11 +206,7 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
             break;
         }
         
-        if(ret.type != TKBIO_RETURN_NOP)
-        {
-            cmd.value = 0;
-            send(tkbio.sock, &cmd, sizeof(struct tsp_cmd), 0);
-        }
+        system = 1;
         
         break;
     }
@@ -209,9 +215,15 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
         nmap = tkbio.layout.start;
     
 ret:
-    tkbio_type_button_focus_out(map, elem, save);
+    tkbio_type_button_focus_out(y, x, map, elem, save);
     
     tkbio.parser.map = nmap;
+    
+    if(system && ret.type != TKBIO_RETURN_NOP)
+    {
+        cmd.value = 0;
+        send(tkbio.sock, &cmd, sizeof(struct tsp_cmd), 0);
+    }
     
     return ret;
 }
@@ -221,7 +233,7 @@ struct tkbio_return tkbio_type_button_focus_in(int y, int x, int button_y, int b
     return tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     int i, height, width;
     unsigned char *ptr;
@@ -230,12 +242,12 @@ struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, con
     
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(COPY(elem))
+    if(COPY(elem) && docopy)
     {
         ptr = button_copy;
         if(!save->partner)
-            tkbio_layout_fill_rect(tkbio.parser.y*height,
-                tkbio.parser.x*width, height, width, DENSITY, &ptr);
+            tkbio_layout_fill_rect(y*height, x*width,
+                height, width, DENSITY, &ptr);
         else
         {
             connect = save->partner->connect;
@@ -252,14 +264,12 @@ struct tkbio_return tkbio_type_button_focus_out(const struct tkbio_map *map, con
         if(!save->partner)
         {
             if(BORDER(elem))
-                tkbio_layout_draw_rect_connect(tkbio.parser.y*height,
-                    tkbio.parser.x*width, tkbio.parser.y,
-                    tkbio.parser.x, height, width, elem->color,
+                tkbio_layout_draw_rect_connect(y*height, x*width,
+                    y, x, height, width, elem->color,
                     elem->connect, DENSITY, 0);
             else
-                tkbio_layout_draw_rect(tkbio.parser.y*height,
-                    tkbio.parser.x*width, height, width,
-                    elem->color & 15, DENSITY, 0);
+                tkbio_layout_draw_rect(y*height, x*width,
+                    height, width, elem->color & 15, DENSITY, 0);
         }
         else
         {

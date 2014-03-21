@@ -47,6 +47,7 @@
 
 #include "tkbio_layout_default.h"
 
+#include "tkbio_type_nop.h"
 #include "tkbio_type_button.h"
 #include "tkbio_type_slider.h"
 #include "tkbio_type_select.h"
@@ -56,6 +57,7 @@
         switch((e)->type & TKBIO_LAYOUT_MASK_TYPE) \
         { \
         case TKBIO_LAYOUT_TYPE_NOP: \
+            tkbio_type_nop_ ## m (__VA_ARGS__); \
             break; \
         case TKBIO_LAYOUT_TYPE_CHAR: \
         case TKBIO_LAYOUT_TYPE_GOTO: \
@@ -303,8 +305,9 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
 void tkbio_init_screen()
 {
     const struct tkbio_map *map = &tkbio.layout.maps[tkbio.parser.map];
+    struct tkbio_save *save, *saves = tkbio.save[tkbio.parser.map];
     const struct tkbio_mapelem *elem;
-    int y, x, height, width;
+    int y, x, height, width, pos;
     char sim_tmp = 'x'; // content irrelevant
     
     tkbio_get_sizes_current(&height, &width, 0, 0, 0, 0);
@@ -312,26 +315,21 @@ void tkbio_init_screen()
     for(y=0; y<map->height; y++)
         for(x=0; x<map->width; x++)
         {
-            elem = &map->map[y*map->width+x];
+            pos = y*map->width+x;
+            elem = &map->map[pos];
+            save = &saves[pos];
             
-            if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
+            if(save->partner)
             {
-                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_layout_draw_connect(y*height, x*width, y, x,
-                        height, width, elem->color, elem->connect,
-                        DENSITY, 0);
-            }
-            else
-            {
-                if(elem->type & TKBIO_LAYOUT_OPTION_BORDER)
-                    tkbio_layout_draw_rect_connect(y*height, x*width,
-                        y, x, height, width, elem->color,
-                        elem->connect, DENSITY, 0);
+                if(save->partner->flag == tkbio.flagstat)
+                    save->partner->flag = !tkbio.flagstat;
                 else
-                    tkbio_layout_draw_rect(y*height, x*width,
-                        height, width, elem->color & 15, DENSITY, 0);
+                    continue;
             }
+            TYPEFUNC(elem, draw, , y, x, map, elem, save);
         }
+    
+    tkbio.flagstat = !tkbio.flagstat;
     
     // notify framebuffer for redraw
     if(tkbio.sim)
@@ -465,13 +463,17 @@ int tkbio_init_custom(struct tkbio_config config)
     
     // else
     tkbio.pause = 0;
+    tkbio.flagstat = 0;
     tkbio.custom_signal_handler = 0;
     signal(SIGALRM, tkbio_signal_handler);
     signal(SIGINT, tkbio_signal_handler);
     
     // print initial screen
     if(!(config.options & TKBIO_OPTION_NO_INITIAL_PRINT))
+    {
+        tkbio.redraw = 1;
         tkbio_init_screen();
+    }
     
     VERBOSE(printf("[TKBIO] init done\n"));
     
@@ -640,7 +642,13 @@ struct tkbio_return tkbio_handle_event()
     // partner of last button
     partner_last = save_last->partner;
     
-    if(event.event & TSP_EVENT_MOVED)
+    if(event.event & TSP_EVENT_ACTIVATED)
+    {
+        VERBOSE(printf("[TKBIO] activate\n"));
+        if(tkbio.redraw)
+            tkbio_init_screen();
+    }
+    else if(event.event & TSP_EVENT_MOVED)
     {
         if( tkbio.parser.pressed
             && !tkbio.pause) // avoid toggling between two buttons
@@ -661,8 +669,8 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
                     }
                 
                 // move to other button
-                TYPEFUNC(elem_last, focus_out, ret=, map, elem_last,
-                    save_last);
+                TYPEFUNC(elem_last, focus_out, ret=, tkbio.parser.y,
+                    tkbio.parser.x, map, elem_last, save_last);
                 if(ret.type == TKBIO_RETURN_NOP)
                     TYPEFUNC(elem_curr, focus_in, ret=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
