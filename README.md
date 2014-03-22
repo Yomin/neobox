@@ -14,3 +14,6 @@ Simple application to provide keyboard input.
 
 ## slider
 Simple application utilizing a slider to set a device value.
+
+## menu
+Application for starting other applications.
