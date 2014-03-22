@@ -695,8 +695,11 @@ struct tkbio_return tkbio_handle_event()
     if(event.event & TSP_EVENT_ACTIVATED)
     {
         VERBOSE(printf("[TKBIO] activate\n"));
+        
         if(tkbio.redraw)
             tkbio_init_screen();
+        
+        ret.type = TKBIO_RETURN_ACTIVATE;
     }
     else if(event.event & TSP_EVENT_MOVED)
     {
