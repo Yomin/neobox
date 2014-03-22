@@ -117,7 +117,7 @@ void send_client(struct tsp_event *event)
 int rem_client(int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
-    int fd;
+    int fd, active;
     
     if(pid)
     {
@@ -146,6 +146,8 @@ int rem_client(int pos, pid_t pid)
         pid = cs->pid;
     }
     
+    active = cs == client_list.cqh_first;
+    
     memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
     CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
@@ -153,13 +155,21 @@ int rem_client(int pos, pid_t pid)
     
     if((cs = client_list.cqh_first) != (void*)&client_list)
     {
-        DEBUG(printf("Client removed [%i] %i, switch [%i] %i\n",
-            fd, pid, cs->sock, cs->pid));
-        return 1;
+        if(active)
+        {
+            DEBUG(printf("Active client removed [%i] %i, switch [%i] %i\n",
+                fd, pid, cs->sock, cs->pid));
+            return 1;
+        }
+        else
+        {
+            DEBUG(printf("Client removed [%i] %i\n", fd, pid));
+            return 0;
+        }
     }
     else
     {
-        DEBUG(printf("Client removed [%i] %i, last\n", fd, pid));
+        DEBUG(printf("Active client removed [%i] %i, last\n", fd, pid));
         return 0;
     }
 }
