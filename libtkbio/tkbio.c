@@ -751,3 +751,12 @@ int tkbio_run(tkbio_handler *handler, void *state)
     return 0;
 }
 
+int tkbio_switch(pid_t pid)
+{
+    struct tsp_cmd tsp;
+    
+    tsp.cmd = TSP_CMD_SWITCH;
+    tsp.pid = pid;
+    
+    return send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+}

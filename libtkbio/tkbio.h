@@ -62,5 +62,7 @@ struct tkbio_return tkbio_handle_event();
 
 void tkbio_set_signal_handler(void handler(int signal));
 
+int tkbio_switch(pid_t pid);
+
 #endif
 
