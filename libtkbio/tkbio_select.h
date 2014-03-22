@@ -23,7 +23,7 @@
 #ifndef __TKBIO_SELECT_H__
 #define __TKBIO_SELECT_H__
 
-void tkbio_select_set_active(int id, int map, int active);
+void tkbio_select_set_active(int id, int map, int active, int redraw);
 void tkbio_select_set_locked(int id, int map, int locked);
 
 #endif

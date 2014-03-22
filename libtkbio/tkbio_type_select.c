@@ -188,10 +188,10 @@ void tkbio_type_select_set_locked(int locked, int y, int x, const struct tkbio_m
         select->status &= ~TKBIO_TYPE_SELECT_STATUS_LOCKED;
 }
 
-void tkbio_select_set_active(int id, int mappos, int active)
+void tkbio_select_set_active(int id, int mappos, int active, int redraw)
 {
     tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
-        active, 1, tkbio_type_select_set_active);
+        active, redraw, tkbio_type_select_set_active);
 }
 
 void tkbio_select_set_locked(int id, int mappos, int locked)

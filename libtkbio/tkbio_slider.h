@@ -23,8 +23,8 @@
 #ifndef __TKBIO_SLIDER_H__
 #define __TKBIO_SLIDER_H__
 
-void tkbio_slider_set_ticks(int id, int map, int ticks);
-void tkbio_slider_set_pos(int id, int map, int pos);
-void tkbio_slider_set_ticks_pos(int id, int mappos, int ticks, int pos);
+void tkbio_slider_set_ticks(int id, int map, int ticks, int redraw);
+void tkbio_slider_set_pos(int id, int map, int pos, int redraw);
+void tkbio_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int redraw);
 
 #endif
