@@ -26,6 +26,9 @@
 #include "tkbio_def.h"
 #include "tkbio_layout.h"
 
+#define TKBIO_TYPE_SELECT_STATUS_ACTIVE 1
+#define TKBIO_TYPE_SELECT_STATUS_LOCKED 2
+
 struct tkbio_save_select
 {
     int status;
@@ -46,6 +49,7 @@ struct tkbio_return tkbio_type_select_release(int y, int x, int button_y, int bu
 struct tkbio_return tkbio_type_select_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
-void tkbio_type_select_set_status(int status, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+void tkbio_type_select_set_active(int active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
+void tkbio_type_select_set_locked(int locked, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
 
 #endif

@@ -34,6 +34,8 @@ extern struct tkbio_global tkbio;
 extern int button_copy_size;
 extern unsigned char *button_copy;
 
+static int forceprint;
+
 inline static void set_copy(int *size, unsigned char **copy, struct tkbio_save_select *select)
 {
     *size = button_copy_size;
@@ -60,6 +62,8 @@ void tkbio_type_select_init(int y, int x, const struct tkbio_map *map, const str
     }
     else
         save->data = calloc(1, sizeof(struct tkbio_save_select));
+    
+    forceprint = 0;
 }
 
 void tkbio_type_select_finish(struct tkbio_save *save)
@@ -78,7 +82,9 @@ void tkbio_type_select_finish(struct tkbio_save *save)
 
 void tkbio_type_select_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
+    forceprint = 1;
     tkbio_type_select_focus_out(y, x, map, elem, save);
+    forceprint = 0;
 }
 
 int tkbio_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem)
@@ -94,8 +100,11 @@ struct tkbio_return tkbio_type_select_press(int y, int x, int button_y, int butt
     
     select = save->partner ? save->partner->data : save->data;
     
+    if(select->status & TKBIO_TYPE_SELECT_STATUS_LOCKED)
+        return NOP;
+    
     set_copy(&size, &copy, select);
-    if(select->status)
+    if(select->status & TKBIO_TYPE_SELECT_STATUS_ACTIVE)
         tkbio_type_button_focus_out(y, x, map, elem, save);
     else
         tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
@@ -116,10 +125,14 @@ struct tkbio_return tkbio_type_select_release(int y, int x, int button_y, int bu
     
     select = save->partner ? save->partner->data : save->data;
     
-    ret.type = TKBIO_RETURN_INT;
-    ret.value.i = select->status = !select->status;
+    if(!(select->status & TKBIO_TYPE_SELECT_STATUS_LOCKED))
+        select->status ^= TKBIO_TYPE_SELECT_STATUS_ACTIVE;
     
-    VERBOSE(printf("[TKBIO] select %s\n", select->status ? "on" : "off"));
+    ret.type = TKBIO_RETURN_INT;
+    ret.id = elem->id;
+    ret.value.i = select->status & TKBIO_TYPE_SELECT_STATUS_ACTIVE;
+    
+    VERBOSE(printf("[TKBIO] select %s\n", ret.value.i ? "on" : "off"));
     
     return ret;
 }
@@ -137,30 +150,52 @@ struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio
     
     select = save->partner ? save->partner->data : save->data;
     
+    if(!forceprint && select->status & TKBIO_TYPE_SELECT_STATUS_LOCKED)
+        return NOP;
+    
     set_copy(&size, &copy, select);
-    if(!select->status)
-        tkbio_type_button_focus_out(y, x, map, elem, save);
-    else
+    if(select->status & TKBIO_TYPE_SELECT_STATUS_ACTIVE)
         tkbio_type_button_press(y, x, 0, 0, map, elem, save);
+    else
+        tkbio_type_button_focus_out(y, x, map, elem, save);
     restore_copy(size, copy, select);
     
     return NOP;
 }
 
-void tkbio_type_select_set_status(int status, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_select_set_active(int active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_select *select;
     
-    status = status ? 1 : 0; // normalize
     select = save->partner ? save->partner->data : save->data;
-    select->status = status;
+    if(active)
+        select->status |= TKBIO_TYPE_SELECT_STATUS_ACTIVE;
+    else
+        select->status &= ~TKBIO_TYPE_SELECT_STATUS_ACTIVE;
     
     if(map)
         tkbio_type_select_focus_out(y, x, map, elem, save);
 }
 
-void tkbio_select_set_status(int id, int mappos, int status)
+void tkbio_type_select_set_locked(int locked, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    struct tkbio_save_select *select;
+    
+    select = save->partner ? save->partner->data : save->data;
+    if(locked)
+        select->status |= TKBIO_TYPE_SELECT_STATUS_LOCKED;
+    else
+        select->status &= ~TKBIO_TYPE_SELECT_STATUS_LOCKED;
+}
+
+void tkbio_select_set_active(int id, int mappos, int active)
 {
     tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
-        status, 1, tkbio_type_select_set_status);
+        active, 1, tkbio_type_select_set_active);
+}
+
+void tkbio_select_set_locked(int id, int mappos, int locked)
+{
+    tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
+        locked, 0, tkbio_type_select_set_locked);
 }
