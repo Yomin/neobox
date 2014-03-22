@@ -21,6 +21,7 @@
  */
 
 #define _BSD_SOURCE
+#define _POSIX_SOURCE
 
 #include <unistd.h>
 #include <stdio.h>
@@ -78,11 +79,7 @@
     while(0)
 
 struct tkbio_global tkbio;
-
-void tkbio_set_signal_handler(void handler(int signal))
-{
-    tkbio.custom_signal_handler = handler;
-}
+volatile sig_atomic_t sigint = 0;
 
 void tkbio_signal_handler(int signal)
 {
@@ -93,19 +90,49 @@ void tkbio_signal_handler(int signal)
         break;
     case SIGINT:
     {
-        if(tkbio.custom_signal_handler)
+        if(tkbio.custom_signal_sigint && tkbio.custom_signal_handler)
             tkbio.custom_signal_handler(signal);
         else
-        {
-            tkbio_finish();
-            exit(128+SIGINT);
-        }
+            sigint = 1;
         break;
     }
     default:
         if(tkbio.custom_signal_handler)
             tkbio.custom_signal_handler(signal);
     }
+}
+
+int tkbio_signal_catch(int sig, int flags)
+{
+    struct sigaction sa;
+    sa.sa_handler = tkbio_signal_handler;
+    sa.sa_flags = flags;
+    sigemptyset(&sa.sa_mask);
+    
+    switch(sig)
+    {
+    case SIGALRM:
+        break;
+    case SIGINT:
+        tkbio.custom_signal_sigint = 1;
+        break;
+    default:
+        if(sigaction(sig, &sa, 0) == -1)
+        {
+            VERBOSE(perror("[TKBIO] Failed to catch signal"));
+            return TKBIO_ERROR_SIGNAL;
+        }
+    }
+    return 0;
+}
+
+int tkbio_signal_set_handler(int signal, int flags, void handler(int signal))
+{
+    int err = tkbio_signal_catch(signal, flags);
+    if(err)
+        return err;
+    tkbio.custom_signal_handler = handler;
+    return 0;
 }
 
 void tkbio_init_partner()
@@ -341,6 +368,7 @@ int tkbio_init_custom(struct tkbio_config config)
     int ret;
     struct sockaddr_un addr;
     struct tsp_cmd tsp;
+    struct sigaction sa;
     
     tkbio.verbose = config.verbose;
     
@@ -470,9 +498,25 @@ int tkbio_init_custom(struct tkbio_config config)
     // else
     tkbio.pause = 0;
     tkbio.flagstat = 0;
+    tkbio.custom_signal_sigint = 0;
     tkbio.custom_signal_handler = 0;
-    signal(SIGALRM, tkbio_signal_handler);
-    signal(SIGINT, tkbio_signal_handler);
+    
+    sa.sa_handler = tkbio_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    
+    sa.sa_flags = SA_RESTART;
+    if(sigaction(SIGALRM, &sa, 0) == -1)
+    {
+        perror("Failed to catch SIGARLM");
+        return TKBIO_ERROR_SIGNAL;
+    }
+    
+    sa.sa_flags = 0;
+    if(sigaction(SIGINT, &sa, 0) == -1)
+    {
+        perror("Failed to catch SIGINT");
+        return TKBIO_ERROR_SIGNAL;
+    }
     
     // print initial screen
     if(!(config.options & TKBIO_OPTION_NO_INITIAL_PRINT))
@@ -732,7 +776,22 @@ int tkbio_run(tkbio_handler *handler, void *state)
     
     while(1)
     {
-        poll(pfds, 1, -1);
+        if(poll(pfds, 1, -1) == -1)
+        {
+            if(errno == EINTR)
+            {
+                if(sigint)
+                {
+                    tret.type = TKBIO_RETURN_QUIT;
+                    return handler(tret, state);
+                }
+                else
+                    continue;
+            }
+            
+            VERBOSE(perror("[TKBIO] Failed to poll"));
+            return TKBIO_ERROR_POLL;
+        }
         
         if(pfds[0].revents & POLLIN)
         {

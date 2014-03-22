@@ -98,6 +98,7 @@ struct tkbio_global
     struct tkbio_save **save; // button save array
     struct tkbio_return ret;  // 2nd event from focus out-in
     
+    char custom_signal_sigint; // sigint handled by custom handler
     void (*custom_signal_handler)(int signal);
 };
 

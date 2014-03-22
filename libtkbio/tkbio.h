@@ -23,6 +23,7 @@
 #ifndef __TKBIO_H__
 #define __TKBIO_H__
 
+#include <sys/types.h>
 #include "tkbio_layout.h"
 
 #define TKBIO_ERROR_RPC_OPEN    -1
@@ -32,6 +33,8 @@
 #define TKBIO_ERROR_FB_MMAP     -5
 #define TKBIO_ERROR_SCREEN_OPEN -6
 #define TKBIO_ERROR_SCREEN_POLL -7
+#define TKBIO_ERROR_SIGNAL      -8
+#define TKBIO_ERROR_POLL        -9
 
 #define TKBIO_FORMAT_LANDSCAPE  0
 #define TKBIO_FORMAT_PORTRAIT   1
@@ -60,7 +63,8 @@ void tkbio_finish();
 int tkbio_run(tkbio_handler *h, void *state);
 struct tkbio_return tkbio_handle_event();
 
-void tkbio_set_signal_handler(void handler(int signal));
+int tkbio_signal_catch(int signal, int flags);
+int tkbio_signal_set_handler(int signal, int flags, void handler(int signal));
 
 int tkbio_switch(pid_t pid);
 
