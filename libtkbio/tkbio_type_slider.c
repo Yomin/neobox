@@ -29,10 +29,11 @@
 #include "tkbio_type_slider.h"
 #include "tkbio_type_help.h"
 
-#define COPY(e)    ((e)->type & TKBIO_LAYOUT_OPTION_COPY)
-#define BORDER(e)  ((e)->type & TKBIO_LAYOUT_OPTION_BORDER)
+#define COPY(e)    ((e)->options & TKBIO_LAYOUT_OPTION_COPY)
+#define BORDER(e)  ((e)->options & TKBIO_LAYOUT_OPTION_BORDER)
+#define CONNECT(e) ((e)->options & TKBIO_LAYOUT_OPTION_MASK_CONNECT)
 #define LANDSCAPE  (tkbio.format == TKBIO_FORMAT_LANDSCAPE)
-#define HSLIDER(e) (((e)->type & TKBIO_LAYOUT_MASK_TYPE) == TKBIO_LAYOUT_TYPE_HSLIDER)
+#define HSLIDER(e) ((e)->type == TKBIO_LAYOUT_TYPE_HSLIDER)
 #define NOP        (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
 extern struct tkbio_global tkbio;
@@ -203,7 +204,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
     
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
+    if(COPY(elem))
         alloc_copy(height, width, save);
     
     if(!save->partner)
@@ -230,7 +231,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height,
                     x*width+button_x, y, x, height, width-button_x,
-                    elem->color, elem->connect, DENSITY, &ptr);
+                    elem->color, CONNECT(elem), DENSITY, &ptr);
             else
                 tkbio_layout_draw_rect(y*height, x*width+button_x,
                     height, width-button_x, elem->color & 15,
@@ -255,7 +256,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height, x*width,
                     y, x, button_y, width, elem->color,
-                    elem->connect, DENSITY, &ptr);
+                    CONNECT(elem), DENSITY, &ptr);
             else
                 tkbio_layout_draw_rect(y*height, x*width, button_y,
                     width, elem->color & 15, DENSITY, &ptr);
@@ -326,7 +327,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                     tkbio_layout_draw_rect_connect(partner_y,
                         pos, p->y, p->x, height,
                         width-(pos-partner_x), p->elem->color,
-                        p->elem->connect, DENSITY, &ptr);
+                        CONNECT(p->elem), DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y,
                         pos, height, width-(pos-partner_x),
@@ -341,7 +342,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                     tkbio_layout_draw_rect_connect(partner_y,
                         partner_x, p->y, p->x, pos-partner_y,
                         width, p->elem->color,
-                        p->elem->connect, DENSITY, &ptr);
+                        CONNECT(p->elem), DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y, partner_x,
                         pos-partner_y, width, p->elem->color & 15,
@@ -352,7 +353,7 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                 if(BORDER(elem))
                     tkbio_layout_draw_rect_connect(partner_y, partner_x,
                         p->y, p->x, height, width, p->elem->color,
-                        p->elem->connect, DENSITY, &ptr);
+                        CONNECT(p->elem), DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y, partner_x,
                         height, width, p->elem->color & 15,

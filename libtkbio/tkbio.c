@@ -55,7 +55,7 @@
 
 #define TYPEFUNC(e, m, r, ...) \
     do { \
-        switch((e)->type & TKBIO_LAYOUT_MASK_TYPE) \
+        switch((e)->type) \
         { \
         case TKBIO_LAYOUT_TYPE_NOP: \
             tkbio_type_nop_ ## m (__VA_ARGS__); \
@@ -164,7 +164,7 @@ void tkbio_init_partner()
             elem = &map[j];
             p = (struct tkbio_point){j/width, j%width, elem};
             
-            if(j%width>0 && elem->connect & TKBIO_LAYOUT_CONNECT_LEFT)
+            if(j%width>0 && elem->options & TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
             {
                 partner_prev = &tkbio.save[i][j-1].partner;
                 if(!*partner_prev) // left unconnected
@@ -179,7 +179,7 @@ void tkbio_init_partner()
                 tkbio.save[i][j].partner = *partner_prev;
                 vector_push(&p, (*partner_prev)->connect);
             }
-            if(j>=width && elem->connect & TKBIO_LAYOUT_CONNECT_UP)
+            if(j>=width && elem->options & TKBIO_LAYOUT_OPTION_CONNECT_UP)
             {
                 partner_prev = &tkbio.save[i][j-width].partner;
                 partner = &tkbio.save[i][j].partner;

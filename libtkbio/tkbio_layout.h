@@ -32,12 +32,18 @@
 #define TKBIO_LAYOUT_TYPE_VSLIDER   6
 #define TKBIO_LAYOUT_TYPE_SYSTEM    7
 #define TKBIO_LAYOUT_TYPE_SELECT    8
-#define TKBIO_LAYOUT_MASK_TYPE      15
-#define TKBIO_LAYOUT_OPTION_BORDER  16
-#define TKBIO_LAYOUT_OPTION_COPY    32
 
-#define TKBIO_LAYOUT_CONNECT_LEFT   1
-#define TKBIO_LAYOUT_CONNECT_UP     2
+#define TKBIO_LAYOUT_OPTION_ALIGN_CENTER    0
+#define TKBIO_LAYOUT_OPTION_ALIGN_TOP       1
+#define TKBIO_LAYOUT_OPTION_ALIGN_BOTTOM    2
+#define TKBIO_LAYOUT_OPTION_ALIGN_LEFT      3
+#define TKBIO_LAYOUT_OPTION_ALIGN_RIGHT     4
+#define TKBIO_LAYOUT_OPTION_MASK_ALIGN      (1+2+4)
+#define TKBIO_LAYOUT_OPTION_BORDER          8
+#define TKBIO_LAYOUT_OPTION_COPY            16
+#define TKBIO_LAYOUT_OPTION_CONNECT_LEFT    32
+#define TKBIO_LAYOUT_OPTION_CONNECT_UP      64
+#define TKBIO_LAYOUT_OPTION_MASK_CONNECT    (32+64)
 
 #define TKBIO_CHARELEM_MAX          4
 
@@ -79,7 +85,7 @@ struct tkbio_mapelem
     unsigned char type, id;
     union tkbio_elem elem;
     unsigned char color;
-    unsigned char connect;
+    unsigned char options;
 };
 
 struct tkbio_map

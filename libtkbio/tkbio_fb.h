@@ -31,12 +31,6 @@
 #define TKBIO_BORDER_BOTTOM 8
 #define TKBIO_BORDER_ALL    15
 
-#define TKBIO_TEXT_CENTER 0
-#define TKBIO_TEXT_TOP    1
-#define TKBIO_TEXT_LEFT   2
-#define TKBIO_TEXT_BOTTOM 3
-#define TKBIO_TEXT_RIGHT  4
-
 void tkbio_color32to16(unsigned char* dst, const unsigned char* src);
 
 void tkbio_get_sizes(const struct tkbio_map *map, int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width);

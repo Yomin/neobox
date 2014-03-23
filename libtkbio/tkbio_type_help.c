@@ -27,8 +27,6 @@
 #include "tkbio_def.h"
 #include "tkbio_type_help.h"
 
-#define TYPE(e, t) (((e)->type & TKBIO_LAYOUT_MASK_TYPE) == (t))
-
 extern struct tkbio_global tkbio;
 
 int tkbio_type_help_find_type(int type, int id, int mappos)
@@ -41,7 +39,7 @@ int tkbio_type_help_find_type(int type, int id, int mappos)
     for(i=0; i<size; i++)
     {
         elem = &map->map[i];
-        if(TYPE(elem, type) && elem->id == id)
+        if(elem->type == type && elem->id == id)
             return i;
     }
     

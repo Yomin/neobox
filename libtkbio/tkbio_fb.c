@@ -178,38 +178,38 @@ unsigned char tkbio_fb_connect_to_borders(int cord_y, int cord_x, unsigned char 
     
     if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
     {
-        if(connect & TKBIO_LAYOUT_CONNECT_LEFT)
+        if(connect & TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
             borders &= ~TKBIO_BORDER_TOP;
-        if(connect & TKBIO_LAYOUT_CONNECT_UP)
+        if(connect & TKBIO_LAYOUT_OPTION_CONNECT_UP)
             borders &= ~TKBIO_BORDER_RIGHT;
         if(cord_y < map->width-1 &&
             map->map[(map->height-cord_x-1)*map->width+cord_y+1]
-            .connect & TKBIO_LAYOUT_CONNECT_LEFT)
+            .options & TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
         {
             borders &= ~TKBIO_BORDER_BOTTOM;
         }
         if(cord_x > 0 &&
             map->map[(map->height-cord_x)*map->width+cord_y]
-            .connect & TKBIO_LAYOUT_CONNECT_UP)
+            .options & TKBIO_LAYOUT_OPTION_CONNECT_UP)
         {
             borders &= ~TKBIO_BORDER_LEFT;
         }
     }
     else
     {
-        if(connect & TKBIO_LAYOUT_CONNECT_LEFT)
+        if(connect & TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
             borders &= ~TKBIO_BORDER_LEFT;
-        if(connect & TKBIO_LAYOUT_CONNECT_UP)
+        if(connect & TKBIO_LAYOUT_OPTION_CONNECT_UP)
             borders &= ~TKBIO_BORDER_TOP;
         if(cord_x < map->width-1 &&
             map->map[cord_y*map->width+cord_x+1]
-            .connect & TKBIO_LAYOUT_CONNECT_LEFT)
+            .options & TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
         {
             borders &= ~TKBIO_BORDER_RIGHT;
         }
         if(cord_y < map->height-1 &&
             map->map[(cord_y+1)*map->width+cord_x]
-            .connect & TKBIO_LAYOUT_CONNECT_UP)
+            .options & TKBIO_LAYOUT_OPTION_CONNECT_UP)
         {
             borders &= ~TKBIO_BORDER_BOTTOM;
         }
@@ -521,8 +521,8 @@ void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int c
         tkbio_layout_to_fb_sizes(&height, &width);
         if(align)
         {
-            if(align == TKBIO_TEXT_TOP)
-                align = TKBIO_TEXT_RIGHT;
+            if(align == TKBIO_LAYOUT_OPTION_ALIGN_TOP)
+                align = TKBIO_LAYOUT_OPTION_ALIGN_RIGHT;
             else
                 align--;
         }
@@ -534,29 +534,29 @@ static unsigned char* align_base(int align, int height, int width, int text_heig
 {
     switch(align)
     {
-    case TKBIO_TEXT_CENTER:
-    case TKBIO_TEXT_LEFT:
-    case TKBIO_TEXT_RIGHT:
+    case TKBIO_LAYOUT_OPTION_ALIGN_CENTER:
+    case TKBIO_LAYOUT_OPTION_ALIGN_LEFT:
+    case TKBIO_LAYOUT_OPTION_ALIGN_RIGHT:
         base += (height/2-text_height/2)*tkbio.fb.finfo.line_length;
         break;
-    case TKBIO_TEXT_TOP:
+    case TKBIO_LAYOUT_OPTION_ALIGN_TOP:
         base += offset*tkbio.fb.finfo.line_length;
         break;
-    case TKBIO_TEXT_BOTTOM:
+    case TKBIO_LAYOUT_OPTION_ALIGN_BOTTOM:
         base += (height-text_height-offset)*tkbio.fb.finfo.line_length;
         break;
     }
     switch(align)
     {
-    case TKBIO_TEXT_CENTER:
-    case TKBIO_TEXT_TOP:
-    case TKBIO_TEXT_BOTTOM:
+    case TKBIO_LAYOUT_OPTION_ALIGN_CENTER:
+    case TKBIO_LAYOUT_OPTION_ALIGN_TOP:
+    case TKBIO_LAYOUT_OPTION_ALIGN_BOTTOM:
         base += (width/2-text_width/2)*tkbio.fb.bpp;
         break;
-    case TKBIO_TEXT_LEFT:
+    case TKBIO_LAYOUT_OPTION_ALIGN_LEFT:
         base += offset*tkbio.fb.bpp;
         break;
-    case TKBIO_TEXT_RIGHT:
+    case TKBIO_LAYOUT_OPTION_ALIGN_RIGHT:
         base += (width-text_width-offset)*tkbio.fb.bpp;
         break;
     }

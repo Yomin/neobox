@@ -29,9 +29,11 @@
 #include "tkbio_fb.h"
 #include "tkbio_type_button.h"
 
-#define COPY(e)   ((e)->type & TKBIO_LAYOUT_OPTION_COPY)
-#define BORDER(e) ((e)->type & TKBIO_LAYOUT_OPTION_BORDER)
-#define NOP       (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
+#define COPY(e)    ((e)->options & TKBIO_LAYOUT_OPTION_COPY)
+#define BORDER(e)  ((e)->options & TKBIO_LAYOUT_OPTION_BORDER)
+#define CONNECT(e) ((e)->options & TKBIO_LAYOUT_OPTION_MASK_CONNECT)
+#define ALIGN(e)   ((e)->options & TKBIO_LAYOUT_OPTION_MASK_ALIGN)
+#define NOP        (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
 
 extern struct tkbio_global tkbio;
 
@@ -111,7 +113,7 @@ struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int butt
     
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(elem->type & TKBIO_LAYOUT_OPTION_COPY)
+    if(COPY(elem))
     {
         alloc_copy(height, width, save->partner);
         ptr = button_copy;
@@ -149,7 +151,7 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
     ret.type = TKBIO_RETURN_NOP;
     ret.id = elem->id;
     
-    switch(elem->type & TKBIO_LAYOUT_MASK_TYPE)
+    switch(elem->type)
     {
     case TKBIO_LAYOUT_TYPE_CHAR:
         ret.type = TKBIO_RETURN_CHAR;
@@ -266,13 +268,13 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height, x*width,
                     y, x, height, width, elem->color,
-                    elem->connect, DENSITY, 0);
+                    CONNECT(elem), DENSITY, 0);
             else
                 tkbio_layout_draw_rect(y*height, x*width,
                     height, width, elem->color & 15, DENSITY, 0);
             
             tkbio_layout_draw_string(y*height, x*width,
-                height, width, elem->color >> 4, TKBIO_TEXT_CENTER,
+                height, width, elem->color >> 4, ALIGN(elem),
                 elem->name ? elem->name : elem->elem.c.c);
         }
         else
@@ -284,7 +286,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                 if(BORDER(p->elem))
                     tkbio_layout_draw_rect_connect(p->y*height,
                         p->x*width, p->y, p->x, height, width,
-                        p->elem->color, p->elem->connect, DENSITY, 0);
+                        p->elem->color, CONNECT(p->elem), DENSITY, 0);
                 else
                     tkbio_layout_draw_rect(p->y*height, p->x*width,
                         height, width, p->elem->color & 15, DENSITY, 0);
@@ -293,7 +295,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
             p2 = vector_at(0, connect);
             tkbio_layout_draw_string(p2->y*height, p2->x*width,
                 (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                p->elem->color >> 4, TKBIO_TEXT_CENTER,
+                p->elem->color >> 4, ALIGN(elem),
                 p->elem->name ? p->elem->name : p->elem->elem.c.c);
         }
     }
