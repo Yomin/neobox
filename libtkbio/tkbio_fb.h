@@ -31,6 +31,12 @@
 #define TKBIO_BORDER_BOTTOM 8
 #define TKBIO_BORDER_ALL    15
 
+#define TKBIO_TEXT_CENTER 0
+#define TKBIO_TEXT_TOP    1
+#define TKBIO_TEXT_LEFT   2
+#define TKBIO_TEXT_BOTTOM 3
+#define TKBIO_TEXT_RIGHT  4
+
 void tkbio_color32to16(unsigned char* dst, const unsigned char* src);
 
 void tkbio_get_sizes(const struct tkbio_map *map, int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width);
@@ -71,8 +77,8 @@ void tkbio_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height
 void tkbio_layout_fill_border(int pos_y, int pos_x, int height, int width, unsigned char borders, int density, unsigned char **fill);
 void tkbio_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, unsigned char **fill);
 
-void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str);
-void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, const char *str);
-void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str);
+void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
+void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
+void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
 
 #endif

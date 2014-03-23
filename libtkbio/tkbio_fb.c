@@ -511,19 +511,60 @@ void tkbio_fill_border(int pos_y, int pos_x, int height, int width, unsigned cha
     *fill = fll;
 }
 
-void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str)
+void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
 {
     if(tkbio.format == TKBIO_FORMAT_PORTRAIT)
-        tkbio_draw_string(pos_y, pos_x, height, width, color, str);
+        tkbio_draw_string(pos_y, pos_x, height, width, color, align, str);
     else
     {
         tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
         tkbio_layout_to_fb_sizes(&height, &width);
-        tkbio_draw_string_rotate(pos_y, pos_x, height, width, color, str);
+        if(align)
+        {
+            if(align == TKBIO_TEXT_TOP)
+                align = TKBIO_TEXT_RIGHT;
+            else
+                align--;
+        }
+        tkbio_draw_string_rotate(pos_y, pos_x, height, width, color, align, str);
     }
 }
 
-void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str)
+static unsigned char* align_base(int align, int height, int width, int text_height, int text_width, int char_height, int char_width, int offset, unsigned char *base)
+{
+    switch(align)
+    {
+    case TKBIO_TEXT_CENTER:
+    case TKBIO_TEXT_LEFT:
+    case TKBIO_TEXT_RIGHT:
+        base += (height/2-text_height/2)*tkbio.fb.finfo.line_length;
+        break;
+    case TKBIO_TEXT_TOP:
+        base += offset*tkbio.fb.finfo.line_length;
+        break;
+    case TKBIO_TEXT_BOTTOM:
+        base += (height-text_height-offset)*tkbio.fb.finfo.line_length;
+        break;
+    }
+    switch(align)
+    {
+    case TKBIO_TEXT_CENTER:
+    case TKBIO_TEXT_TOP:
+    case TKBIO_TEXT_BOTTOM:
+        base += (width/2-text_width/2)*tkbio.fb.bpp;
+        break;
+    case TKBIO_TEXT_LEFT:
+        base += offset*tkbio.fb.bpp;
+        break;
+    case TKBIO_TEXT_RIGHT:
+        base += (width-text_width-offset)*tkbio.fb.bpp;
+        break;
+    }
+    
+    return base;
+}
+
+void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char col[4], *ptr, *base2;
@@ -534,9 +575,9 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, c
     else
         memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
-    base += (height/2-ISO_CHAR_HEIGHT/2)*tkbio.fb.finfo.line_length;
-    base += (width/2-(strlen(str)*ISO_CHAR_WIDTH)/2)*tkbio.fb.bpp;
-    ptr = base2 = base;
+    ptr = base2 = base = align_base(align, height, width,
+        ISO_CHAR_HEIGHT, strlen(str)*ISO_CHAR_WIDTH,
+        ISO_CHAR_HEIGHT, ISO_CHAR_WIDTH, ISO_CHAR_WIDTH, base);
     
     while(*str)
     {
@@ -559,7 +600,7 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, c
     }
 }
 
-void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, const char *str)
+void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char col[4], *ptr;
@@ -570,9 +611,9 @@ void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int c
     else
         memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
-    base += (height/2-(strlen(str)*ISO_CHAR_WIDTH)/2)*tkbio.fb.finfo.line_length;
-    base += (width/2-ISO_CHAR_HEIGHT/2)*tkbio.fb.bpp;
-    ptr = base;
+    ptr = base = align_base(align, height, width,
+        strlen(str)*ISO_CHAR_WIDTH, ISO_CHAR_HEIGHT,
+        ISO_CHAR_WIDTH, ISO_CHAR_HEIGHT, ISO_CHAR_WIDTH, base);
     
     while(*str)
     {

@@ -272,7 +272,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                     height, width, elem->color & 15, DENSITY, 0);
             
             tkbio_layout_draw_string(y*height, x*width,
-                height, width, elem->color >> 4,
+                height, width, elem->color >> 4, TKBIO_TEXT_CENTER,
                 elem->name ? elem->name : elem->elem.c.c);
         }
         else
@@ -293,7 +293,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
             p2 = vector_at(0, connect);
             tkbio_layout_draw_string(p2->y*height, p2->x*width,
                 (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                p->elem->color >> 4,
+                p->elem->color >> 4, TKBIO_TEXT_CENTER,
                 p->elem->name ? p->elem->name : p->elem->elem.c.c);
         }
     }
