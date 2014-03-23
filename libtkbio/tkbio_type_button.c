@@ -238,7 +238,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
     int i, height, width;
     unsigned char *ptr;
     struct vector *connect;
-    struct tkbio_point *p;
+    struct tkbio_point *p, *p2;
     
     tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
@@ -270,6 +270,10 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
             else
                 tkbio_layout_draw_rect(y*height, x*width,
                     height, width, elem->color & 15, DENSITY, 0);
+            
+            tkbio_layout_draw_string(y*height, x*width,
+                height, width, elem->color >> 4,
+                elem->name ? elem->name : elem->elem.c.c);
         }
         else
         {
@@ -285,6 +289,12 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                     tkbio_layout_draw_rect(p->y*height, p->x*width,
                         height, width, p->elem->color & 15, DENSITY, 0);
             }
+            
+            p2 = vector_at(0, connect);
+            tkbio_layout_draw_string(p2->y*height, p2->x*width,
+                (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
+                p->elem->color >> 4,
+                p->elem->name ? p->elem->name : p->elem->elem.c.c);
         }
     }
     

@@ -46,8 +46,8 @@ const unsigned char menu_colors[][4] =
 #define GOTO_OPTIONS    TKBIO_LAYOUT_TYPE_GOTO|TKBIO_LAYOUT_OPTION_BORDER
 #define SELECT_OPTIONS  TKBIO_LAYOUT_TYPE_SELECT|TKBIO_LAYOUT_OPTION_BORDER
 
-#define CHAR(C)   {0, DEFAULT_OPTIONS, 0, ONE(C), COLOR(COLOR_MENU), 0}
-#define UCHAR(C)  {0, DEFAULT_OPTIONS, 0, ONE(C), COLOR(COLOR_MENU), TKBIO_LAYOUT_CONNECT_UP}
+#define CHAR(N, C)  {N, DEFAULT_OPTIONS, 0, ONE(C), COLOR(COLOR_MENU), 0}
+#define UCHAR(N, C) {N, DEFAULT_OPTIONS, 0, ONE(C), COLOR(COLOR_MENU), TKBIO_LAYOUT_CONNECT_UP}
 
 #define SEL(I)  {0, SELECT_OPTIONS, I, VALUE(0), COLOR(COLOR_SELECT), 0}
 #define LSEL(I) {0, SELECT_OPTIONS, I, VALUE(0), COLOR(COLOR_SELECT), TKBIO_LAYOUT_CONNECT_LEFT}
@@ -58,14 +58,14 @@ const unsigned char menu_colors[][4] =
 
 const struct tkbio_mapelem menu_map[] =
     {
-        SEL4(0), CHAR('k'),
-        SEL4(1), UCHAR('k'),
-        SEL4(2), CHAR('u'),
-        SEL4(3), UCHAR('u'),
-        SEL4(4), UCHAR('u'),
-        SEL4(5), CHAR('d'),
-        SEL4(6), UCHAR('d'),
-        SEL4(7), UCHAR('d'),
+        SEL4(0), CHAR("kbd", 'k'),
+        SEL4(1), UCHAR("kbd", 'k'),
+        SEL4(2), CHAR("Up", 'u'),
+        SEL4(3), UCHAR("Up", 'u'),
+        SEL4(4), UCHAR("Up", 'u'),
+        SEL4(5), CHAR("Down", 'd'),
+        SEL4(6), UCHAR("Down", 'd'),
+        SEL4(7), UCHAR("Down", 'd'),
         SEL4(8), ADMIN,
         SEL4(9), UADMIN
     };

@@ -71,6 +71,8 @@ void tkbio_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height
 void tkbio_layout_fill_border(int pos_y, int pos_x, int height, int width, unsigned char borders, int density, unsigned char **fill);
 void tkbio_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, unsigned char **fill);
 
+void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str);
+void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, const char *str);
+void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, const char *str);
 
 #endif
-
