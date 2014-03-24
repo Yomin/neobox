@@ -267,6 +267,8 @@ int main(int argc, char* argv[])
         return err;
     }
     
+    for(i=0; i<appcount; i++)
+        tkbio_select_set_name(i, 0, apps[i].name, 1);
     for(i=appcount; i<10; i++)
         tkbio_select_set_locked(i, 0, 1);
     

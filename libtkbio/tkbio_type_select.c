@@ -36,20 +36,30 @@ extern unsigned char *button_copy;
 
 static int forceprint;
 
-inline static void set_copy(int *size, unsigned char **copy, struct tkbio_save_select *select)
+inline static void set_data(int *size, unsigned char **copy, struct tkbio_save_select *select, struct tkbio_save *save)
 {
     *size = button_copy_size;
     *copy = button_copy;
     button_copy_size = select->size;
     button_copy = select->copy;
+    
+    if(save->partner)
+        save->partner->data = (void*)select->name;
+    else
+        save->data = (void*)select->name;
 }
 
-inline static void restore_copy(int size, unsigned char *copy, struct tkbio_save_select *select)
+inline static void restore_data(int size, unsigned char *copy, struct tkbio_save_select *select, struct tkbio_save *save)
 {
     select->size = button_copy_size;
     select->copy = button_copy;
     button_copy_size = size;
     button_copy = copy;
+    
+    if(save->partner)
+        save->partner->data = select;
+    else
+        save->data = select;
 }
 
 void tkbio_type_select_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
@@ -103,12 +113,12 @@ struct tkbio_return tkbio_type_select_press(int y, int x, int button_y, int butt
     if(select->status & TKBIO_TYPE_SELECT_STATUS_LOCKED)
         return NOP;
     
-    set_copy(&size, &copy, select);
+    set_data(&size, &copy, select, save);
     if(select->status & TKBIO_TYPE_SELECT_STATUS_ACTIVE)
         tkbio_type_button_focus_out(y, x, map, elem, save);
     else
         tkbio_type_button_press(y, x, button_y, button_x, map, elem, save);
-    restore_copy(size, copy, select);
+    restore_data(size, copy, select, save);
     
     return NOP;
 }
@@ -153,14 +163,26 @@ struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio
     if(!forceprint && select->status & TKBIO_TYPE_SELECT_STATUS_LOCKED)
         return NOP;
     
-    set_copy(&size, &copy, select);
+    set_data(&size, &copy, select, save);
     if(select->status & TKBIO_TYPE_SELECT_STATUS_ACTIVE)
         tkbio_type_button_press(y, x, 0, 0, map, elem, save);
     else
         tkbio_type_button_focus_out(y, x, map, elem, save);
-    restore_copy(size, copy, select);
+    restore_data(size, copy, select, save);
     
     return NOP;
+}
+
+void tkbio_type_select_set_name(const void *name, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    struct tkbio_save_select *select;
+    
+    select = save->partner ? save->partner->data : save->data;
+    
+    select->name = name;
+    
+    if(map)
+        tkbio_type_select_focus_out(y, x, map, elem, save);
 }
 
 void tkbio_type_select_set_active(const void *active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
@@ -186,6 +208,12 @@ void tkbio_type_select_set_locked(const void *locked, int y, int x, const struct
         select->status |= TKBIO_TYPE_SELECT_STATUS_LOCKED;
     else
         select->status &= ~TKBIO_TYPE_SELECT_STATUS_LOCKED;
+}
+
+void tkbio_select_set_name(int id, int mappos, const char *name, int redraw)
+{
+    tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
+        name, redraw, tkbio_type_select_set_name);
 }
 
 void tkbio_select_set_active(int id, int mappos, int active, int redraw)
