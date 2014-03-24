@@ -28,6 +28,7 @@
 
 #include "tkbio_fb.h"
 #include "tkbio_type_button.h"
+#include "tkbio_type_help.h"
 
 #define COPY(e)    ((e)->options & TKBIO_LAYOUT_OPTION_COPY)
 #define BORDER(e)  ((e)->options & TKBIO_LAYOUT_OPTION_BORDER)
@@ -239,6 +240,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
 {
     int i, height, width;
     unsigned char *ptr;
+    const char *text;
     struct vector *connect;
     struct tkbio_point *p, *p2;
     
@@ -273,9 +275,12 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                 tkbio_layout_draw_rect(y*height, x*width,
                     height, width, elem->color & 15, DENSITY, 0);
             
-            tkbio_layout_draw_string(y*height, x*width,
-                height, width, elem->color >> 4, ALIGN(elem),
-                elem->name ? elem->name : elem->elem.c.c);
+            text = save->data ? save->data :
+                (elem->name ? elem->name :
+                (elem->elem.i ? elem->elem.c.c : 0));
+            if(text)
+                tkbio_layout_draw_string(y*height, x*width, height,
+                    width, elem->color >> 4, ALIGN(elem), text);
         }
         else
         {
@@ -292,13 +297,37 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                         height, width, p->elem->color & 15, DENSITY, 0);
             }
             
-            p2 = vector_at(0, connect);
-            tkbio_layout_draw_string(p2->y*height, p2->x*width,
-                (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                p->elem->color >> 4, ALIGN(elem),
-                p->elem->name ? p->elem->name : p->elem->elem.c.c);
+            text = save->partner->data ? save->partner->data :
+                (elem->name ? elem->name :
+                (elem->elem.i ? elem->elem.c.c : 0));
+            
+            if(text)
+            {
+                p2 = vector_at(0, connect);
+                tkbio_layout_draw_string(p2->y*height, p2->x*width,
+                    (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
+                    p->elem->color >> 4, ALIGN(elem), text);
+            }
         }
     }
     
     return NOP;
+}
+
+void tkbio_type_button_set_name(const void *name, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+{
+    if(!save->partner)
+        save->data = (void*)name;
+    else
+        save->partner->data = (void*)name;
+    
+    if(map)
+        tkbio_type_button_draw(y, x, map, elem, save);
+}
+
+void tkbio_button_set_name(int id , int mappos, const char *name, int redraw)
+{
+    tkbio_type_help_set_range_value(TKBIO_LAYOUT_TYPE_CHAR,
+        TKBIO_LAYOUT_TYPE_SYSTEM, id, mappos, name, redraw,
+        tkbio_type_button_set_name);
 }

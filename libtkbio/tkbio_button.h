@@ -20,17 +20,9 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_TYPE_HELP_H__
-#define __TKBIO_TYPE_HELP_H__
+#ifndef __TKBIO_BUTTON_H__
+#define __TKBIO_BUTTON_H__
 
-#include "tkbio_def.h"
-#include "tkbio_layout.h"
-
-typedef void tkbio_type_help_set_func(const void *value, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save);
-
-int  tkbio_type_help_find_type(int type_from, int type_to, int id, int map);
-void tkbio_type_help_set_pos_value(int pos, int map, const void *value, int redraw, tkbio_type_help_set_func f);
-void tkbio_type_help_set_range_value(int type_from, int type_to, int id, int map, const void *value, int redraw, tkbio_type_help_set_func f);
-void tkbio_type_help_set_value(int type, int id, int map, const void *value, int redraw, tkbio_type_help_set_func f);
+void tkbio_button_set_name(int id, int map, const char *name, int redraw);
 
 #endif

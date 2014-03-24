@@ -420,9 +420,10 @@ struct tkbio_return tkbio_type_slider_focus_out(int y, int x, const struct tkbio
         slider->y%height, slider->x%width, map, elem, save);
 }
 
-void tkbio_type_slider_set_ticks(int ticks, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_slider_set_ticks(const void *vticks, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_slider *slider;
+    int ticks = *(int*)vticks;
     
     if(ticks < 0)
         return;
@@ -439,9 +440,10 @@ void tkbio_type_slider_set_ticks(int ticks, int y, int x, const struct tkbio_map
         tkbio_type_slider_focus_out(y, x, map, elem, save);
 }
 
-void tkbio_type_slider_set_pos(int pos, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_slider_set_pos(const void *vpos, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_slider *slider;
+    int pos = *(int*)vpos;
     
     slider = save->partner ? save->partner->data : save->data;
     
@@ -471,38 +473,26 @@ void tkbio_type_slider_set_pos(int pos, int y, int x, const struct tkbio_map *ma
 
 void tkbio_slider_set_ticks(int id, int mappos, int ticks, int redraw)
 {
-    int tpos = tkbio_type_help_find_type(
-        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
-    if(tpos == -1)
-        tpos = tkbio_type_help_find_type(
-            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
-    
-    tkbio_type_help_set_pos_value(tpos, mappos, ticks, redraw,
+    tkbio_type_help_set_range_value(TKBIO_LAYOUT_TYPE_HSLIDER,
+        TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos, &ticks, redraw,
         tkbio_type_slider_set_ticks);
 }
 
 void tkbio_slider_set_pos(int id, int mappos, int pos, int redraw)
 {
-    int tpos = tkbio_type_help_find_type(
-        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
-    if(tpos == -1)
-        tpos = tkbio_type_help_find_type(
-            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
-    
-    tkbio_type_help_set_pos_value(tpos, mappos, pos, redraw,
-        tkbio_type_slider_set_pos);
+    tkbio_type_help_set_range_value(TKBIO_LAYOUT_TYPE_HSLIDER,
+        TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos, &pos, redraw,
+        tkbio_type_slider_set_ticks);
 }
 
 void tkbio_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int redraw)
 {
     int tpos = tkbio_type_help_find_type(
-        TKBIO_LAYOUT_TYPE_HSLIDER, id, mappos);
-    if(tpos == -1)
-        tpos = tkbio_type_help_find_type(
-            TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos);
+        TKBIO_LAYOUT_TYPE_HSLIDER, TKBIO_LAYOUT_TYPE_VSLIDER,
+        id, mappos);
     
-    tkbio_type_help_set_pos_value(tpos, mappos, ticks, 0,
+    tkbio_type_help_set_pos_value(tpos, mappos, &ticks, 0,
         tkbio_type_slider_set_ticks);
-    tkbio_type_help_set_pos_value(tpos, mappos, pos, redraw,
+    tkbio_type_help_set_pos_value(tpos, mappos, &pos, redraw,
         tkbio_type_slider_set_pos);
 }

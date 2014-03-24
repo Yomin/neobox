@@ -22,6 +22,7 @@
 
 #include "tkbio_type_nop.h"
 #include "tkbio_type_button.h"
+#include "tkbio_type_help.h"
 
 void tkbio_type_nop_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
@@ -66,4 +67,10 @@ void tkbio_type_nop_focus_in(int y, int x, int button_y, int button_x, const str
 void tkbio_type_nop_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     
+}
+
+void tkbio_nop_set_name(int id , int mappos, const char *name, int redraw)
+{
+    tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_NOP, id, mappos,
+        name, redraw, tkbio_type_button_set_name);
 }

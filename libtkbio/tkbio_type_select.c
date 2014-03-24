@@ -163,12 +163,12 @@ struct tkbio_return tkbio_type_select_focus_out(int y, int x, const struct tkbio
     return NOP;
 }
 
-void tkbio_type_select_set_active(int active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_select_set_active(const void *active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_select *select;
     
     select = save->partner ? save->partner->data : save->data;
-    if(active)
+    if(*(int*)active)
         select->status |= TKBIO_TYPE_SELECT_STATUS_ACTIVE;
     else
         select->status &= ~TKBIO_TYPE_SELECT_STATUS_ACTIVE;
@@ -177,12 +177,12 @@ void tkbio_type_select_set_active(int active, int y, int x, const struct tkbio_m
         tkbio_type_select_focus_out(y, x, map, elem, save);
 }
 
-void tkbio_type_select_set_locked(int locked, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void tkbio_type_select_set_locked(const void *locked, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_save_select *select;
     
     select = save->partner ? save->partner->data : save->data;
-    if(locked)
+    if(*(int*)locked)
         select->status |= TKBIO_TYPE_SELECT_STATUS_LOCKED;
     else
         select->status &= ~TKBIO_TYPE_SELECT_STATUS_LOCKED;
@@ -191,11 +191,11 @@ void tkbio_type_select_set_locked(int locked, int y, int x, const struct tkbio_m
 void tkbio_select_set_active(int id, int mappos, int active, int redraw)
 {
     tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
-        active, redraw, tkbio_type_select_set_active);
+        &active, redraw, tkbio_type_select_set_active);
 }
 
 void tkbio_select_set_locked(int id, int mappos, int locked)
 {
     tkbio_type_help_set_value(TKBIO_LAYOUT_TYPE_SELECT, id, mappos,
-        locked, 0, tkbio_type_select_set_locked);
+        &locked, 0, tkbio_type_select_set_locked);
 }

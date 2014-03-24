@@ -29,7 +29,7 @@
 
 extern struct tkbio_global tkbio;
 
-int tkbio_type_help_find_type(int type, int id, int mappos)
+int tkbio_type_help_find_type(int type_from, int type_to, int id, int mappos)
 {
     const struct tkbio_map *map = &tkbio.layout.maps[mappos];
     const struct tkbio_mapelem *elem;
@@ -39,14 +39,14 @@ int tkbio_type_help_find_type(int type, int id, int mappos)
     for(i=0; i<size; i++)
     {
         elem = &map->map[i];
-        if(elem->type == type && elem->id == id)
+        if(elem->type >= type_from && elem->type <= type_to && elem->id == id)
             return i;
     }
     
     return -1;
 }
 
-void tkbio_type_help_set_pos_value(int pos, int mappos, int value, int redraw, tkbio_type_help_set_func f)
+void tkbio_type_help_set_pos_value(int pos, int mappos, const void *value, int redraw, tkbio_type_help_set_func f)
 {
     const struct tkbio_map *map = &tkbio.layout.maps[mappos];
     const struct tkbio_mapelem *elem;
@@ -71,8 +71,14 @@ void tkbio_type_help_set_pos_value(int pos, int mappos, int value, int redraw, t
         f(value, pos/map->width, pos%map->width, 0, elem, save);
 }
 
-void tkbio_type_help_set_value(int type, int id, int mappos, int value, int redraw, tkbio_type_help_set_func f)
+void tkbio_type_help_set_range_value(int type_from, int type_to, int id, int mappos, const void *value, int redraw, tkbio_type_help_set_func f)
 {
-    int pos = tkbio_type_help_find_type(type, id, mappos);
+    int pos = tkbio_type_help_find_type(type_from, type_to, id, mappos);
+    tkbio_type_help_set_pos_value(pos, mappos, value, redraw, f);
+}
+
+void tkbio_type_help_set_value(int type, int id, int mappos, const void *value, int redraw, tkbio_type_help_set_func f)
+{
+    int pos = tkbio_type_help_find_type(type, type, id, mappos);
     tkbio_type_help_set_pos_value(pos, mappos, value, redraw, f);
 }
