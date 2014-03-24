@@ -59,6 +59,7 @@
 #define TKBIO_RETURN_QUIT           3
 #define TKBIO_RETURN_SWITCH         4
 #define TKBIO_RETURN_ACTIVATE       5
+#define TKBIO_RETURN_SIGNAL         6
 
 struct tkbio_charelem
 {

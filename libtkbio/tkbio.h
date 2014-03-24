@@ -63,8 +63,7 @@ void tkbio_finish();
 int tkbio_run(tkbio_handler *h, void *state);
 struct tkbio_return tkbio_handle_event();
 
-int tkbio_signal_catch(int signal, int flags);
-int tkbio_signal_set_handler(int signal, int flags, void handler(int signal));
+int tkbio_catch_signal(int signal, int flags);
 
 int tkbio_switch(pid_t pid);
 

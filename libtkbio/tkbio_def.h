@@ -24,6 +24,7 @@
 #define __TKBIO_DEF_H__
 
 #include <linux/fb.h>
+#include <sys/queue.h>
 #include <alg/vector.h>
 #include "tkbio_layout.h"
 
@@ -39,6 +40,13 @@
 #define DENSITY     1       // button draw density in pixel
 #define INCREASE    33      // button size increase in percent
 #define DELAY       100000  // debouncer pause delay in us
+
+struct tkbio_chain_queue
+{
+    CIRCLEQ_ENTRY(tkbio_chain_queue) chain;
+    struct tkbio_return ret;
+};
+CIRCLEQ_HEAD(tkbio_queue, tkbio_chain_queue);
 
 struct tkbio_point
 {
@@ -91,15 +99,13 @@ struct tkbio_global
     int sock;           // unix socket to tsp
     int sim;            // sim enabled
     char flagstat;      // last partner flag
+    char gen_sigint;    // generate sigint signal event
     
     struct tkbio_fb fb;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
     struct tkbio_save **save; // button save array
-    struct tkbio_return ret;  // 2nd event from focus out-in
-    
-    char custom_signal_sigint; // sigint handled by custom handler
-    void (*custom_signal_handler)(int signal);
+    struct tkbio_queue queue; // event queue
 };
 
 #endif

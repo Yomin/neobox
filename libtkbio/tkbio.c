@@ -83,38 +83,40 @@ volatile sig_atomic_t sigint = 0;
 
 void tkbio_signal_handler(int signal)
 {
+    struct tkbio_chain_queue *cq;
+    
     switch(signal)
     {
     case SIGALRM:
         tkbio.pause = 0;
         break;
     case SIGINT:
-    {
-        if(tkbio.custom_signal_sigint && tkbio.custom_signal_handler)
-            tkbio.custom_signal_handler(signal);
-        else
+        if(!tkbio.gen_sigint)
+        {
             sigint = 1;
-        break;
-    }
+            return;
+        }
     default:
-        if(tkbio.custom_signal_handler)
-            tkbio.custom_signal_handler(signal);
+        cq = malloc(sizeof(struct tkbio_chain_queue));
+        CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
+        cq->ret.type = TKBIO_RETURN_SIGNAL;
+        cq->ret.value.i = signal;
     }
 }
 
-int tkbio_signal_catch(int sig, int flags)
+int tkbio_catch_signal(int sig, int flags)
 {
     struct sigaction sa;
     sa.sa_handler = tkbio_signal_handler;
     sa.sa_flags = flags;
-    sigemptyset(&sa.sa_mask);
+    sigfillset(&sa.sa_mask);
     
     switch(sig)
     {
     case SIGALRM:
-        break;
+        return TKBIO_ERROR_SIGNAL;
     case SIGINT:
-        tkbio.custom_signal_sigint = 1;
+        tkbio.gen_sigint = 1;
         break;
     default:
         if(sigaction(sig, &sa, 0) == -1)
@@ -126,13 +128,50 @@ int tkbio_signal_catch(int sig, int flags)
     return 0;
 }
 
-int tkbio_signal_set_handler(int signal, int flags, void handler(int signal))
+struct tkbio_return tkbio_get_event()
 {
-    int err = tkbio_signal_catch(signal, flags);
-    if(err)
-        return err;
-    tkbio.custom_signal_handler = handler;
-    return 0;
+    struct tkbio_return ret;
+    struct tkbio_chain_queue *cq;
+    sigset_t set, oldset;
+    
+    ret.type = TKBIO_RETURN_NOP;
+    ret.id = 0;
+    ret.value.i = 0;
+    cq = tkbio.queue.cqh_first;
+    
+    if(cq == (void*)&tkbio.queue)
+        return ret;
+    
+    sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, &oldset);
+    
+    CIRCLEQ_REMOVE(&tkbio.queue, cq, chain);
+    
+    sigprocmask(SIG_SETMASK, &oldset, 0);
+    
+    ret = cq->ret;
+    free(cq);
+    
+    return ret;
+}
+
+void tkbio_queue_event(struct tkbio_return ret)
+{
+    struct tkbio_chain_queue *cq;
+    sigset_t set, oldset;
+    
+    if(ret.type == TKBIO_RETURN_NOP)
+        return;
+    
+    cq = malloc(sizeof(struct tkbio_chain_queue));
+    cq->ret = ret;
+    
+    sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, &oldset);
+    
+    CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
+    
+    sigprocmask(SIG_SETMASK, &oldset, 0);
 }
 
 void tkbio_init_partner()
@@ -498,11 +537,12 @@ int tkbio_init_custom(struct tkbio_config config)
     // else
     tkbio.pause = 0;
     tkbio.flagstat = 0;
-    tkbio.custom_signal_sigint = 0;
-    tkbio.custom_signal_handler = 0;
+    tkbio.gen_sigint = 0;
+    CIRCLEQ_INIT(&tkbio.queue);
     
+    // signals
     sa.sa_handler = tkbio_signal_handler;
-    sigemptyset(&sa.sa_mask);
+    sigfillset(&sa.sa_mask);
     
     sa.sa_flags = SA_RESTART;
     if(sigaction(SIGALRM, &sa, 0) == -1)
@@ -625,7 +665,7 @@ void tkbio_set_pause()
 
 struct tkbio_return tkbio_handle_event()
 {
-    struct tkbio_return ret = { .type = TKBIO_RETURN_NOP, .id = 0, .value.i = 0 };
+    struct tkbio_return ret, ret2;
     struct tsp_event event;
     const struct tkbio_map *map;
     const struct tkbio_mapelem *elem_last, *elem_curr;
@@ -637,13 +677,13 @@ struct tkbio_return tkbio_handle_event()
     int width, height, fb_height, fb_width, scr_height, scr_width;
     char sim_tmp = 'x'; // content irrelevant
     
-    // return 2nd event from focus out-in
-    if(tkbio.ret.type != TKBIO_RETURN_NOP)
-    {
-        ret = tkbio.ret;
-        tkbio.ret.type = TKBIO_RETURN_NOP;
+    ret.type = TKBIO_RETURN_NOP;
+    ret.id = 0;
+    ret.value.i = 0;
+    
+    // check for waiting events
+    if((ret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
         return ret;
-    }
     
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
@@ -728,8 +768,11 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
                     TYPEFUNC(elem_curr, focus_in, ret=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
                 else
-                    TYPEFUNC(elem_curr, focus_in, tkbio.ret=, y, x,
+                {
+                    TYPEFUNC(elem_curr, focus_in, ret2=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
+                    tkbio_queue_event(ret2);
+                }
             }
         }
     }
@@ -779,11 +822,15 @@ int tkbio_run(tkbio_handler *handler, void *state)
     
     while(1)
     {
+        if((tret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
+            if((ret = handler(tret, state)))
+                return ret;
+        
         if(poll(pfds, 1, -1) == -1)
         {
             if(errno == EINTR)
             {
-                if(sigint)
+                if(sigint && !tkbio.gen_sigint)
                 {
                     tret.type = TKBIO_RETURN_QUIT;
                     return handler(tret, state);
@@ -798,10 +845,13 @@ int tkbio_run(tkbio_handler *handler, void *state)
         
         if(pfds[0].revents & POLLIN)
         {
-            if((ret = handler((tret = tkbio_handle_event()), state)))
-                return ret;
-            if(tret.type == TKBIO_RETURN_QUIT)
-                return 0;
+            if((tret = tkbio_handle_event()).type != TKBIO_RETURN_NOP)
+            {
+                if((ret = handler(tret, state)))
+                    return ret;
+                if(tret.type == TKBIO_RETURN_QUIT)
+                    return 0;
+            }
         }
         else if(pfds[0].revents & POLLHUP)
         {

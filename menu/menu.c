@@ -99,6 +99,9 @@ void redraw()
 
 int handler(struct tkbio_return ret, void *state)
 {
+    pid_t pid;
+    int i;
+    
     switch(ret.type)
     {
     case TKBIO_RETURN_CHAR:
@@ -138,6 +141,22 @@ int handler(struct tkbio_return ret, void *state)
         break;
     case TKBIO_RETURN_ACTIVATE:
         active = 1;
+        break;
+    case TKBIO_RETURN_SIGNAL:
+        pid = wait(0);
+        for(i=0; i<appcount; i++)
+            if(apps[i].pid == pid)
+            {
+                if(verbose)
+                    printf("'%s' terminated (%i)\n", apps[i].name, pid);
+                apps[i].pid = 0;
+                if(i-apppos < 10)
+                {
+                    tkbio_select_set_locked(i-apppos, 0, 0);
+                    tkbio_select_set_active(i-apppos, 0, 0, active);
+                }
+                break;
+            }
         break;
     }
     return 0;
@@ -250,24 +269,6 @@ void free_apps()
 
 void sighandler(int signal)
 {
-    pid_t pid;
-    int i;
-    
-    pid = wait(0);
-    
-    for(i=0; i<appcount; i++)
-        if(apps[i].pid == pid)
-        {
-            if(verbose)
-                printf("'%s' terminated (%i)\n", apps[i].name, pid);
-            apps[i].pid = 0;
-            if(i-apppos < 10)
-            {
-                tkbio_select_set_locked(i-apppos, 0, 0);
-                tkbio_select_set_active(i-apppos, 0, 0, active);
-            }
-            break;
-        }
 }
 
 int usage(const char *name)
@@ -312,7 +313,7 @@ int main(int argc, char* argv[])
     
     redraw();
     
-    tkbio_signal_set_handler(SIGCHLD, SA_NOCLDSTOP, sighandler);
+    tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
     
     tkbio_run(handler, 0);
     tkbio_finish();
