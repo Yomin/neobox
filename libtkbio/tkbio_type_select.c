@@ -182,7 +182,11 @@ void tkbio_type_select_set_name(const void *name, int y, int x, const struct tkb
     select->name = name;
     
     if(map)
+    {
+        forceprint = 1;
         tkbio_type_select_focus_out(y, x, map, elem, save);
+        forceprint = 0;
+    }
 }
 
 void tkbio_type_select_set_active(const void *active, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
@@ -196,7 +200,11 @@ void tkbio_type_select_set_active(const void *active, int y, int x, const struct
         select->status &= ~TKBIO_TYPE_SELECT_STATUS_ACTIVE;
     
     if(map)
+    {
+        forceprint = 1;
         tkbio_type_select_focus_out(y, x, map, elem, save);
+        forceprint = 0;
+    }
 }
 
 void tkbio_type_select_set_locked(const void *locked, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)

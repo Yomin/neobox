@@ -44,7 +44,7 @@ struct app
 };
 
 struct app *apps;
-int appcap, appcount;
+int appcap, appcount, apppos;
 int active, verbose;
 
 void exec(int id)
@@ -68,6 +68,35 @@ void exec(int id)
     }
 }
 
+void redraw()
+{
+    int i, j;
+    
+    for(i=0,j=apppos; i<10; i++,j++)
+    {
+        if(j < appcount)
+        {
+            if(apps[j].pid)
+            {
+                tkbio_select_set_active(i, 0, 1, 0);
+                tkbio_select_set_locked(i, 0, 1);
+            }
+            else
+            {
+                tkbio_select_set_active(i, 0, 0, 0);
+                tkbio_select_set_locked(i, 0, 0);
+            }
+            tkbio_select_set_name(i, 0, apps[j].name, 1);
+        }
+        else
+        {
+            tkbio_select_set_active(i, 0, 0, 0);
+            tkbio_select_set_locked(i, 0, 1);
+            tkbio_select_set_name(i, 0, 0, 1);
+        }
+    }
+}
+
 int handler(struct tkbio_return ret, void *state)
 {
     switch(ret.type)
@@ -78,21 +107,31 @@ int handler(struct tkbio_return ret, void *state)
         case 'k':
             break;
         case 'u':
+            if(apppos > 0)
+            {
+                apppos -= apppos > 5 ? 5 : apppos;
+                redraw();
+            }
             break;
         case 'd':
+            if(apppos+10 < appcount)
+            {
+                apppos += appcount-apppos-10 > 5 ? 5 : appcount-apppos-10;
+                redraw();
+            }
             break;
         }
         break;
     case TKBIO_RETURN_INT:
         if(!ret.value.i)
             break;
-        if(!apps[ret.id].pid)
+        if(!apps[apppos+ret.id].pid)
         {
-            exec(ret.id);
+            exec(apppos+ret.id);
             tkbio_select_set_locked(ret.id, 0, 1);
         }
         else
-            tkbio_switch(apps[ret.id].pid);
+            tkbio_switch(apps[apppos+ret.id].pid);
         break;
     case TKBIO_RETURN_SWITCH:
         active = 0;
@@ -120,6 +159,7 @@ int init_apps(const char *file)
     
     appcount = 0;
     appcap = 10;
+    apppos = 0;
     apps = malloc(appcap*sizeof(struct app));
     
     while((count = getline(&line, &size, f)) != -1)
@@ -221,8 +261,11 @@ void sighandler(int signal)
             if(verbose)
                 printf("'%s' terminated (%i)\n", apps[i].name, pid);
             apps[i].pid = 0;
-            tkbio_select_set_locked(i, 0, 0);
-            tkbio_select_set_active(i, 0, 0, active);
+            if(i-apppos < 10)
+            {
+                tkbio_select_set_locked(i-apppos, 0, 0);
+                tkbio_select_set_active(i-apppos, 0, 0, active);
+            }
             break;
         }
 }
@@ -236,7 +279,7 @@ int usage(const char *name)
 int main(int argc, char* argv[])
 {
     struct tkbio_config config = tkbio_config_default(&argc, argv);
-    int err, i, opt;
+    int err, opt;
     
     config.format = TKBIO_FORMAT_PORTRAIT;
     config.layout = menuLayout;
@@ -267,10 +310,7 @@ int main(int argc, char* argv[])
         return err;
     }
     
-    for(i=0; i<appcount; i++)
-        tkbio_select_set_name(i, 0, apps[i].name, 1);
-    for(i=appcount; i<10; i++)
-        tkbio_select_set_locked(i, 0, 1);
+    redraw();
     
     tkbio_signal_set_handler(SIGCHLD, SA_NOCLDSTOP, sighandler);
     
