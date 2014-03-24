@@ -479,11 +479,11 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                             goto client_activate;
                         break;
                     case TSP_CMD_PREV:
-                        if(switch_client(-1, 0))
+                        if(switch_client(+1, 0))
                             goto client_activate;
                         break;
                     case TSP_CMD_NEXT:
-                        if(switch_client(+1, 0))
+                        if(switch_client(-1, 0))
                             goto client_activate;
                         break;
                     default:
