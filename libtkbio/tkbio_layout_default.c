@@ -53,8 +53,8 @@ const unsigned char admin_colors[][4] =
 #define THREE(C1, C2, C3)    { .c = {{C1, C2, C3, 0}} }
 #define FOUR(C1, C2, C3, C4) { .c = {{C1, C2, C3, C4}} }
 
-#define COLOR(Color)    (Color << 4 | TKBIO_COLOR_BLACK)
-#define ADCOLOR(Color)  (Color << 4 | ADMIN_COLOR_BG)
+#define COLOR(Color)    Color,TKBIO_COLOR_BLACK,Color
+#define ADCOLOR(Color)  Color,ADMIN_COLOR_BG,Color
 #define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER|TKBIO_LAYOUT_OPTION_COPY
 
 #define CHAR(N, C, Color)  {N, TKBIO_LAYOUT_TYPE_CHAR, 0, C, COLOR(Color), DEFAULT_OPTIONS}

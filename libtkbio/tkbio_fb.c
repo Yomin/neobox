@@ -333,32 +333,32 @@ void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, u
         *copy = cpy;
 }
 
-void tkbio_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy)
+void tkbio_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy)
 {
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
-    tkbio_draw_rect_border(pos_y, pos_x, height, width, color, borders, density, copy);
+    tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
 }
 
-void tkbio_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy)
+void tkbio_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy)
 {
     unsigned char borders;
     
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
     borders = tkbio_layout_connect_to_borders(cord_y, cord_x, connect);
-    tkbio_draw_rect_border(pos_y, pos_x, height, width, color, borders, density, copy);
+    tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
 }
 
-void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy)
+void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy)
 {
     unsigned char borders;
     
     borders = tkbio_fb_connect_to_borders(cord_y, cord_x, connect);
-    tkbio_draw_rect_border(pos_y, pos_x, height, width, color, borders, density, copy);
+    tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
 }
 
-void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy)
+void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char *ptr = base, *cpy = copy ? *copy : 0;
@@ -367,13 +367,13 @@ void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int col
     
     if(tkbio.fb.bpp == 2)
     {
-        tkbio_color32to16(fg, tkbio.layout.maps[tkbio.parser.map].colors[color>>4]);
-        tkbio_color32to16(bg, tkbio.layout.maps[tkbio.parser.map].colors[color&15]);
+        tkbio_color32to16(fg, tkbio.layout.maps[tkbio.parser.map].colors[color_fg]);
+        tkbio_color32to16(bg, tkbio.layout.maps[tkbio.parser.map].colors[color_bg]);
     }
     else
     {
-        memcpy(fg, tkbio.layout.maps[tkbio.parser.map].colors[color>>4], 4);
-        memcpy(bg, tkbio.layout.maps[tkbio.parser.map].colors[color&15], 4);
+        memcpy(fg, tkbio.layout.maps[tkbio.parser.map].colors[color_fg], 4);
+        memcpy(bg, tkbio.layout.maps[tkbio.parser.map].colors[color_bg], 4);
     }
     
     for(i=0; i<height; i+=density, ptr = base, col = bg)

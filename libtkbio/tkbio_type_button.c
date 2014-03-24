@@ -122,7 +122,7 @@ struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int butt
     
     if(!save->partner)
         tkbio_layout_draw_rect(y*height, x*width, height, width,
-            elem->color >> 4, DENSITY, &ptr);
+            elem->color_fg, DENSITY, &ptr);
     else
     {
         connect = save->partner->connect;
@@ -130,7 +130,7 @@ struct tkbio_return tkbio_type_button_press(int y, int x, int button_y, int butt
         {
             p = vector_at(i, connect);
             tkbio_layout_draw_rect(p->y*height, p->x*width,
-                height, width, p->elem->color >> 4, DENSITY, &ptr);
+                height, width, p->elem->color_fg, DENSITY, &ptr);
         }
     }
     
@@ -269,18 +269,18 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
         {
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height, x*width,
-                    y, x, height, width, elem->color,
+                    y, x, height, width, elem->color_fg, elem->color_bg,
                     CONNECT(elem), DENSITY, 0);
             else
                 tkbio_layout_draw_rect(y*height, x*width,
-                    height, width, elem->color & 15, DENSITY, 0);
+                    height, width, elem->color_bg, DENSITY, 0);
             
             text = save->data ? save->data :
                 (elem->name ? elem->name :
                 (elem->elem.i ? elem->elem.c.c : 0));
             if(text)
                 tkbio_layout_draw_string(y*height, x*width, height,
-                    width, elem->color >> 4, ALIGN(elem), text);
+                    width, elem->color_text, ALIGN(elem), text);
         }
         else
         {
@@ -291,10 +291,11 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                 if(BORDER(p->elem))
                     tkbio_layout_draw_rect_connect(p->y*height,
                         p->x*width, p->y, p->x, height, width,
-                        p->elem->color, CONNECT(p->elem), DENSITY, 0);
+                        p->elem->color_fg, p->elem->color_bg,
+                        CONNECT(p->elem), DENSITY, 0);
                 else
                     tkbio_layout_draw_rect(p->y*height, p->x*width,
-                        height, width, p->elem->color & 15, DENSITY, 0);
+                        height, width, p->elem->color_bg, DENSITY, 0);
             }
             
             text = save->partner->data ? save->partner->data :
@@ -306,7 +307,7 @@ struct tkbio_return tkbio_type_button_focus_out(int y, int x, const struct tkbio
                 p2 = vector_at(0, connect);
                 tkbio_layout_draw_string(p2->y*height, p2->x*width,
                     (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                    p->elem->color >> 4, ALIGN(elem), text);
+                    p->elem->color_text, ALIGN(elem), text);
             }
         }
     }

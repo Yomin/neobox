@@ -227,14 +227,15 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             }
             
             tkbio_layout_draw_rect(y*height, x*width, height, button_x,
-                elem->color >> 4, DENSITY, &ptr);
+                elem->color_fg, DENSITY, &ptr);
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height,
                     x*width+button_x, y, x, height, width-button_x,
-                    elem->color, CONNECT(elem), DENSITY, &ptr);
+                    elem->color_fg, elem->color_bg,
+                    CONNECT(elem), DENSITY, &ptr);
             else
                 tkbio_layout_draw_rect(y*height, x*width+button_x,
-                    height, width-button_x, elem->color & 15,
+                    height, width-button_x, elem->color_bg,
                     DENSITY, &ptr);
         }
         else
@@ -252,14 +253,14 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             }
             
             tkbio_layout_draw_rect(y*height+button_y, x*width,
-                height-button_y, width, elem->color >> 4, DENSITY, &ptr);
+                height-button_y, width, elem->color_fg, DENSITY, &ptr);
             if(BORDER(elem))
                 tkbio_layout_draw_rect_connect(y*height, x*width,
-                    y, x, button_y, width, elem->color,
-                    CONNECT(elem), DENSITY, &ptr);
+                    y, x, button_y, width, elem->color_fg,
+                    elem->color_bg, CONNECT(elem), DENSITY, &ptr);
             else
                 tkbio_layout_draw_rect(y*height, x*width, button_y,
-                    width, elem->color & 15, DENSITY, &ptr);
+                    width, elem->color_bg, DENSITY, &ptr);
         }
         slider->y_tmp = y*height+button_y;
         slider->x_tmp = x*width+button_x;
@@ -315,48 +316,50 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                 (!HSLIDER(elem) && partner_y        > pos))
             {
                 tkbio_layout_draw_rect(partner_y, partner_x,
-                    height, width, p->elem->color >> 4,
+                    height, width, p->elem->color_fg,
                     DENSITY, &ptr);
             }
             else if(HSLIDER(elem) && partner_x < pos)
             {
                 tkbio_layout_draw_rect(partner_y, partner_x,
-                    height, pos-partner_x, p->elem->color >> 4,
+                    height, pos-partner_x, p->elem->color_fg,
                     DENSITY, &ptr);
                 if(BORDER(elem))
                     tkbio_layout_draw_rect_connect(partner_y,
                         pos, p->y, p->x, height,
-                        width-(pos-partner_x), p->elem->color,
-                        CONNECT(p->elem), DENSITY, &ptr);
+                        width-(pos-partner_x), p->elem->color_fg,
+                        p->elem->color_bg, CONNECT(p->elem),
+                        DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y,
                         pos, height, width-(pos-partner_x),
-                        p->elem->color & 15, DENSITY, &ptr);
+                        p->elem->color_bg, DENSITY, &ptr);
             }
             else if(!HSLIDER(p->elem) && partner_y+height > pos)
             {
                 tkbio_layout_draw_rect(pos, partner_x,
                     height-(pos-partner_y), width,
-                    p->elem->color >> 4, DENSITY, &ptr);
+                    p->elem->color_fg, DENSITY, &ptr);
                 if(BORDER(elem))
                     tkbio_layout_draw_rect_connect(partner_y,
                         partner_x, p->y, p->x, pos-partner_y,
-                        width, p->elem->color,
+                        width, p->elem->color_fg, p->elem->color_bg,
                         CONNECT(p->elem), DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y, partner_x,
-                        pos-partner_y, width, p->elem->color & 15,
+                        pos-partner_y, width, p->elem->color_bg,
                         DENSITY, &ptr);
             }
             else
             {
                 if(BORDER(elem))
                     tkbio_layout_draw_rect_connect(partner_y, partner_x,
-                        p->y, p->x, height, width, p->elem->color,
-                        CONNECT(p->elem), DENSITY, &ptr);
+                        p->y, p->x, height, width, p->elem->color_fg,
+                        p->elem->color_bg, CONNECT(p->elem),
+                        DENSITY, &ptr);
                 else
                     tkbio_layout_draw_rect(partner_y, partner_x,
-                        height, width, p->elem->color & 15,
+                        height, width, p->elem->color_bg,
                         DENSITY, &ptr);
             }
         }

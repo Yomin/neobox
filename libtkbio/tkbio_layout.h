@@ -84,7 +84,7 @@ struct tkbio_mapelem
     char *name;
     unsigned char type, id;
     union tkbio_elem elem;
-    unsigned char color;
+    unsigned char color_fg, color_bg, color_text;
     unsigned char options;
 };
 
