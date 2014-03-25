@@ -61,14 +61,15 @@
 #define TKBIO_RETURN_ACTIVATE       5
 #define TKBIO_RETURN_SIGNAL         6
 
-struct tkbio_charelem
+union tkbio_charelem
 {
     char c[TKBIO_CHARELEM_MAX];
+    unsigned char u[TKBIO_CHARELEM_MAX];
 };
 
 union tkbio_elem
 {
-    struct tkbio_charelem c;
+    union tkbio_charelem c;
     int i;
 };
 

@@ -32,30 +32,48 @@
 
 #define NAME "neobox-console"
 
+inline static int insert(int fd, char c)
+{
+    int err;
+    
+    if(ioctl(fd, TIOCSTI, &c) < 0)
+    {
+        err = errno;
+        perror("Failed to insert byte into input queue");
+        return err;
+    }
+    return 0;
+}
+
 int handler(struct tkbio_return ret, void *state)
 {
     int fd = *(int*) state;
     char *ptr = ret.value.c.c;
-    int i = 0;
+    int i = 0, err;
     
     switch(ret.type)
     {
     case TKBIO_RETURN_CHAR:
         break;
-    case TKBIO_RETURN_NOP:
-    case TKBIO_RETURN_QUIT:
     default:
         return 0;
     }
     
+    // fk 0 hack
+    if(!ptr[0] && ptr[1])
+    {
+        if((err = insert(fd, 27)))
+            return err;
+        if((err = insert(fd, '[')))
+            return err;
+        ptr++;
+        i++;
+    }
+    
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {
-        if(ioctl(fd, TIOCSTI, ptr) < 0)
-        {
-            int e = errno;
-            perror("Failed to insert byte into input queue");
-            return e;
-        }
+        if((err = insert(fd, *ptr)))
+            return err;
         ptr++;
     }
     return 0;

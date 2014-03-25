@@ -48,10 +48,10 @@ const unsigned char admin_colors[][4] =
     };
 
 #define VALUE(V)             { .i = V }
-#define ONE(C)               { .c = {{C,  0,  0,  0}} }
-#define TWO(C1, C2)          { .c = {{C1, C2, 0,  0}} }
-#define THREE(C1, C2, C3)    { .c = {{C1, C2, C3, 0}} }
-#define FOUR(C1, C2, C3, C4) { .c = {{C1, C2, C3, C4}} }
+#define ONE(C)               { .c = { .u = {C,  0,  0,  0} } }
+#define TWO(C1, C2)          { .c = { .u = {C1, C2, 0,  0} } }
+#define THREE(C1, C2, C3)    { .c = { .u = {C1, C2, C3, 0} } }
+#define FOUR(C1, C2, C3, C4) { .c = { .u = {C1, C2, C3, C4} } }
 
 #define COLOR(Color)    Color,TKBIO_COLOR_BLACK,Color
 #define ADCOLOR(Color)  Color,ADMIN_COLOR_BG,Color
@@ -71,14 +71,17 @@ const unsigned char admin_colors[][4] =
 #define SHIFT(C)            CHAR(0, ONE(C), TKBIO_TYPE_SHIFT)
 #define NSHIFT(N, C)        CHAR(N, ONE(C), TKBIO_TYPE_SHIFT)
 #define NUM(C)              CHAR(0, ONE(C), TKBIO_TYPE_NUM)
-#define SNUM(C1, C2)        CHAR(0, TWO(C1, C2), TKBIO_TYPE_SNUM)
+#define SNUM1(C1)           CHAR(0, ONE(C1), TKBIO_TYPE_SNUM)
+#define SNUM2(N, C1, C2)    CHAR(N, TWO(C1, C2), TKBIO_TYPE_SNUM)
 #define META1(N, C1)        CHAR(N, ONE(C1), TKBIO_TYPE_META)
 #define LMETA1(N, C1)       LCHAR(N, ONE(C1), TKBIO_TYPE_META)
-#define META2(N, C1, C2)    CHAR(N, FOUR(27, '[', C1, C2), TKBIO_TYPE_META)
+#define META2(N, C1)        CHAR(N, THREE(27, '[', C1), TKBIO_TYPE_META)
+#define META3(N, C1)        CHAR(N, FOUR(27, '[', C1, '~'), TKBIO_TYPE_META)
 #define GER1(C1)            CHAR(0, ONE(C1), TKBIO_TYPE_GER)
 #define GER2(N, C1, C2)     CHAR(N, TWO(C1, C2), TKBIO_TYPE_GER)
 #define GER3(N, C1, C2, C3) CHAR(N, THREE(C1, C2, C3), TKBIO_TYPE_GER)
-#define FK(N, C1, C2)       CHAR(N, FOUR(27, '[', C1, C2), TKBIO_TYPE_FK)
+#define FK1(N, C1)          CHAR(N, THREE(27, 'O', C1), TKBIO_TYPE_FK)
+#define FK2(N, C1, C2)      CHAR(N, FOUR(0, C1, C2, '~'), TKBIO_TYPE_FK) // 0 hack
 #define ADMIN(N, T)         SYS(N, TKBIO_SYSTEM_ ## T, ADMIN_COLOR_ ## T)
 #define VADMIN(N, V, T)     SYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
 #define UVADMIN(N, V, T)    USYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
@@ -116,38 +119,38 @@ const struct tkbio_mapelem tkbio_map_num[] =
 
 const struct tkbio_mapelem tkbio_map_snum[] =
     {
-        SNUM('!', 0), SNUM('"', 0), SNUM(-62, -89), SNUM('$', 0), SNUM('%', 0), NOP,
-        SNUM('&', 0), SNUM('/', 0), SNUM('(', 0),   SNUM(')', 0), SNUM('=', 0), NOP,
-        NOP,          NOP,          NOP,            NOP,          NOP,          NOP,
-        NOP,          NOP,          NOP,            NOP,          NOP,          NOP,
-        HOLD,         NOP,          NOP,            NOP,          NOP,          NOP
+        SNUM1('!'), SNUM1('"'), SNUM2("sect", 194, 167), SNUM1('$'), SNUM1('%'), NOP,
+        SNUM1('&'), SNUM1('/'), SNUM1('('),              SNUM1(')'), SNUM1('='), NOP,
+        NOP,        NOP,        NOP,                     NOP,        NOP,        NOP,
+        NOP,        NOP,        NOP,                     NOP,        NOP,        NOP,
+        HOLD,       NOP,        NOP,                     NOP,        NOP,        NOP
     };
 
 const struct tkbio_mapelem tkbio_map_meta[] =
     {
-        META1("Esc", 27),    NOP,                 NOP,                NOP,                     NOP,                    META2("PgUp", '6', '~'),
-        META1("Tab", '\t'),  GOTO("FK", FK),      NOP,                NOP,                     META2("Up", 'A', 0),    META2("PgDn", '5', '~'),
-        TOGG("Supr", SUPER), GOTO("Ger", GER),    NOP,                META2("Left", 'D', 0),   META2("Down", 'B', 0),  META2("Rght", 'C', 0),
-        TOGG("Ctrl", CTRLL), GOTO("Admn", ADMIN), NOP,                META2("Home", '1', '~'), META2("Ins", '2', '~'), META2("End", '4', '~'),
-        HOLD,                TOGG("Alt", ALT),    META1("Spce", ' '), LMETA1("Spce", ' '),     META2("Del", '3', '~'), META1("Entr", '\n')
+        META1("Esc", 27),    NOP,                 NOP,                NOP,                 NOP,                META3("PgUp", '5'),
+        META1("Tab", '\t'),  GOTO("FK", FK),      NOP,                NOP,                 META2("Up", 'A'),   META3("PgDn", '6'),
+        TOGG("Supr", SUPER), GOTO("Ger", GER),    NOP,                META2("Left", 'D'),  META2("Down", 'B'), META2("Rght", 'C'),
+        TOGG("Ctrl", CTRLL), GOTO("Admn", ADMIN), NOP,                META3("Home", '1'),  META3("Ins", '2'),  META3("End", '4'),
+        HOLD,                TOGG("Alt", ALT),    META1("Spce", ' '), LMETA1("Spce", ' '), META3("Del", '3'),  META1("Entr", '\n')
     };
 
 const struct tkbio_mapelem tkbio_map_ger[] =
     {
-        GER2("ä", -61, -92),       GER2("ö", -61, -74),  GER2("ü", -61, -68),  GER2("ß", -61, -97), NOP,                 NOP,
-        GER2("Ä", -61, -124),      GER2("Ö", -61, -106), GER2("Ü", -61, -100), NOP,                 NOP,                 NOP,
-        GER3("€", -30, -126, -84), GER2("µ", -62, -75),  GER1('^'),            GER2("°", -62, -80), GER2("´", -62, -76), GER1('`'),
-        NOP,                       NOP,                  NOP,                  NOP,                 NOP,                 NOP,
-        HOLD,                      NOP,                  NOP,                  NOP,                 NOP,                 NOP
+        GER2("ae", 195, 164),        GER2("oe", 195, 182),   GER2("ue", 195, 188), GER2("sz", 195, 159),   NOP,                    NOP,
+        GER2("Ae", 195, 132),        GER2("Oe", 105, 150),   GER2("Ue", 195, 156), NOP,                    NOP,                    NOP,
+        GER3("euro", 226, 130, 172), GER2("mcro", 194, 181), GER1('^'),            GER2("ring", 194, 176), GER2("akut", 194, 180), GER1('`'),
+        NOP,                         NOP,                    NOP,                  NOP,                    NOP,                    NOP,
+        HOLD,                        NOP,                    NOP,                  NOP,                    NOP,                    NOP
     };
 
 const struct tkbio_mapelem tkbio_map_fk[] =
     {
-        FK("F1", 'P', 0),   FK("F2", 'Q', 0),   FK("F3", 'R', 0),  FK("F4", 'S', 0),  FK("F5", 15, '~'),  NOP,
-        FK("F6", 17, '~'),  FK("F7", 18, '~'),  FK("F8", 19, '~'), FK("F9", 20, '~'), FK("F10", 21, '~'), NOP,
-        FK("F11", 23, '~'), FK("F12", 24, '~'), NOP,               NOP,               NOP,                NOP,
-        NOP,                NOP,                NOP,               NOP,               NOP,                NOP,
-        HOLD,               NOP,                NOP,               NOP,               NOP,                NOP
+        FK1("F1", 'P'),       FK1("F2", 'Q'),       FK1("F3", 'R'),      FK1("F4", 'S'),      FK2("F5", '1', '5'),  NOP,
+        FK2("F6", '1', '7'),  FK2("F7", '1', '8'),  FK2("F8", '1', '9'), FK2("F9", '2', '0'), FK2("F10", '2', '1'), NOP,
+        FK2("F11", '2', '3'), FK2("F12", '2', '4'), NOP,                 NOP,                 NOP,                  NOP,
+        NOP,                  NOP,                  NOP,                 NOP,                 NOP,                  NOP,
+        HOLD,                 NOP,                  NOP,                 NOP,                 NOP,                  NOP
     };
 
 const struct tkbio_mapelem admin_map[] =
