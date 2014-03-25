@@ -1,4 +1,4 @@
-.PHONY: all, debug, clean, touch, sim
+.PHONY: all, debug, clean, touch, sim, sync
 
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
@@ -32,3 +32,6 @@ touch:
 
 sim: debug
 	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose 18930 10 /sys/class/backlight/intel_backlight/brightness
+
+sync:
+	@make -C .. sync

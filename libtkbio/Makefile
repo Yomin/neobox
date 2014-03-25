@@ -1,5 +1,5 @@
 
-.PHONY: all, debug, clean, touch, libs
+.PHONY: all, debug, clean, touch, libs, sync
 
 LIBALGPATH = lib/libalg
 LIBALG = $(LIBALGPATH)/libalg.a
@@ -39,3 +39,6 @@ $(LIBALG):
 touch:
 	$(shell [ -f debug -a -z "$(DEBUG)" ] && { touch $(NAME).c; rm debug; })
 	$(shell [ ! -f debug -a -n "$(DEBUG)" ] && { touch $(NAME).c; touch debug; })
+
+sync:
+	@make -C .. sync

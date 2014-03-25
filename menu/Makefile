@@ -1,4 +1,4 @@
-.PHONY: all, debug, clean, touch, sim
+.PHONY: all, debug, clean, touch, sim, sync
 
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
@@ -35,3 +35,6 @@ sim: debug apps_sim
 
 apps_sim: apps
 	@: $(shell rm -f apps_sim; while read line; do echo $$line --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim >> apps_sim; done < apps)
+
+sync:
+	@make -C .. sync
