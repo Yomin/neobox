@@ -46,8 +46,10 @@ int handler(struct tkbio_return ret, void *state)
         count = snprintf(buf, 100, "%i", ret.value.i*tick);
         write(fd, buf, count);
         break;
+    default:
+        return TKBIO_HANDLER_DEFER;
     }
-    return 0;
+    return TKBIO_HANDLER_SUCCESS;
 }
 
 void check_num(char *str, char *name)

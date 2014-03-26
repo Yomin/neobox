@@ -26,7 +26,7 @@
 #include <linux/fb.h>
 #include <sys/queue.h>
 #include <alg/vector.h>
-#include "tkbio_layout.h"
+#include "tkbio.h"
 
 #ifdef NDEBUG
 #   define DEBUG(x)
@@ -99,7 +99,6 @@ struct tkbio_global
     int sock;           // unix socket to tsp
     int sim;            // sim enabled
     char flagstat;      // last partner flag
-    char gen_sigint;    // generate sigint signal event
     
     struct tkbio_fb fb;
     struct tkbio_layout layout;

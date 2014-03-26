@@ -56,16 +56,16 @@ int handler(struct tkbio_return ret, void *state)
     case TKBIO_RETURN_CHAR:
         break;
     default:
-        return 0;
+        return TKBIO_HANDLER_DEFER;
     }
     
     // fk 0 hack
     if(!ptr[0] && ptr[1])
     {
         if((err = insert(fd, 27)))
-            return err;
+            return TKBIO_HANDLER_ERROR|err;
         if((err = insert(fd, '[')))
-            return err;
+            return TKBIO_HANDLER_ERROR|err;
         ptr++;
         i++;
     }
@@ -73,10 +73,11 @@ int handler(struct tkbio_return ret, void *state)
     while(*ptr && i++ < TKBIO_CHARELEM_MAX)
     {
         if((err = insert(fd, *ptr)))
-            return err;
+            return TKBIO_HANDLER_ERROR|err;
         ptr++;
     }
-    return 0;
+    
+    return TKBIO_HANDLER_SUCCESS;
 }
 
 void usage(char *name)

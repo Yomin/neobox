@@ -24,6 +24,7 @@
 #define __TKBIO_H__
 
 #include <sys/types.h>
+#include <poll.h>
 #include "tkbio_layout.h"
 
 #define TKBIO_ERROR_RPC_OPEN    -1
@@ -41,7 +42,28 @@
 
 #define TKBIO_OPTION_NO_INITIAL_PRINT   1
 
-typedef int tkbio_handler(struct tkbio_return ret, void *state);
+#define TKBIO_SYSTEM_PREV           0
+#define TKBIO_SYSTEM_NEXT           1
+#define TKBIO_SYSTEM_MENU           2
+#define TKBIO_SYSTEM_QUIT           3
+#define TKBIO_SYSTEM_ACTIVATE       4
+
+#define TKBIO_RETURN_NOP            0
+#define TKBIO_RETURN_CHAR           1
+#define TKBIO_RETURN_INT            2
+#define TKBIO_RETURN_QUIT           3
+#define TKBIO_RETURN_SWITCH         4
+#define TKBIO_RETURN_ACTIVATE       5
+#define TKBIO_RETURN_SIGNAL         6
+#define TKBIO_RETURN_SYSTEM         7
+#define TKBIO_RETURN_POLLIN         8
+#define TKBIO_RETURN_POLLOUT        9
+#define TKBIO_RETURN_POLLHUPERR     10
+
+#define TKBIO_HANDLER_SUCCESS       0
+#define TKBIO_HANDLER_QUIT          1
+#define TKBIO_HANDLER_DEFER         2
+#define TKBIO_HANDLER_ERROR         (1<<7)
 
 struct tkbio_config
 {
@@ -52,6 +74,12 @@ struct tkbio_config
     int verbose;
 };
 
+struct tkbio_return
+{
+    unsigned char type, id;
+    union tkbio_elem value;
+};
+
 int tkbio_init_default(int *argc, char *argv[]);
 int tkbio_init_layout(struct tkbio_layout layout, int *argc, char *argv[]);
 int tkbio_init_custom(struct tkbio_config config);
@@ -60,8 +88,13 @@ struct tkbio_config tkbio_config_default(int *argc, char *argv[]);
 
 void tkbio_finish();
 
-int tkbio_run(tkbio_handler *h, void *state);
-struct tkbio_return tkbio_handle_event();
+typedef int tkbio_handler(struct tkbio_return ret, void *state);
+
+int tkbio_run(tkbio_handler *handler, void *state);
+int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int count);
+
+int tkbio_handle_event(tkbio_handler *handler, void *state);
+int tkbio_handle_queue(tkbio_handler *handler, void *state);
 
 int tkbio_catch_signal(int signal, int flags);
 

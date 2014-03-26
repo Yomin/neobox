@@ -79,7 +79,6 @@
     while(0)
 
 struct tkbio_global tkbio;
-volatile sig_atomic_t sigint = 0;
 
 void tkbio_signal_handler(int signal)
 {
@@ -90,12 +89,6 @@ void tkbio_signal_handler(int signal)
     case SIGALRM:
         tkbio.pause = 0;
         break;
-    case SIGINT:
-        if(!tkbio.gen_sigint)
-        {
-            sigint = 1;
-            return;
-        }
     default:
         cq = malloc(sizeof(struct tkbio_chain_queue));
         CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
@@ -114,10 +107,8 @@ int tkbio_catch_signal(int sig, int flags)
     switch(sig)
     {
     case SIGALRM:
-        return TKBIO_ERROR_SIGNAL;
     case SIGINT:
-        tkbio.gen_sigint = 1;
-        break;
+        return TKBIO_ERROR_SIGNAL;
     default:
         if(sigaction(sig, &sa, 0) == -1)
         {
@@ -537,7 +528,6 @@ int tkbio_init_custom(struct tkbio_config config)
     // else
     tkbio.pause = 0;
     tkbio.flagstat = 0;
-    tkbio.gen_sigint = 0;
     CIRCLEQ_INIT(&tkbio.queue);
     
     // signals
@@ -663,7 +653,7 @@ void tkbio_set_pause()
     }
 }
 
-struct tkbio_return tkbio_handle_event()
+struct tkbio_return tkbio_recv_event()
 {
     struct tkbio_return ret, ret2;
     struct tsp_event event;
@@ -680,10 +670,6 @@ struct tkbio_return tkbio_handle_event()
     ret.type = TKBIO_RETURN_NOP;
     ret.id = 0;
     ret.value.i = 0;
-    
-    // check for waiting events
-    if((ret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
-        return ret;
     
     if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
     {
@@ -809,11 +795,100 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
     return ret;
 }
 
-int tkbio_run(tkbio_handler *handler, void *state)
+int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handler, void *state)
 {
-    struct pollfd pfds[1];
+    struct tsp_cmd tsp = { .cmd = TSP_CMD_REGISTER, .pid = 0 };
+    
+    switch(ret)
+    {
+    case TKBIO_HANDLER_SUCCESS:
+    case TKBIO_HANDLER_QUIT:
+        break;
+    case TKBIO_HANDLER_DEFER:
+        switch(tret.type)
+        {
+        case TKBIO_RETURN_QUIT:
+            return TKBIO_HANDLER_QUIT;
+        case TKBIO_RETURN_SIGNAL:
+            if(tret.value.i == SIGINT)
+            {
+                tret.type = TKBIO_RETURN_QUIT;
+                return tkbio_handle_return(handler(tret, state), tret, 0, 0);
+            }
+            return TKBIO_HANDLER_SUCCESS;
+        case TKBIO_RETURN_SYSTEM:
+            tret.type = TKBIO_RETURN_NOP;
+            switch(tret.value.i)
+            {
+            case TKBIO_SYSTEM_NEXT:
+                tret.type = TKBIO_RETURN_SWITCH;
+                tsp.cmd = TSP_CMD_NEXT;
+                break;
+            case TKBIO_SYSTEM_PREV:
+                tret.type = TKBIO_RETURN_SWITCH;
+                tsp.cmd = TSP_CMD_PREV;
+                break;
+            case TKBIO_SYSTEM_QUIT:
+                tret.type = TKBIO_RETURN_QUIT;
+                tsp.cmd = TSP_CMD_REMOVE;
+                break;
+            case TKBIO_SYSTEM_ACTIVATE:
+                break;
+            case TKBIO_SYSTEM_MENU:
+                tret.type = TKBIO_RETURN_SWITCH;
+                // todo
+                break;
+            }
+            if(tsp.cmd != TSP_CMD_REGISTER)
+                send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            if(tret.type != TKBIO_RETURN_NOP)
+                return tkbio_handle_return(handler(tret, state), tret, 0, 0);
+        default:
+            return TKBIO_HANDLER_SUCCESS;
+        }
+        break;
+    default:
+        if(ret & TKBIO_HANDLER_ERROR)
+            break;
+        else
+        {
+            VERBOSE(printf("[TKBIO] Unrecognized return code %i\n", ret));
+            return TKBIO_HANDLER_SUCCESS;
+        }
+    }
+    return ret;
+}
+
+int tkbio_handle_event(tkbio_handler *handler, void *state)
+{
+    struct tkbio_return ret = tkbio_recv_event();
+    if(ret.type != TKBIO_RETURN_NOP)
+        return tkbio_handle_return(handler(ret, state), ret, handler, state);
+    else
+        return TKBIO_HANDLER_SUCCESS;
+}
+
+int tkbio_handle_queue(tkbio_handler *handler, void *state)
+{
     struct tkbio_return tret;
     int ret;
+    
+    while((tret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
+    {
+        ret = tkbio_handle_return(handler(tret, state), tret, handler, state);
+        if(ret == TKBIO_HANDLER_SUCCESS)
+            continue;
+        else
+            return ret;
+    }
+    
+    return TKBIO_HANDLER_SUCCESS;
+}
+
+int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int count)
+{
+    struct tkbio_return tret;
+    int ret, i;
     
     pfds[0].fd = tkbio.sock;
     pfds[0].events = POLLIN;
@@ -822,22 +897,20 @@ int tkbio_run(tkbio_handler *handler, void *state)
     
     while(1)
     {
-        if((tret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
-            if((ret = handler(tret, state)))
-                return ret;
+        switch((ret = tkbio_handle_queue(handler, state)))
+        {
+        case TKBIO_HANDLER_SUCCESS:
+            break;
+        case TKBIO_HANDLER_QUIT:
+            return 0;
+        default:
+            return ret & ~TKBIO_HANDLER_ERROR;
+        }
         
-        if(poll(pfds, 1, -1) == -1)
+        if(poll(pfds, count, -1) == -1)
         {
             if(errno == EINTR)
-            {
-                if(sigint && !tkbio.gen_sigint)
-                {
-                    tret.type = TKBIO_RETURN_QUIT;
-                    return handler(tret, state);
-                }
-                else
-                    continue;
-            }
+                continue;
             
             VERBOSE(perror("[TKBIO] Failed to poll"));
             return TKBIO_ERROR_POLL;
@@ -845,22 +918,55 @@ int tkbio_run(tkbio_handler *handler, void *state)
         
         if(pfds[0].revents & POLLIN)
         {
-            if((tret = tkbio_handle_event()).type != TKBIO_RETURN_NOP)
+            ret = tkbio_handle_event(handler, state);
+handle:     switch(ret)
             {
-                if((ret = handler(tret, state)))
-                    return ret;
-                if(tret.type == TKBIO_RETURN_QUIT)
-                    return 0;
+            case TKBIO_HANDLER_SUCCESS:
+                break;
+            case TKBIO_HANDLER_QUIT:
+                return 0;
+            default:
+                return ret & ~TKBIO_HANDLER_ERROR;
             }
         }
-        else if(pfds[0].revents & POLLHUP)
+        else if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
         {
             VERBOSE(printf("[TKBIO] Failed to poll rpc socket\n"));
             tkbio_open_socket(-1);
         }
+        else
+        {
+            for(i=1; i<count; i++)
+            {
+                if(pfds[i].revents & POLLIN)
+                {
+                    tret.type = TKBIO_RETURN_POLLIN;
+                    tret.id = i;
+                    tret.value.i = pfds[i].fd;
+                    ret = tkbio_handle_return(handler(tret, state),
+                        tret, handler, state);
+                    goto handle;
+                }
+                else if(pfds[i].revents & POLLHUP || pfds[i].revents & POLLERR)
+                {
+                    tret.type = TKBIO_RETURN_POLLHUPERR;
+                    tret.id = i;
+                    tret.value.i = pfds[i].fd;
+                    ret = tkbio_handle_return(handler(tret, state),
+                        tret, handler, state);
+                    goto handle;
+                }
+            }
+        }
     }
     
     return 0;
+}
+
+int tkbio_run(tkbio_handler *handler, void *state)
+{
+    struct pollfd pfds[1];
+    return tkbio_run_pfds(handler, state, pfds, 1);
 }
 
 int tkbio_switch(pid_t pid)

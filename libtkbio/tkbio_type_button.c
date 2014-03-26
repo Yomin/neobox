@@ -24,8 +24,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
-#include <tsp.h>
-
+#include "tkbio.h"
 #include "tkbio_fb.h"
 #include "tkbio_type_button.h"
 #include "tkbio_type_help.h"
@@ -167,9 +166,7 @@ struct tkbio_return tkbio_type_button_move(int y, int x, int button_y, int butto
 struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
 {
     struct tkbio_return ret;
-    struct tsp_cmd cmd;
     int nmap = tkbio.parser.map;
-    int system = 0;
     
     ret.type = TKBIO_RETURN_NOP;
     ret.id = elem->id;
@@ -205,34 +202,27 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
             tkbio.parser.toggle & elem->elem.i ? "on" : "off"));
         break;
     case TKBIO_LAYOUT_TYPE_SYSTEM:
-        switch(elem->elem.i)
-        {
-        case TKBIO_SYSTEM_NEXT:
-            VERBOSE(printf("[TKBIO] app switch next\n"));
-            ret.type = TKBIO_RETURN_SWITCH;
-            cmd.cmd = TSP_CMD_NEXT;
-            break;
-        case TKBIO_SYSTEM_PREV:
-            VERBOSE(printf("[TKBIO] app switch prev\n"));
-            ret.type = TKBIO_RETURN_SWITCH;
-            cmd.cmd = TSP_CMD_PREV;
-            break;
-        case TKBIO_SYSTEM_QUIT:
-            VERBOSE(printf("[TKBIO] app quit\n"));
-            ret.type = TKBIO_RETURN_QUIT;
-            cmd.cmd = TSP_CMD_REMOVE;
-            break;
-        case TKBIO_SYSTEM_ACTIVATE:
-            VERBOSE(printf("[TKBIO] app activate\n"));
-            break;
-        case TKBIO_SYSTEM_MENU:
-            VERBOSE(printf("[TKBIO] app menu\n"));
-            // todo
-            break;
-        }
-        
-        system = 1;
-        
+        ret.type = TKBIO_RETURN_SYSTEM;
+        ret.value.i = elem->elem.i;
+        if(tkbio.verbose)
+            switch(elem->elem.i)
+            {
+            case TKBIO_SYSTEM_NEXT:
+                printf("[TKBIO] app switch next\n");
+                break;
+            case TKBIO_SYSTEM_PREV:
+                printf("[TKBIO] app switch prev\n");
+                break;
+            case TKBIO_SYSTEM_QUIT:
+                printf("[TKBIO] app quit\n");
+                break;
+            case TKBIO_SYSTEM_ACTIVATE:
+                printf("[TKBIO] app activate\n");
+                break;
+            case TKBIO_SYSTEM_MENU:
+                printf("[TKBIO] app menu\n");
+                break;
+            }
         break;
     }
     
@@ -243,12 +233,6 @@ ret:
     tkbio_type_button_focus_out(y, x, map, elem, save);
     
     tkbio.parser.map = nmap;
-    
-    if(system && ret.type != TKBIO_RETURN_NOP)
-    {
-        cmd.pid = 0;
-        send(tkbio.sock, &cmd, sizeof(struct tsp_cmd), 0);
-    }
     
     return ret;
 }

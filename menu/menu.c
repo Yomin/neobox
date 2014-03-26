@@ -47,7 +47,7 @@ struct app *apps;
 int appcap, appcount, apppos;
 int active, verbose;
 
-void exec(int id)
+int exec(int id)
 {
     pid_t pid;
     
@@ -55,10 +55,14 @@ void exec(int id)
     {
     case -1:
         perror("Failed to fork child\n");
+        return 1;
         break;
     case 0:
         if(execvp(apps[id].cmd, apps[id].argv) == -1)
+        {
             perror("Failed to start app");
+            return 1;
+        }
         break;
     default:
         if(verbose)
@@ -66,6 +70,7 @@ void exec(int id)
         apps[id].pid = pid;
         break;
     }
+    return 0;
 }
 
 void redraw()
@@ -130,14 +135,20 @@ int handler(struct tkbio_return ret, void *state)
             break;
         if(!apps[apppos+ret.id].pid)
         {
-            exec(apppos+ret.id);
+            if(exec(apppos+ret.id))
+                break;
             tkbio_select_set_locked(ret.id, 0, 1);
         }
         else
             tkbio_switch(apps[apppos+ret.id].pid);
+        active = 0;
         break;
     case TKBIO_RETURN_SWITCH:
-        active = 0;
+        if(ret.value.i != TKBIO_SYSTEM_MENU)
+        {
+            active = 0;
+            return TKBIO_HANDLER_DEFER;
+        }
         break;
     case TKBIO_RETURN_ACTIVATE:
         active = 1;
@@ -158,8 +169,10 @@ int handler(struct tkbio_return ret, void *state)
                 break;
             }
         break;
+    default:
+        return TKBIO_HANDLER_DEFER;
     }
-    return 0;
+    return TKBIO_HANDLER_SUCCESS;
 }
 
 int init_apps(const char *file)

@@ -47,20 +47,6 @@
 
 #define TKBIO_CHARELEM_MAX          4
 
-#define TKBIO_SYSTEM_PREV           0
-#define TKBIO_SYSTEM_NEXT           1
-#define TKBIO_SYSTEM_QUIT           2
-#define TKBIO_SYSTEM_ACTIVATE       3
-#define TKBIO_SYSTEM_MENU           4
-
-#define TKBIO_RETURN_NOP            0
-#define TKBIO_RETURN_CHAR           1
-#define TKBIO_RETURN_INT            2
-#define TKBIO_RETURN_QUIT           3
-#define TKBIO_RETURN_SWITCH         4
-#define TKBIO_RETURN_ACTIVATE       5
-#define TKBIO_RETURN_SIGNAL         6
-
 union tkbio_charelem
 {
     char c[TKBIO_CHARELEM_MAX];
@@ -71,12 +57,6 @@ union tkbio_elem
 {
     union tkbio_charelem c;
     int i;
-};
-
-struct tkbio_return
-{
-    unsigned char type, id;
-    union tkbio_elem value;
 };
 
 typedef union tkbio_elem tkbio_parsefun(int map, union tkbio_elem elem, unsigned char toggle);

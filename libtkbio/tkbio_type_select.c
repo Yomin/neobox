@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "tkbio.h"
 #include "tkbio_select.h"
 #include "tkbio_type_select.h"
 #include "tkbio_type_button.h"
