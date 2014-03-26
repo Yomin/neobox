@@ -936,22 +936,22 @@ handle:     switch(ret)
         }
         else
         {
+            tret.type = TKBIO_RETURN_NOP;
+            
             for(i=1; i<count; i++)
             {
+                tret.id = i;
+                tret.value.i = pfds[i].fd;
+                
                 if(pfds[i].revents & POLLIN)
-                {
                     tret.type = TKBIO_RETURN_POLLIN;
-                    tret.id = i;
-                    tret.value.i = pfds[i].fd;
-                    ret = tkbio_handle_return(handler(tret, state),
-                        tret, handler, state);
-                    goto handle;
-                }
+                else if(pfds[i].revents & POLLOUT)
+                    tret.type = TKBIO_RETURN_POLLOUT;
                 else if(pfds[i].revents & POLLHUP || pfds[i].revents & POLLERR)
-                {
                     tret.type = TKBIO_RETURN_POLLHUPERR;
-                    tret.id = i;
-                    tret.value.i = pfds[i].fd;
+                
+                if(tret.type != TKBIO_RETURN_NOP)
+                {
                     ret = tkbio_handle_return(handler(tret, state),
                         tret, handler, state);
                     goto handle;
