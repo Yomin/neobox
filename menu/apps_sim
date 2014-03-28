@@ -1,0 +1,1 @@
+brightness:../slider/slider 18930 10 /sys/class/backlight/intel_backlight/brightness --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim

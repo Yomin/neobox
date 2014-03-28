@@ -1,1 +1,1 @@
-brightness:../slider/slider 18930 10 /sys/class/backlight/intel_backlight/brightness
+brightness:/root/neobox/slider/slider 63 10 /sys/class/backlight/pcf50633-backlight/brightness

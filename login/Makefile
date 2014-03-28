@@ -30,11 +30,8 @@ touch:
 	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
-sim: debug config_sim
+sim: debug
 	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose config_sim
-
-config_sim: config
-	@: $(shell rm -f config_sim; cmd=1; while read line; do [ $$cmd -eq 1 ] && echo $$line --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim >> config_sim || echo $$line >> config_sim; cmd=0; done < config)
 
 sync:
 	@make -C .. sync

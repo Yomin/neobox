@@ -30,11 +30,8 @@ touch:
 	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
-sim: debug apps_sim
+sim: debug
 	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose -v apps_sim
-
-apps_sim: apps
-	@: $(shell rm -f apps_sim; while read line; do echo $$line --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim >> apps_sim; done < apps)
 
 sync:
 	@make -C .. sync
