@@ -154,6 +154,8 @@ int handler(struct tkbio_return ret, void *state)
         active = 1;
         return TKBIO_HANDLER_DEFER;
     case TKBIO_RETURN_SIGNAL:
+        if(ret.value.i != SIGCHLD)
+            return TKBIO_HANDLER_DEFER;
         pid = wait(0);
         for(i=0; i<appcount; i++)
             if(apps[i].pid == pid)
