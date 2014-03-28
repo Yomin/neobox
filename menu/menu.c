@@ -152,7 +152,7 @@ int handler(struct tkbio_return ret, void *state)
         break;
     case TKBIO_RETURN_ACTIVATE:
         active = 1;
-        break;
+        return TKBIO_HANDLER_DEFER;
     case TKBIO_RETURN_SIGNAL:
         pid = wait(0);
         for(i=0; i<appcount; i++)

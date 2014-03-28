@@ -101,6 +101,8 @@ int tkbio_catch_signal(int signal, int flags);
 
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec);
 
+void tkbio_init_screen();
+
 int tkbio_switch(pid_t pid);
 
 #endif

@@ -836,10 +836,6 @@ struct tkbio_return tkbio_recv_event()
     if(event.event & TSP_EVENT_ACTIVATED)
     {
         VERBOSE(printf("[TKBIO] activate\n"));
-        
-        if(tkbio.redraw)
-            tkbio_init_screen();
-        
         ret.type = TKBIO_RETURN_ACTIVATE;
     }
     else if(event.event & TSP_EVENT_MOVED)
@@ -930,6 +926,10 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
                 tret.type = TKBIO_RETURN_QUIT;
                 return tkbio_handle_return(handler(tret, state), tret, 0, 0);
             }
+            return TKBIO_HANDLER_SUCCESS;
+        case TKBIO_RETURN_ACTIVATE:
+            if(tkbio.redraw)
+                tkbio_init_screen();
             return TKBIO_HANDLER_SUCCESS;
         case TKBIO_RETURN_SYSTEM:
             tret.type = TKBIO_RETURN_NOP;
