@@ -88,9 +88,9 @@ int main(int argc, char* argv[])
     }
     
     read(fd, buf, 100);
-    tkbio_slider_set_ticks_pos(0, 0, atoi(argv[2]), atoi(buf)/tick, 1);
+    tkbio_slider_set_ticks_pos(0, 0, atoi(argv[2]), atoi(buf)/tick, 0);
     
-    tkbio_nop_set_name(1, 0, argv[0], 1);
+    tkbio_nop_set_name(1, 0, argv[0], 0);
     
     tkbio_run(handler, 0);
     tkbio_finish();

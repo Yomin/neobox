@@ -74,7 +74,7 @@ int exec(int id)
     return 0;
 }
 
-void redraw()
+void set_apps(int draw)
 {
     int i, j;
     
@@ -92,13 +92,13 @@ void redraw()
                 tkbio_select_set_active(i, 0, 0, 0);
                 tkbio_select_set_locked(i, 0, 0);
             }
-            tkbio_select_set_name(i, 0, apps[j].name, 1);
+            tkbio_select_set_name(i, 0, apps[j].name, draw);
         }
         else
         {
             tkbio_select_set_active(i, 0, 0, 0);
             tkbio_select_set_locked(i, 0, 1);
-            tkbio_select_set_name(i, 0, 0, 1);
+            tkbio_select_set_name(i, 0, 0, draw);
         }
     }
 }
@@ -119,18 +119,18 @@ int handler(struct tkbio_return ret, void *state)
             if(apppos > 0)
             {
                 apppos -= apppos > 5 ? 5 : apppos;
-                redraw();
+                set_apps(1);
             }
             break;
         case 'd':
             if(apppos+10 < appcount)
             {
                 apppos += appcount-apppos-10 > 5 ? 5 : appcount-apppos-10;
-                redraw();
+                set_apps(1);
             }
             break;
         }
-        break;
+        return TKBIO_HANDLER_SUCCESS;
     case TKBIO_RETURN_INT:
         if(!ret.value.i)
             break;
@@ -142,40 +142,41 @@ int handler(struct tkbio_return ret, void *state)
         }
         else
             tkbio_switch(apps[apppos+ret.id].pid);
-        active = 0;
+        return TKBIO_HANDLER_SUCCESS;
+    case TKBIO_RETURN_SYSTEM:
+        if(ret.value.i == TKBIO_SYSTEM_MENU)
+            return TKBIO_HANDLER_SUCCESS;
         break;
-    case TKBIO_RETURN_SWITCH:
-        if(ret.value.i != TKBIO_SYSTEM_MENU)
-        {
-            active = 0;
-            return TKBIO_HANDLER_DEFER;
-        }
+    case TKBIO_RETURN_DEACTIVATE:
+        active = 0;
         break;
     case TKBIO_RETURN_ACTIVATE:
         active = 1;
-        return TKBIO_HANDLER_DEFER;
-    case TKBIO_RETURN_SIGNAL:
-        if(ret.value.i != SIGCHLD)
-            return TKBIO_HANDLER_DEFER;
-        pid = wait(0);
-        for(i=0; i<appcount; i++)
-            if(apps[i].pid == pid)
-            {
-                if(verbose)
-                    printf("'%s' terminated (%i)\n", apps[i].name, pid);
-                apps[i].pid = 0;
-                if(i-apppos < 10)
-                {
-                    tkbio_select_set_locked(i-apppos, 0, 0);
-                    tkbio_select_set_active(i-apppos, 0, 0, active);
-                }
-                break;
-            }
         break;
-    default:
-        return TKBIO_HANDLER_DEFER;
+    case TKBIO_RETURN_SIGNAL:
+        switch(ret.value.i)
+        {
+        case SIGCHLD:
+            pid = wait(0);
+            for(i=0; i<appcount; i++)
+                if(apps[i].pid == pid)
+                {
+                    if(verbose)
+                        printf("'%s' terminated (%i)\n", apps[i].name, pid);
+                    apps[i].pid = 0;
+                    if(i-apppos < 10)
+                    {
+                        tkbio_select_set_locked(i-apppos, 0, 0);
+                        tkbio_select_set_active(i-apppos, 0, 0, active);
+                    }
+                    break;
+                }
+            return TKBIO_HANDLER_SUCCESS;
+        }
+        break;
     }
-    return TKBIO_HANDLER_SUCCESS;
+    
+    return TKBIO_HANDLER_DEFER;
 }
 
 int init_apps(const char *file)
@@ -291,7 +292,7 @@ int main(int argc, char* argv[])
         return err;
     }
     
-    redraw();
+    set_apps(0);
     
     tkbio_hide(0, 1, 1);
     tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);

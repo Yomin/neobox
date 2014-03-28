@@ -76,7 +76,7 @@ int gen_tile(char c)
     return seed;
 }
 
-void draw_tile(char c)
+void draw_tile(char c, int draw)
 {
     int i, j;
     
@@ -93,7 +93,7 @@ void draw_tile(char c)
     }
     
     for(i=0; i<LEN; i++)
-        tkbio_button_set_name(i, 0, &randTile[i*2], 1);
+        tkbio_button_set_name(i, 0, &randTile[i*2], draw);
 }
 
 void login()
@@ -138,14 +138,13 @@ int handler(struct tkbio_return ret, void *state)
             srandom(time(0)+random());
             while(currentTile == (c = random()%26+'a'));
         }
-        draw_tile(c);
+        draw_tile(c, 1);
         break;
     case TKBIO_RETURN_ACTIVATE:
-        tkbio_init_screen();
         passptr = pass;
         srandom(time(0)+random());
-        draw_tile(random()%26+'a');
-        break;
+        draw_tile(random()%26+'a', 0);
+        return TKBIO_HANDLER_DEFER;
     case TKBIO_RETURN_SIGNAL:
         switch(ret.value.i)
         {
@@ -245,8 +244,6 @@ int main(int argc, char* argv[])
     tkbio_init_custom(config);
     
     srandom(time(0));
-    
-    draw_tile(random()%26+'a');
     
     tkbio_hide(0, 0, 1);
     tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);

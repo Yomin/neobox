@@ -106,12 +106,21 @@ void add_client(int fd)
     DEBUG(printf("Client added [%i]\n", fd));
 }
 
-void send_client(struct tsp_event *event)
+void send_client(unsigned char event, int y, int x, struct chain_socket *cs)
 {
+    struct tsp_event evnt;
+    
     if(client_list.cqh_first == (void*)&client_list)
         return;
-    int sock = client_list.cqh_first->sock;
-    send(sock, event, sizeof(struct tsp_event), 0);
+    
+    evnt.event = event;
+    evnt.y = y;
+    evnt.x = x;
+    
+    if(!cs)
+        cs = client_list.cqh_first;
+    
+    send(cs->sock, &evnt, sizeof(struct tsp_event), 0);
 }
 
 struct chain_socket* find_client(int pos, pid_t pid)
@@ -272,7 +281,7 @@ int switch_client(int cmd, int pos, pid_t pid)
         break;
     }
     
-    DEBUG(printf("Client switched [%i] %i\n",
+    DEBUG(printf("Client switch [%i] %i\n",
         client_list.cqh_first->sock, client_list.cqh_first->pid));
     
     return 1;
@@ -331,15 +340,16 @@ int main(int argc, char* argv[])
 {
     int opt, ret;
     int daemon = 1, lock = 0;
+    int pressed, y, x;
     char *screen_dev;
     int screen_fd, rpc_sock;
     struct sockaddr_un rpc_addr;
     
     unsigned char screen_buf[BYTES_PER_CMD];
     struct tsp_cmd cmd;
-    struct tsp_event event;
+    struct chain_socket *cs;
     
-    memset(&event, 0, sizeof(struct tsp_event));
+    y = x = pressed = 0;
     pwd = TSP_PWD;
     
     while((opt = getopt(argc, argv, "fd:")) != -1)
@@ -451,44 +461,42 @@ int main(int argc, char* argv[])
                 switch(screen_buf[12])
                 {
                     case 0x00:
-                        if(event.event & TSP_EVENT_PRESSED)
+                        if(pressed)
                         {
-                            DEBUG(printf(" released (%i,%i)\n", event.y, event.x));
-                            event.event &= ~TSP_EVENT_PRESSED;
-                            send_client(&event);
+                            DEBUG(printf(" released (%i,%i)\n", y, x));
+                            send_client(TSP_EVENT_RELEASED, y, x, 0);
+                            pressed = 0;
                         }
                         else
-                            DEBUG(printf(" already released (%i,%i)\n", event.y, event.x));
+                            DEBUG(printf(" already released (%i,%i)\n", y, x));
                         break;
                     case 0x01:
-                        if(!(event.event & TSP_EVENT_PRESSED))
+                        if(!pressed)
                         {
-                            DEBUG(printf(" pressed (%i,%i)\n", event.y, event.x));
-                            event.event |= TSP_EVENT_PRESSED;
-                            send_client(&event);
+                            DEBUG(printf(" pressed (%i,%i)\n", y, x));
+                            send_client(TSP_EVENT_PRESSED, y, x, 0);
+                            pressed = 1;
                         }
                         else
-                            DEBUG(printf(" already pressed (%i,%i)\n", event.y, event.x));
+                            DEBUG(printf(" already pressed (%i,%i)\n", y, x));
                         break;
                     default:
-                        DEBUG(printf(" unrecognized (%i,%i)\n", event.y, event.x));
+                        DEBUG(printf(" unrecognized (%i,%i)\n", y, x));
                 }
             }
             else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
                     screen_buf[10] == 0x00 && screen_buf[11] == 0x00)
             {
-                event.y = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
+                y = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
             }
             else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
                     screen_buf[10] == 0x01 && screen_buf[11] == 0x00)
             {
-                event.x = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
-                if(event.event & TSP_EVENT_PRESSED)
+                x = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
+                if(pressed)
                 {
-                    event.event |= TSP_EVENT_MOVED;
-                    DEBUG(printf("Move (%i,%i)\n", event.y, event.x));
-                    send_client(&event);
-                    event.event &= ~TSP_EVENT_MOVED;
+                    DEBUG(printf("Move (%i,%i)\n", y, x));
+                    send_client(TSP_EVENT_MOVED, y, x, 0);
                 }
             }
         }
@@ -512,7 +520,12 @@ int main(int argc, char* argv[])
                 DEBUG(perror("Failed to accept client"));
                 continue;
             }
+            cs = client_list.cqh_first;
             add_client(client);
+            if(cs != (void*)&client_list)
+                send_client(TSP_EVENT_DEACTIVATED, 0, 0, cs);
+            else
+                send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
         }
         else if(pfds[1].revents & POLLHUP)
         {
@@ -533,7 +546,7 @@ int main(int argc, char* argv[])
                 {
                     DEBUG(printf("pollhup/pollerr on client socket [%i]\n", pfds[x].fd));
                     if(rem_client(x, 0))
-                        goto client_activate;
+                        send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
                 }
                 else if(pfds[x].revents & POLLIN)
                 {
@@ -544,16 +557,25 @@ int main(int argc, char* argv[])
                         register_client(x, cmd.pid);
                         break;
                     case TSP_CMD_REMOVE:
-                        if(rem_client(x, cmd.pid))
+                        if((cs = find_client(x, cmd.pid)))
                         {
-client_activate:            event.event |= TSP_EVENT_ACTIVATED;
-                            send_client(&event);
-                            event.event &= ~TSP_EVENT_ACTIVATED;
+                            if(cs->sock == pfds[x].fd)
+                            {
+                                if(rem_client(x, cmd.pid))
+                                    send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                            }
+                            else
+                            {
+                                DEBUG(printf("Client remove [%i] %i\n",
+                                    cs->sock, cs->pid));
+                                send_client(TSP_EVENT_REMOVED, 0, 0, cs);
+                            }
                         }
                         break;
                     case TSP_CMD_SWITCH:
+                        cs = client_list.cqh_first;
                         if(switch_client(cmd.value, x, cmd.pid))
-                            goto client_activate;
+                            send_client(TSP_EVENT_DEACTIVATED, 0, 0, cs);
                         break;
                     case TSP_CMD_LOCK:
                         lock = cmd.value;
@@ -565,8 +587,29 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                             cmd.value & ~TSP_HIDE_MASK,
                             cmd.value & TSP_HIDE_MASK);
                         break;
+                    case TSP_CMD_ACK:
+                        switch(cmd.value)
+                        {
+                        case TSP_EVENT_DEACTIVATED:
+                            cs = client_list.cqh_first;
+                            DEBUG(printf("Client switched [%i] %i -> [%i] %i\n",
+                                pfds[x].fd, find_client(x, 0)->pid,
+                                cs->sock, cs->pid));
+                            send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                            break;
+                        case TSP_EVENT_REMOVED:
+                            if(rem_client(x, 0))
+                                send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                            break;
+                        default:
+                            DEBUG(printf("Client done [%i] %i\n",
+                                pfds[x].fd, find_client(x, 0)->pid));
+                            break;
+                        }
+                        break;
                     default:
-                        DEBUG(printf("Unrecognized command 0x%02x\n", cmd.cmd));
+                        DEBUG(printf("Unrecognized command 0x%02hhx [%i] %i\n",
+                            cmd.cmd, pfds[x].fd, find_client(x, 0)->pid));
                     }
                 }
         }

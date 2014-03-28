@@ -52,14 +52,15 @@
 #define TKBIO_RETURN_CHAR           1
 #define TKBIO_RETURN_INT            2
 #define TKBIO_RETURN_QUIT           3
-#define TKBIO_RETURN_SWITCH         4
-#define TKBIO_RETURN_ACTIVATE       5
+#define TKBIO_RETURN_ACTIVATE       4
+#define TKBIO_RETURN_DEACTIVATE     5
 #define TKBIO_RETURN_SIGNAL         6
 #define TKBIO_RETURN_SYSTEM         7
 #define TKBIO_RETURN_POLLIN         8
 #define TKBIO_RETURN_POLLOUT        9
 #define TKBIO_RETURN_POLLHUPERR     10
 #define TKBIO_RETURN_TIMER          11
+#define TKBIO_RETURN_REMOVE         12
 
 #define TKBIO_HANDLER_SUCCESS       0
 #define TKBIO_HANDLER_QUIT          1

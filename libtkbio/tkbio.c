@@ -569,10 +569,7 @@ int tkbio_init_custom(struct tkbio_config config)
     
     // print initial screen
     if(!(config.options & TKBIO_OPTION_NO_INITIAL_PRINT))
-    {
         tkbio.redraw = 1;
-        tkbio_init_screen();
-    }
     
     VERBOSE(printf("[TKBIO] init done\n"));
     
@@ -792,6 +789,29 @@ struct tkbio_return tkbio_recv_event()
         return ret;
     }
     
+    switch(event.event)
+    {
+    case TSP_EVENT_ACTIVATED:
+        VERBOSE(printf("[TKBIO] activate\n"));
+        ret.type = TKBIO_RETURN_ACTIVATE;
+        return ret;
+    case TSP_EVENT_DEACTIVATED:
+        VERBOSE(printf("[TKBIO] deactivate\n"));
+        ret.type = TKBIO_RETURN_DEACTIVATE;
+        return ret;
+    case TSP_EVENT_REMOVED:
+        VERBOSE(printf("[TKBIO] removed\n"));
+        ret.type = TKBIO_RETURN_REMOVE;
+        return ret;
+    case TSP_EVENT_MOVED:
+    case TSP_EVENT_RELEASED:
+    case TSP_EVENT_PRESSED:
+        break;
+    default:
+        VERBOSE(printf("[TKBIO] Unrecognized event 0x%02hhx\n", event.event));
+        return ret;
+    }
+    
     if(event.x >= SCREENMAX || event.y >= SCREENMAX)
         return ret;
     
@@ -833,13 +853,9 @@ struct tkbio_return tkbio_recv_event()
     // partner of last button
     partner_last = save_last->partner;
     
-    if(event.event & TSP_EVENT_ACTIVATED)
+    switch(event.event)
     {
-        VERBOSE(printf("[TKBIO] activate\n"));
-        ret.type = TKBIO_RETURN_ACTIVATE;
-    }
-    else if(event.event & TSP_EVENT_MOVED)
-    {
+    case TSP_EVENT_MOVED:
         if( tkbio.parser.pressed
             && !tkbio.pause) // avoid toggling between two buttons
         {
@@ -872,9 +888,8 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
                 }
             }
         }
-    }
-    else if(!(event.event & TSP_EVENT_PRESSED))
-    {
+        break;
+    case TSP_EVENT_RELEASED:
         if(tkbio.parser.pressed)
         {
             TYPEFUNC(elem_curr, release, ret=, y, x, button_y,
@@ -882,9 +897,8 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
             
             tkbio.parser.pressed = 0;
         }
-    }
-    else // pressed
-    {
+        break;
+    case TSP_EVENT_PRESSED:
         if(!tkbio.parser.pressed)
         {
             TYPEFUNC(elem_curr, press, ret=, y, x, button_y, button_x,
@@ -894,6 +908,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
             
             tkbio_add_timer(0, TIMER_SYSTEM, 0, DELAY);
         }
+        break;
     }
     
     tkbio.parser.y = y;
@@ -931,36 +946,44 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
             if(tkbio.redraw)
                 tkbio_init_screen();
             return TKBIO_HANDLER_SUCCESS;
+        case TKBIO_RETURN_DEACTIVATE:
+            tsp.cmd = TSP_CMD_ACK;
+            tsp.value = TSP_EVENT_DEACTIVATED;
+            send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            return TKBIO_HANDLER_SUCCESS;
+        case TKBIO_RETURN_REMOVE:
+            tsp.cmd = TSP_CMD_ACK;
+            tsp.value = TSP_EVENT_REMOVED;
+            send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            tret.type = TKBIO_RETURN_QUIT;
+            return tkbio_handle_return(handler(tret, state), tret, 0, 0);
         case TKBIO_RETURN_SYSTEM:
             tret.type = TKBIO_RETURN_NOP;
             switch(tret.value.i)
             {
             case TKBIO_SYSTEM_NEXT:
-                tret.type = TKBIO_RETURN_SWITCH;
                 tsp.cmd = TSP_CMD_SWITCH;
                 tsp.value = TSP_SWITCH_NEXT;
                 break;
             case TKBIO_SYSTEM_PREV:
-                tret.type = TKBIO_RETURN_SWITCH;
                 tsp.cmd = TSP_CMD_SWITCH;
                 tsp.value = TSP_SWITCH_PREV;
                 break;
             case TKBIO_SYSTEM_QUIT:
                 tret.type = TKBIO_RETURN_QUIT;
-                tsp.cmd = TSP_CMD_REMOVE;
                 break;
             case TKBIO_SYSTEM_ACTIVATE:
                 break;
             case TKBIO_SYSTEM_MENU:
-                tret.type = TKBIO_RETURN_SWITCH;
                 tsp.cmd = TSP_CMD_SWITCH;
                 tsp.value = TSP_SWITCH_HIDDEN;
                 break;
             }
-            if(tsp.cmd != TSP_CMD_REGISTER)
-                send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
             if(tret.type != TKBIO_RETURN_NOP)
                 return tkbio_handle_return(handler(tret, state), tret, 0, 0);
+            else if(tsp.cmd != TSP_CMD_REGISTER)
+                send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            return TKBIO_HANDLER_SUCCESS;
         default:
             return TKBIO_HANDLER_SUCCESS;
         }

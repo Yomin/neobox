@@ -27,21 +27,25 @@
 #define TSP_PWD     "/var/" TSP_NAME
 #define TSP_RPC     "rpc"
 
-#define TSP_CMD_REGISTER    1
-#define TSP_CMD_REMOVE      2
-#define TSP_CMD_SWITCH      3
-#define TSP_CMD_LOCK        4
-#define TSP_CMD_HIDE        5
+#define TSP_CMD_REGISTER    1   // register pid
+#define TSP_CMD_REMOVE      2   // remove app
+#define TSP_CMD_SWITCH      3   // switch to app
+#define TSP_CMD_LOCK        4   // lock screen
+#define TSP_CMD_HIDE        5   // hide app
+#define TSP_CMD_ACK         6   // ack remove/deactivate
 
-#define TSP_SWITCH_PID      0
-#define TSP_SWITCH_PREV     1
-#define TSP_SWITCH_NEXT     2
-#define TSP_SWITCH_HIDDEN   3
-#define TSP_HIDE_MASK       (1<<7)
+#define TSP_SWITCH_PID      0       // switch to app
+#define TSP_SWITCH_PREV     1       // switch to prev app
+#define TSP_SWITCH_NEXT     2       // switch to next app
+#define TSP_SWITCH_HIDDEN   3       // switch to hidden app (lowest prio)
+#define TSP_HIDE_MASK       (1<<7)  // hide bit|prio
 
-#define TSP_EVENT_PRESSED   1
-#define TSP_EVENT_MOVED     2
-#define TSP_EVENT_ACTIVATED 4
+#define TSP_EVENT_PRESSED       0   // button pressed
+#define TSP_EVENT_RELEASED      1   // button released
+#define TSP_EVENT_MOVED         2   // moved while pressed
+#define TSP_EVENT_ACTIVATED     3   // app activated
+#define TSP_EVENT_DEACTIVATED   4   // app deactivated
+#define TSP_EVENT_REMOVED       5   // app removed
 
 struct tsp_cmd
 {
