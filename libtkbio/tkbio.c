@@ -1107,6 +1107,12 @@ int tkbio_lock(int lock)
     return tkbio_tsp(TSP_CMD_LOCK, 0, lock);
 }
 
+int tkbio_hide(pid_t pid, int priority, int hide)
+{
+    return tkbio_tsp(TSP_CMD_HIDE, pid,
+        hide ? TSP_HIDE_MASK|priority : priority);
+}
+
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
 {
     return tkbio_add_timer(id, TIMER_USER, sec, usec);

@@ -105,5 +105,6 @@ void tkbio_init_screen();
 
 int tkbio_switch(pid_t pid);
 int tkbio_lock(int lock);
+int tkbio_hide(pid_t pid, int priority, int hide);
 
 #endif

@@ -31,10 +31,12 @@
 #define TSP_CMD_REMOVE      2
 #define TSP_CMD_SWITCH      3
 #define TSP_CMD_LOCK        4
+#define TSP_CMD_HIDE        5
 
 #define TSP_SWITCH_PID      0
 #define TSP_SWITCH_PREV     1
 #define TSP_SWITCH_NEXT     2
+#define TSP_HIDE_MASK       (1<<7)
 
 #define TSP_EVENT_PRESSED   1
 #define TSP_EVENT_MOVED     2

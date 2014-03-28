@@ -49,7 +49,7 @@
 struct chain_socket
 {
     CIRCLEQ_ENTRY(chain_socket) chain;
-    int sock;
+    int sock, priority, hide;
     pid_t pid;
 };
 CIRCLEQ_HEAD(client_sockets, chain_socket);
@@ -114,10 +114,9 @@ void send_client(struct tsp_event *event)
     send(sock, event, sizeof(struct tsp_event), 0);
 }
 
-int rem_client(int pos, pid_t pid)
+struct chain_socket* find_client(int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
-    int fd, active;
     
     if(pid)
     {
@@ -125,56 +124,19 @@ int rem_client(int pos, pid_t pid)
             cs = cs->chain.cqe_next;
         if(cs == (void*)&client_list)
             return 0;
-        
-        fd = cs->sock;
-        
-        for(pos=2; pos < client_count+2; pos++)
-            if(pfds[pos].fd == fd)
-                break;
-        if(pos == client_count+2)
-            return 0;
     }
     else
     {
-        fd = pfds[pos].fd;
-        
-        while(cs != (void*)&client_list && cs->sock != fd)
+        while(cs != (void*)&client_list && cs->sock != pfds[pos].fd)
             cs = cs->chain.cqe_next;
         if(cs == (void*)&client_list)
             return 0;
-        
-        pid = cs->pid;
     }
     
-    active = cs == client_list.cqh_first;
-    
-    memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
-    CIRCLEQ_REMOVE(&client_list, cs, chain);
-    free(cs);
-    client_count--;
-    
-    if((cs = client_list.cqh_first) != (void*)&client_list)
-    {
-        if(active)
-        {
-            DEBUG(printf("Active client removed [%i] %i, switch [%i] %i\n",
-                fd, pid, cs->sock, cs->pid));
-            return 1;
-        }
-        else
-        {
-            DEBUG(printf("Client removed [%i] %i\n", fd, pid));
-            return 0;
-        }
-    }
-    else
-    {
-        DEBUG(printf("Active client removed [%i] %i, last\n", fd, pid));
-        return 0;
-    }
+    return cs;
 }
 
-void client_list_rotate(int dir)
+struct chain_socket* client_list_rotate(int dir)
 {
     client_list.cqh_last->chain.cqe_next = client_list.cqh_first;
     client_list.cqh_first->chain.cqe_prev = client_list.cqh_last;
@@ -190,24 +152,101 @@ void client_list_rotate(int dir)
     }
     client_list.cqh_last->chain.cqe_next = (void*)&client_list;
     client_list.cqh_first->chain.cqe_prev = (void*)&client_list;
+    
+    return client_list.cqh_first;
+}
+
+struct chain_socket* client_list_rotate_next()
+{
+    struct chain_socket *cs, *cs_nxt;
+    
+    cs = cs_nxt = client_list.cqh_first;
+    
+    if(cs == (void*)&client_list)
+        return 0;
+    
+    while(cs != (void*)&client_list)
+    {
+        if(!cs->hide)
+        {
+            cs_nxt = cs;
+            break;
+        }
+        if(cs->priority > cs_nxt->priority)
+            cs_nxt = cs;
+        
+        cs = cs->chain.cqe_next;
+    }
+    
+    if(client_list.cqh_first != cs_nxt)
+        while(client_list_rotate(+1) != cs_nxt);
+    
+    return cs_nxt;
+}
+
+int rem_client(int pos, pid_t pid)
+{
+    struct chain_socket *cs = client_list.cqh_first;
+    int fd, active;
+    
+    if(!(cs = find_client(pos, pid)))
+        return 0;
+    
+    fd = cs->sock;
+    pid = cs->pid;
+    active = cs == client_list.cqh_first;
+    
+    memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
+    CIRCLEQ_REMOVE(&client_list, cs, chain);
+    free(cs);
+    client_count--;
+    
+    if(client_list.cqh_first != (void*)&client_list)
+    {
+        if(active)
+        {
+            if((cs = client_list_rotate_next())->hide)
+                DEBUG(printf("Active client removed [%i] %i, switch invisible [%i] %i\n",
+                    fd, pid, cs->sock, cs->pid));
+            else
+                DEBUG(printf("Active client removed [%i] %i, switch [%i] %i\n",
+                    fd, pid, cs->sock, cs->pid));
+            return 1;
+        }
+        else
+        {
+            DEBUG(printf("Client removed [%i] %i\n", fd, pid));
+            return 0;
+        }
+    }
+    else
+    {
+        DEBUG(printf("Active client removed [%i] %i, last\n", fd, pid));
+        return 0;
+    }
 }
 
 int switch_client(int mod, pid_t pid)
 {
-    struct chain_socket *cs = client_list.cqh_first;
+    struct chain_socket *cs = client_list.cqh_first, *cs2;
     
     if(cs == (void*)&client_list || cs->chain.cqe_next == (void*)&client_list)
         return 0;
     
     if(!mod)
-        while(client_list.cqh_first->pid != pid)
-        {
-            client_list_rotate(+1);
-            if(cs == client_list.cqh_first)
-                return 0;
-        }
+    {
+        if(cs->pid == pid)
+            return 0;
+        while((cs2 = client_list_rotate(+1))->pid != pid && cs != cs2);
+        if(cs == cs2)
+            return 0;
+    }
     else
-        client_list_rotate(mod);
+    {
+        while((cs2 = client_list_rotate(mod))->hide && cs != cs2);
+        if(cs == cs2)
+            return 0;
+    }
     
     DEBUG(printf("Client switched [%i] %i\n",
         client_list.cqh_first->sock, client_list.cqh_first->pid));
@@ -215,19 +254,30 @@ int switch_client(int mod, pid_t pid)
     return 1;
 }
 
-void set_client(int pos, pid_t pid)
+void register_client(int pos, pid_t pid)
 {
-    struct chain_socket *cs = client_list.cqh_first;
-    int fd = pfds[pos].fd;
+    struct chain_socket *cs;
     
-    while(cs != (void*)&client_list && cs->sock != fd)
-        cs = cs->chain.cqe_next;
-    if(cs == (void*)&client_list)
+    if(!(cs = find_client(pos, 0)))
         return;
     
     cs->pid = pid;
     
-    DEBUG(printf("Client registered [%i] %i\n", fd, pid));
+    DEBUG(printf("Client registered [%i] %i\n", cs->sock, pid));
+}
+
+void hide_client(int pos, pid_t pid, int priority, int hide)
+{
+    struct chain_socket *cs;
+    
+    if(!(cs = find_client(pos, pid)))
+        return;
+    
+    cs->priority = priority;
+    cs->hide = hide;
+    
+    DEBUG(printf("Client set %s (%i) [%i] %i\n",
+        hide ? "invisible" : "visible", priority, cs->sock, cs->pid));
 }
 
 void free_clients()
@@ -467,7 +517,7 @@ int main(int argc, char* argv[])
                     switch(cmd.cmd)
                     {
                     case TSP_CMD_REGISTER:
-                        set_client(x, cmd.pid);
+                        register_client(x, cmd.pid);
                         break;
                     case TSP_CMD_REMOVE:
                         if(rem_client(x, cmd.pid))
@@ -498,6 +548,11 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                         lock = cmd.value;
                         DEBUG(printf("Screen %s\n",
                             lock ? "locked" : "unlocked"));
+                        break;
+                    case TSP_CMD_HIDE:
+                        hide_client(x, cmd.pid,
+                            cmd.value & ~TSP_HIDE_MASK,
+                            cmd.value & TSP_HIDE_MASK);
                         break;
                     default:
                         DEBUG(printf("Unrecognized command 0x%02x\n", cmd.cmd));
