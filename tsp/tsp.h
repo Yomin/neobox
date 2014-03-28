@@ -30,6 +30,7 @@
 #define TSP_CMD_REGISTER    1
 #define TSP_CMD_REMOVE      2
 #define TSP_CMD_SWITCH      3
+#define TSP_CMD_LOCK        4
 
 #define TSP_SWITCH_PID      0
 #define TSP_SWITCH_PREV     1

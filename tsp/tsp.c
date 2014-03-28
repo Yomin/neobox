@@ -256,7 +256,7 @@ void usage(const char *name)
 int main(int argc, char* argv[])
 {
     int opt, ret;
-    int daemon = 1;
+    int daemon = 1, lock = 0;
     char *screen_dev;
     int screen_fd, rpc_sock;
     struct sockaddr_un rpc_addr;
@@ -366,6 +366,9 @@ int main(int argc, char* argv[])
         if(pfds[0].revents & POLLIN)
         {
             read(screen_fd, screen_buf, BYTES_PER_CMD);
+            
+            if(lock)
+                continue;
             
             if( screen_buf[8] == 0x01 && screen_buf[9] == 0x00 &&
                 screen_buf[10] == 0x4A && screen_buf[11] == 0x01)
@@ -490,6 +493,11 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                                 goto client_activate;
                             break;
                         }
+                        break;
+                    case TSP_CMD_LOCK:
+                        lock = cmd.value;
+                        DEBUG(printf("Screen %s\n",
+                            lock ? "locked" : "unlocked"));
                         break;
                     default:
                         DEBUG(printf("Unrecognized command 0x%02x\n", cmd.cmd));

@@ -1102,6 +1102,11 @@ int tkbio_switch(pid_t pid)
     return tkbio_tsp(TSP_CMD_SWITCH, pid, TSP_SWITCH_PID);
 }
 
+int tkbio_lock(int lock)
+{
+    return tkbio_tsp(TSP_CMD_LOCK, 0, lock);
+}
+
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
 {
     return tkbio_add_timer(id, TIMER_USER, sec, usec);
