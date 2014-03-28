@@ -181,10 +181,15 @@ struct tkbio_return tkbio_type_button_release(int y, int x, int button_y, int bu
         else
             ret.value = elem->elem;
         tkbio.parser.toggle = 0;
-        VERBOSE(if(elem->name)
-            printf("[TKBIO] button [%s]\n", elem->name);
-        else
-            printf("[TKBIO] button [%c]\n", elem->elem.c.c[0]));
+        if(tkbio.verbose)
+        {
+            if(elem->name)
+                printf("[TKBIO] button %i [%s]\n", elem->id, elem->name);
+            else if(elem->elem.c.c[0])
+                printf("[TKBIO] button %i [%c]\n", elem->id, elem->elem.c.c[0]);
+            else
+                printf("[TKBIO] button %i\n", elem->id);
+        }
         break;
     case TKBIO_LAYOUT_TYPE_GOTO:
         nmap = elem->elem.i + map->offset;
