@@ -614,6 +614,7 @@ void tkbio_finish()
     struct tkbio_save *save;
     const struct tkbio_mapelem *elem;
     const struct tkbio_map *map;
+    struct tkbio_chain_queue *cq;
     struct tkbio_chain_timer *ct;
     
     VERBOSE(printf("[TKBIO] finish\n"));
@@ -656,6 +657,8 @@ void tkbio_finish()
     }
     free(tkbio.save);
     
+    while((cq = tkbio.queue.cqh_first) != (void*)&tkbio.queue)
+        CIRCLEQ_REMOVE(&tkbio.queue, cq, chain);
     while((ct = tkbio.timer.cqh_first) != (void*)&tkbio.timer)
         CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
 }
