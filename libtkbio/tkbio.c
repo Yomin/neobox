@@ -937,11 +937,13 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
             {
             case TKBIO_SYSTEM_NEXT:
                 tret.type = TKBIO_RETURN_SWITCH;
-                tsp.cmd = TSP_CMD_NEXT;
+                tsp.cmd = TSP_CMD_SWITCH;
+                tsp.value = TSP_SWITCH_NEXT;
                 break;
             case TKBIO_SYSTEM_PREV:
                 tret.type = TKBIO_RETURN_SWITCH;
-                tsp.cmd = TSP_CMD_PREV;
+                tsp.cmd = TSP_CMD_SWITCH;
+                tsp.value = TSP_SWITCH_PREV;
                 break;
             case TKBIO_SYSTEM_QUIT:
                 tret.type = TKBIO_RETURN_QUIT;
@@ -1084,14 +1086,20 @@ int tkbio_run(tkbio_handler *handler, void *state)
     return tkbio_run_pfds(handler, state, pfds, 1);
 }
 
-int tkbio_switch(pid_t pid)
+int tkbio_tsp(unsigned char cmd, pid_t pid, int value)
 {
     struct tsp_cmd tsp;
     
-    tsp.cmd = TSP_CMD_SWITCH;
+    tsp.cmd = cmd;
     tsp.pid = pid;
+    tsp.value = value;
     
     return send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+}
+
+int tkbio_switch(pid_t pid)
+{
+    return tkbio_tsp(TSP_CMD_SWITCH, pid, TSP_SWITCH_PID);
 }
 
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)

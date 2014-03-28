@@ -475,16 +475,21 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                         }
                         break;
                     case TSP_CMD_SWITCH:
-                        if(switch_client(0, cmd.pid))
-                            goto client_activate;
-                        break;
-                    case TSP_CMD_PREV:
-                        if(switch_client(+1, 0))
-                            goto client_activate;
-                        break;
-                    case TSP_CMD_NEXT:
-                        if(switch_client(-1, 0))
-                            goto client_activate;
+                        switch(cmd.value)
+                        {
+                        case TSP_SWITCH_PID:
+                            if(switch_client(0, cmd.pid))
+                                goto client_activate;
+                            break;
+                        case TSP_SWITCH_PREV:
+                            if(switch_client(+1, 0))
+                                goto client_activate;
+                            break;
+                        case TSP_SWITCH_NEXT:
+                            if(switch_client(-1, 0))
+                                goto client_activate;
+                            break;
+                        }
                         break;
                     default:
                         DEBUG(printf("Unrecognized command 0x%02x\n", cmd.cmd));
