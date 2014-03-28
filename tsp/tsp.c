@@ -156,7 +156,7 @@ struct chain_socket* client_list_rotate(int dir)
     return client_list.cqh_first;
 }
 
-struct chain_socket* client_list_rotate_next()
+struct chain_socket* client_list_rotate_next(int hidden)
 {
     struct chain_socket *cs, *cs_nxt;
     
@@ -167,16 +167,21 @@ struct chain_socket* client_list_rotate_next()
     
     while(cs != (void*)&client_list)
     {
-        if(!cs->hide)
+        if(!cs->hide && !hidden)
         {
             cs_nxt = cs;
             break;
         }
-        if(cs->priority > cs_nxt->priority)
-            cs_nxt = cs;
-        
+        if(cs->hide)
+        {
+            if(!cs_nxt->hide || cs->priority > cs_nxt->priority)
+                cs_nxt = cs;
+        }
         cs = cs->chain.cqe_next;
     }
+    
+    if(hidden && !cs_nxt->hide)
+        return 0;
     
     if(client_list.cqh_first != cs_nxt)
         while(client_list_rotate(+1) != cs_nxt);
@@ -205,7 +210,7 @@ int rem_client(int pos, pid_t pid)
     {
         if(active)
         {
-            if((cs = client_list_rotate_next())->hide)
+            if((cs = client_list_rotate_next(0))->hide)
                 DEBUG(printf("Active client removed [%i] %i, switch invisible [%i] %i\n",
                     fd, pid, cs->sock, cs->pid));
             else
@@ -226,15 +231,17 @@ int rem_client(int pos, pid_t pid)
     }
 }
 
-int switch_client(int mod, int pos, pid_t pid)
+int switch_client(int cmd, int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first, *cs2;
+    int dir = +1;
     
     if(cs == (void*)&client_list || cs->chain.cqe_next == (void*)&client_list)
         return 0;
     
-    if(!mod)
+    switch(cmd)
     {
+    case TSP_SWITCH_PID:
         if(pid)
         {
             if(cs->pid == pid)
@@ -251,12 +258,18 @@ int switch_client(int mod, int pos, pid_t pid)
             if(cs == cs2)
                 return 0;
         }
-    }
-    else
-    {
-        while((cs2 = client_list_rotate(mod))->hide && cs != cs2);
+        break;
+    case TSP_SWITCH_PREV:
+        dir = -1;
+    case TSP_SWITCH_NEXT:
+        while((cs2 = client_list_rotate(dir))->hide && cs != cs2);
         if(cs == cs2)
             return 0;
+        break;
+    case TSP_SWITCH_HIDDEN:
+        if(!(cs2 = client_list_rotate_next(1)) || cs == cs2)
+            return 0;
+        break;
     }
     
     DEBUG(printf("Client switched [%i] %i\n",
@@ -539,21 +552,8 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                         }
                         break;
                     case TSP_CMD_SWITCH:
-                        switch(cmd.value)
-                        {
-                        case TSP_SWITCH_PID:
-                            if(switch_client(0, x, cmd.pid))
-                                goto client_activate;
-                            break;
-                        case TSP_SWITCH_PREV:
-                            if(switch_client(+1, 0, 0))
-                                goto client_activate;
-                            break;
-                        case TSP_SWITCH_NEXT:
-                            if(switch_client(-1, 0, 0))
-                                goto client_activate;
-                            break;
-                        }
+                        if(switch_client(cmd.value, x, cmd.pid))
+                            goto client_activate;
                         break;
                     case TSP_CMD_LOCK:
                         lock = cmd.value;

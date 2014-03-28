@@ -36,6 +36,7 @@
 #define TSP_SWITCH_PID      0
 #define TSP_SWITCH_PREV     1
 #define TSP_SWITCH_NEXT     2
+#define TSP_SWITCH_HIDDEN   3
 #define TSP_HIDE_MASK       (1<<7)
 
 #define TSP_EVENT_PRESSED   1

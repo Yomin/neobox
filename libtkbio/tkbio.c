@@ -953,7 +953,8 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
                 break;
             case TKBIO_SYSTEM_MENU:
                 tret.type = TKBIO_RETURN_SWITCH;
-                // todo
+                tsp.cmd = TSP_CMD_SWITCH;
+                tsp.value = TSP_SWITCH_HIDDEN;
                 break;
             }
             if(tsp.cmd != TSP_CMD_REGISTER)
