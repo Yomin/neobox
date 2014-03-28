@@ -226,7 +226,7 @@ int rem_client(int pos, pid_t pid)
     }
 }
 
-int switch_client(int mod, pid_t pid)
+int switch_client(int mod, int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first, *cs2;
     
@@ -235,11 +235,22 @@ int switch_client(int mod, pid_t pid)
     
     if(!mod)
     {
-        if(cs->pid == pid)
-            return 0;
-        while((cs2 = client_list_rotate(+1))->pid != pid && cs != cs2);
-        if(cs == cs2)
-            return 0;
+        if(pid)
+        {
+            if(cs->pid == pid)
+                return 0;
+            while((cs2 = client_list_rotate(+1))->pid != pid && cs != cs2);
+            if(cs == cs2)
+                return 0;
+        }
+        else
+        {
+            if(cs->sock == pfds[pos].fd)
+                return 0;
+            while((cs2 = client_list_rotate(+1))->sock != pfds[pos].fd && cs != cs2);
+            if(cs == cs2)
+                return 0;
+        }
     }
     else
     {
@@ -531,15 +542,15 @@ client_activate:            event.event |= TSP_EVENT_ACTIVATED;
                         switch(cmd.value)
                         {
                         case TSP_SWITCH_PID:
-                            if(switch_client(0, cmd.pid))
+                            if(switch_client(0, x, cmd.pid))
                                 goto client_activate;
                             break;
                         case TSP_SWITCH_PREV:
-                            if(switch_client(+1, 0))
+                            if(switch_client(+1, 0, 0))
                                 goto client_activate;
                             break;
                         case TSP_SWITCH_NEXT:
-                            if(switch_client(-1, 0))
+                            if(switch_client(-1, 0, 0))
                                 goto client_activate;
                             break;
                         }
