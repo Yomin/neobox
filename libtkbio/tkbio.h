@@ -59,6 +59,7 @@
 #define TKBIO_RETURN_POLLIN         8
 #define TKBIO_RETURN_POLLOUT        9
 #define TKBIO_RETURN_POLLHUPERR     10
+#define TKBIO_RETURN_TIMER          11
 
 #define TKBIO_HANDLER_SUCCESS       0
 #define TKBIO_HANDLER_QUIT          1
@@ -98,7 +99,8 @@ int tkbio_handle_queue(tkbio_handler *handler, void *state);
 
 int tkbio_catch_signal(int signal, int flags);
 
+int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec);
+
 int tkbio_switch(pid_t pid);
 
 #endif
-

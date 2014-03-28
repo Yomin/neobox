@@ -25,6 +25,7 @@
 
 #include <linux/fb.h>
 #include <sys/queue.h>
+#include <sys/time.h>
 #include <alg/vector.h>
 #include "tkbio.h"
 
@@ -41,12 +42,23 @@
 #define INCREASE    33      // button size increase in percent
 #define DELAY       100000  // debouncer pause delay in us
 
+#define TIMER_SYSTEM 0
+#define TIMER_USER   1
+
 struct tkbio_chain_queue
 {
     CIRCLEQ_ENTRY(tkbio_chain_queue) chain;
     struct tkbio_return ret;
 };
 CIRCLEQ_HEAD(tkbio_queue, tkbio_chain_queue);
+
+struct tkbio_chain_timer
+{
+    CIRCLEQ_ENTRY(tkbio_chain_timer) chain;
+    struct timeval tv;
+    unsigned char id, type;
+};
+CIRCLEQ_HEAD(tkbio_timer, tkbio_chain_timer);
 
 struct tkbio_point
 {
@@ -105,6 +117,7 @@ struct tkbio_global
     struct tkbio_parser parser;
     struct tkbio_save **save; // button save array
     struct tkbio_queue queue; // event queue
+    struct tkbio_timer timer; // timer queue
 };
 
 #endif

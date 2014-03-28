@@ -80,14 +80,32 @@
 
 struct tkbio_global tkbio;
 
+int tkbio_handle_timer(unsigned char *id, unsigned char *type);
+
 void tkbio_signal_handler(int signal)
 {
     struct tkbio_chain_queue *cq;
+    unsigned char id, type;
+    int ret;
     
     switch(signal)
     {
     case SIGALRM:
-        tkbio.pause = 0;
+        do
+        {
+            if((ret = tkbio_handle_timer(&id, &type)) == -1)
+                continue;
+            if(type == TIMER_SYSTEM)
+                tkbio.pause = 0;
+            else
+            {
+                cq = malloc(sizeof(struct tkbio_chain_queue));
+                CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
+                cq->ret.type = TKBIO_RETURN_TIMER;
+                cq->ret.id = id;
+            }
+        }
+        while(ret);
         break;
     default:
         cq = malloc(sizeof(struct tkbio_chain_queue));
@@ -529,6 +547,7 @@ int tkbio_init_custom(struct tkbio_config config)
     tkbio.pause = 0;
     tkbio.flagstat = 0;
     CIRCLEQ_INIT(&tkbio.queue);
+    CIRCLEQ_INIT(&tkbio.timer);
     
     // signals
     sa.sa_handler = tkbio_signal_handler;
@@ -595,6 +614,7 @@ void tkbio_finish()
     struct tkbio_save *save;
     const struct tkbio_mapelem *elem;
     const struct tkbio_map *map;
+    struct tkbio_chain_timer *ct;
     
     VERBOSE(printf("[TKBIO] finish\n"));
     
@@ -635,22 +655,114 @@ void tkbio_finish()
         free(tkbio.save[i]);
     }
     free(tkbio.save);
+    
+    while((ct = tkbio.timer.cqh_first) != (void*)&tkbio.timer)
+        CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
 }
 
-void tkbio_set_pause()
+int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsigned int usec)
 {
-    struct itimerval timerval;
+    struct tkbio_chain_timer *ct = tkbio.timer.cqh_first;
+    struct tkbio_chain_timer *nct = malloc(sizeof(struct tkbio_chain_timer));
+    struct timeval *tv = &nct->tv;
+    struct itimerval it;
     
-    tkbio.pause = 1;
-    timerval.it_interval.tv_sec = 0;
-    timerval.it_interval.tv_usec = 0;
-    timerval.it_value.tv_sec = 0;
-    timerval.it_value.tv_usec = DELAY;
-    while(setitimer(ITIMER_REAL, &timerval, 0) < 0)
+    gettimeofday(tv, 0);
+    
+    if(sec)
+        tv->tv_sec += sec;
+    if(usec)
     {
-        VERBOSE(perror("[TKBIO] Failed to set timer"));
-        sleep(1);
+        tv->tv_sec += (tv->tv_usec+usec)/1000000;
+        tv->tv_usec = (tv->tv_usec+usec)%1000000;
     }
+    
+    while(ct != (void*)&tkbio.timer &&
+        (tv->tv_sec >= ct->tv.tv_sec || tv->tv_usec >= ct->tv.tv_usec))
+    {
+        ct = ct->chain.cqe_next;
+    }
+    
+    
+    nct->id = id;
+    nct->type = type;
+    
+    if(ct == tkbio.timer.cqh_first)
+    {
+        it.it_interval.tv_sec = 0;
+        it.it_interval.tv_usec = 0;
+        it.it_value.tv_sec = sec;
+        it.it_value.tv_usec = usec;
+        if(setitimer(ITIMER_REAL, &it, 0) == -1)
+        {
+            VERBOSE(fprintf(stderr, "[TKBIO] Failed to set %s timer %i [%u,%u]: %s\n",
+                type == TIMER_SYSTEM ? "system" : "user",
+                id, sec, usec, strerror(errno)));
+            free(nct);
+            return -1;
+        }
+        CIRCLEQ_INSERT_HEAD(&tkbio.timer, nct, chain);
+    }
+    else
+    {
+        if(ct == (void*)&tkbio.timer)
+            CIRCLEQ_INSERT_TAIL(&tkbio.timer, nct, chain);
+        else
+            CIRCLEQ_INSERT_BEFORE(&tkbio.timer, ct, nct, chain);
+    }
+    
+    return 0;
+}
+
+int tkbio_handle_timer(unsigned char *id, unsigned char *type)
+{
+    struct tkbio_chain_timer *ct_fst = tkbio.timer.cqh_first, *ct_nxt;
+    struct itimerval it;
+    struct timeval *tv = &it.it_value;
+    
+    *id = ct_fst->id;
+    *type = ct_fst->type;
+    
+    if((ct_nxt = ct_fst->chain.cqe_next) == (void*)&tkbio.timer)
+    {
+        CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
+        free(ct_fst);
+        return 0;
+    }
+    
+    gettimeofday(tv, 0);
+    
+    it.it_interval.tv_sec = 0;
+    it.it_interval.tv_usec = 0;
+    
+    if(tv->tv_sec >= ct_nxt->tv.tv_sec && tv->tv_usec >= ct_nxt->tv.tv_usec)
+        return 1;
+    
+    tv->tv_sec = ct_nxt->tv.tv_sec - tv->tv_sec;
+    if(tv->tv_usec <= ct_nxt->tv.tv_usec)
+        tv->tv_usec = ct_nxt->tv.tv_usec - tv->tv_usec;
+    else
+    {
+        tv->tv_sec--;
+        tv->tv_usec = 1000000 - tv->tv_usec + ct_nxt->tv.tv_usec;
+    }
+    
+    if(setitimer(ITIMER_REAL, &it, 0) == -1)
+    {
+        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set %s timer %i [%li,%li]: %s\n",
+            ct_nxt->type == TIMER_SYSTEM ? "system" : "user",
+            ct_nxt->id, tv->tv_sec, tv->tv_usec, strerror(errno)));
+        CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
+        CIRCLEQ_REMOVE(&tkbio.timer, ct_nxt, chain);
+        free(ct_fst);
+        free(ct_nxt);
+        return -1;
+    }
+    
+    CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
+    free(ct_fst);
+    
+    return 0;
 }
 
 struct tkbio_return tkbio_recv_event()
@@ -781,7 +893,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
             
             tkbio.parser.pressed = 1;
             
-            tkbio_set_pause();
+            tkbio_add_timer(0, TIMER_SYSTEM, 0, DELAY);
         }
     }
     
@@ -977,4 +1089,9 @@ int tkbio_switch(pid_t pid)
     tsp.pid = pid;
     
     return send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+}
+
+int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
+{
+    return tkbio_add_timer(id, TIMER_USER, sec, usec);
 }
