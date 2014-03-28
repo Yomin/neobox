@@ -251,10 +251,6 @@ void free_apps()
     free(apps);
 }
 
-void sighandler(int signal)
-{
-}
-
 int usage(const char *name)
 {
     printf("Usage: %s [-v] <file>\n", name);
