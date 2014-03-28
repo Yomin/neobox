@@ -33,6 +33,7 @@
 #include <sys/wait.h>
 
 #include <tkbio.h>
+#include <tkbio_util.h>
 #include <tkbio_select.h>
 
 #include "menu_layout.h"
@@ -180,8 +181,8 @@ int handler(struct tkbio_return ret, void *state)
 int init_apps(const char *file)
 {
     FILE *f;
-    char *line = 0, *ptr, *ptr2;
-    int i, count, err;
+    char *line = 0, *ptr;
+    int count, err;
     size_t size;
     
     if(!(f = fopen(file, "r")))
@@ -214,42 +215,10 @@ int init_apps(const char *file)
             line[count-1] = 0;
         
         *ptr = 0;
-        ptr++;
         apps[appcount].name = line;
-        apps[appcount].cmd = ptr;
-        
-        if(!(ptr = strchr(ptr, ' ')))
-        {
-            apps[appcount].argv = malloc(sizeof(char*));
-            apps[appcount].argv[0] = apps[appcount].name;
-            appcount++;
-            line = 0;
-            continue;
-        }
-        
-        *ptr = 0;
-        ptr++;
-        ptr2 = ptr;
-        count = 0;
-        
-        while(*(ptr2++))
-            if(isspace(ptr2[0]) && !isspace(ptr2[-1]))
-                count++;
-        
-        if(isspace(ptr2[-2]))
-            count--;
-        
-        i = 0;
-        apps[appcount].argv = malloc((count+3)*sizeof(char*));
-        apps[appcount].argv[i++] = apps[appcount].name;
-        
-        ptr = strtok(ptr, " ");
-        apps[appcount].argv[i++] = ptr;
-        
-        while((ptr = strtok(0, " ")))
-            apps[appcount].argv[i++] = ptr;
-        
-        apps[appcount].argv[i] = 0;
+        apps[appcount].cmd = ptr+1;
+        apps[appcount].argv = tkbio_util_parse_cmd(ptr+1);
+        apps[appcount].argv[0] = line;
         appcount++;
         line = 0;
     }
