@@ -297,6 +297,7 @@ int main(int argc, char* argv[])
     
     redraw();
     
+    tkbio_hide(0, 1, 1);
     tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
     
     tkbio_run(handler, 0);
