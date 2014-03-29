@@ -222,12 +222,13 @@ struct chain_socket* client_list_rotate_next(int hidden)
 int rem_client(int pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
-    int fd, active;
+    int active;
+    DEBUG(int fd);
     
     if(!(cs = find_client(pos, pid)))
         return 0;
     
-    fd = cs->sock;
+    DEBUG(fd = cs->sock);
     pid = cs->pid;
     active = cs == client_list.cqh_first;
     
@@ -468,7 +469,7 @@ int main(int argc, char* argv[])
 {
     int opt, ret;
     int daemon = 1, lock = 0;
-    int pressed, y, x;
+    int screen_status, aux_pressed, power_pressed, y, x;
     char *config;
     FILE *file;
     struct sockaddr_un rpc_addr;
@@ -479,7 +480,7 @@ int main(int argc, char* argv[])
     
     size_t size;
     
-    y = x = pressed = 0;
+    y = x = screen_status = aux_pressed = power_pressed = 0;
     pwd = TSP_PWD;
     
     while((opt = getopt(argc, argv, "fd:")) != -1)
@@ -647,44 +648,55 @@ int main(int argc, char* argv[])
             switch(input.type)
             {
             case EV_KEY:
-                if(input.code != BTN_TOUCH)
-                    break;
-                switch(input.value)
+                switch(input.code)
                 {
-                    case 0:
-                        if(pressed)
-                        {
-                            DEBUG(printf("Touchscreen released (%i,%i)\n", y, x));
-                            send_client_cord(TSP_EVENT_RELEASED, y, x, 0);
-                            pressed = 0;
-                        }
-                        break;
-                    case 1:
-                        if(!pressed)
-                        {
-                            DEBUG(printf("Touchscreen pressed (%i,%i)\n", y, x));
-                            send_client_cord(TSP_EVENT_PRESSED, y, x, 0);
-                            pressed = 1;
-                        }
-                        break;
+                case BTN_TOUCH:
+                    switch(input.value)
+                    {
+                        case 0:
+                            screen_status = 0;
+                            break;
+                        case 1:
+                            screen_status = 1;
+                            break;
+                    }
+                    break;
                 }
                 break;
             case EV_ABS:
                 switch(input.code)
                 {
-                case ABS_Y:
+                case ABS_X:
                     y = input.value-MIN_PIXEL;
                     break;
-                case ABS_X:
+                case ABS_Y:
                     x = input.value-MIN_PIXEL;
-                    if(pressed)
-                        send_client_cord(TSP_EVENT_MOVED, y, x, 0);
                     break;
                 case ABS_PRESSURE:
                     break;
                 }
                 break;
             case EV_SYN:
+                switch(input.code)
+                {
+                case SYN_REPORT:
+                    switch(screen_status)
+                    {
+                    case 0:
+                        DEBUG(printf("Touchscreen released (%i,%i)\n", y, x));
+                        send_client_cord(TSP_EVENT_RELEASED, y, x, 0);
+                        break;
+                    case 1:
+                        DEBUG(printf("Touchscreen pressed (%i,%i)\n", y, x));
+                        send_client_cord(TSP_EVENT_PRESSED, y, x, 0);
+                        screen_status = 2;
+                        break;
+                    case 2:
+                        send_client_cord(TSP_EVENT_MOVED, y, x, 0);
+                        break;
+                    }
+                    break;
+                }
                 break;
             }
         }
@@ -709,9 +721,17 @@ int main(int argc, char* argv[])
                 switch(input.code)
                 {
                 case KEY_PHONE:
+                    aux_pressed = input.value;
+                    break;
+                }
+                break;
+            case EV_SYN:
+                switch(input.code)
+                {
+                case SYN_REPORT:
                     DEBUG(printf("AUX %s\n",
-                        input.value ? "pressed" : "released"));
-                    send_client_status(TSP_EVENT_AUX, input.value, 0);
+                        aux_pressed ? "pressed" : "released"));
+                    send_client_status(TSP_EVENT_AUX, aux_pressed, 0);
                     break;
                 }
                 break;
@@ -738,9 +758,19 @@ int main(int argc, char* argv[])
                 switch(input.code)
                 {
                 case KEY_POWER:
+                    power_pressed = input.value;
+                    break;
+                }
+                break;
+            case EV_PWR:
+                break;
+            case EV_SYN:
+                switch(input.code)
+                {
+                case SYN_REPORT:
                     DEBUG(printf("Power %s\n",
-                        input.value ? "pressed" : "released"));
-                    send_client_status(TSP_EVENT_POWER, input.value, 0);
+                        power_pressed ? "pressed" : "released"));
+                    send_client_status(TSP_EVENT_POWER, power_pressed, 0);
                     break;
                 }
                 break;

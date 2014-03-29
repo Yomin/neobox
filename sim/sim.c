@@ -148,9 +148,10 @@ gboolean on_button_press(GtkWidget *widget, GdkEvent *event, gpointer data)
             x = SCREEN_XALIGN(button_event->x);
             y = SCREEN_YALIGN(height - button_event->y);
         }
-        send_event(screen, EV_ABS, ABS_Y, y);
-        send_event(screen, EV_ABS, ABS_X, x);
+        send_event(screen, EV_ABS, ABS_X, y);
+        send_event(screen, EV_ABS, ABS_Y, x);
         send_event(screen, EV_KEY, BTN_TOUCH, 1);
+        send_event(screen, EV_SYN, SYN_REPORT, 0);
     }
     
     pressed_screen = 1;
@@ -163,6 +164,7 @@ gboolean on_button_release(GtkWidget *widget, GdkEvent *event, gpointer data)
     printf("Released\n");
     
     send_event(screen, EV_KEY, BTN_TOUCH, 0);
+    send_event(screen, EV_SYN, SYN_REPORT, 0);
     pressed_screen = 0;
     
     return FALSE;
@@ -178,6 +180,7 @@ gboolean on_key_press(GtkWidget *widget, GdkEvent *event, gpointer data)
             printf("AUX pressed\n");
             pressed_aux = 1;
             send_event(aux, EV_KEY, KEY_PHONE, 1);
+            send_event(aux, EV_SYN, SYN_REPORT, 0);
         }
         break;
     case GDK_KEY_p:
@@ -186,6 +189,7 @@ gboolean on_key_press(GtkWidget *widget, GdkEvent *event, gpointer data)
             printf("Power pressed\n");
             pressed_power = 1;
             send_event(power, EV_KEY, KEY_POWER, 1);
+            send_event(power, EV_SYN, SYN_REPORT, 0);
         }
         break;
     }
@@ -201,11 +205,13 @@ gboolean on_key_release(GtkWidget *widget, GdkEvent *event, gpointer data)
         printf("AUX released\n");
         pressed_aux = 0;
         send_event(aux, EV_KEY, KEY_PHONE, 0);
+        send_event(aux, EV_SYN, SYN_REPORT, 0);
         break;
     case GDK_KEY_p:
         printf("Power released\n");
         pressed_power = 0;
         send_event(power, EV_KEY, KEY_POWER, 0);
+        send_event(power, EV_SYN, SYN_REPORT, 0);
         break;
     }
     
@@ -230,8 +236,9 @@ gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
             x = SCREEN_XALIGN(button_event->x);
             y = SCREEN_YALIGN(height - button_event->y);
         }
-        send_event(screen, EV_ABS, ABS_Y, y);
-        send_event(screen, EV_ABS, ABS_X, x);
+        send_event(screen, EV_ABS, ABS_X, y);
+        send_event(screen, EV_ABS, ABS_Y, x);
+        send_event(screen, EV_SYN, SYN_REPORT, 0);
     }
     
     return FALSE;
