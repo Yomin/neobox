@@ -33,6 +33,8 @@
 #include <sys/un.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <linux/input.h>
 
 #include "tsp.h"
 
@@ -331,6 +333,93 @@ void signal_handler(int signal)
     exit(0);
 }
 
+#ifndef NDEBUG
+
+char tmpbuf[20];
+
+const char* strevent(unsigned char ev)
+{
+    switch(ev)
+    {
+    case EV_SYN: return "EV_SYN";
+    case EV_KEY: return "EV_KEY";
+    case EV_REL: return "EV_REL";
+    case EV_ABS: return "EV_ABS";
+    case EV_MSC: return "EV_MSC";
+    case EV_SW: return "EV_SW";
+    case EV_LED: return "EV_LED";
+    case EV_SND: return "EV_SND";
+    case EV_REP: return "EV_REP";
+    case EV_FF: return "EV_FF";
+    case EV_FF_STATUS: return "EV_FF_STATUS";
+    case EV_PWR: return "EV_PWR";
+    default:
+        snprintf(tmpbuf, 20, "unknown(%02hhx)", ev);
+        return tmpbuf;
+    }
+}
+
+void print_info(int fd)
+{
+    char buf[100];
+    int version;
+    struct input_id id;
+    char evtype[(EV_MAX+7)/8];
+    int i;
+    
+    if(ioctl(fd, EVIOCGNAME(100), buf) == -1)
+        perror("Failed to get device name");
+    else
+        printf("Device: %s\n", buf);
+    if(ioctl(fd, EVIOCGID, &id) == -1)
+        perror("Failed to get device id");
+    else
+    {
+        switch(id.bustype)
+        {
+        case BUS_PCI: printf("Bustype PCI "); break;
+        case BUS_ISAPNP: printf("Bustype ISAPNP "); break;
+        case BUS_USB: printf("Bustype USB "); break;
+        case BUS_HIL: printf("Bustype HIL "); break;
+        case BUS_BLUETOOTH: printf("Bustype BLUETOOTH "); break;
+        case BUS_VIRTUAL: printf("Bustype VIRTUAL "); break;
+        case BUS_ISA: printf("Bustype ISA "); break;
+        case BUS_I8042: printf("Bustype I8042 "); break;
+        case BUS_XTKBD: printf("Bustype XTKBD "); break;
+        case BUS_RS232: printf("Bustype RS232 "); break;
+        case BUS_GAMEPORT: printf("Bustype GAMEPORT "); break;
+        case BUS_PARPORT: printf("Bustype PARPORT "); break;
+        case BUS_AMIGA: printf("Bustype AMIGA "); break;
+        case BUS_ADB: printf("Bustype ADB "); break;
+        case BUS_I2C: printf("Bustype I2C "); break;
+        case BUS_HOST: printf("Bustype HOST "); break;
+        case BUS_GSC: printf("Bustype GSC "); break;
+        case BUS_ATARI: printf("Bustype ATARI "); break;
+        case BUS_SPI: printf("Bustype SPI "); break;
+        default: printf("Bustype unknown(%04hx) ", id.bustype);
+        }
+        printf("Vendor %04hx ", id.vendor);
+        printf("Product %04hx ", id.product);
+        printf("Version %04hx\n", id.version);
+    }
+    if(ioctl(fd, EVIOCGVERSION, &version) == -1)
+        perror("Failed to get driver version");
+    else
+        printf("Driver: %i.%i.%i\n", version>>16,
+            (version>>8) & 0xff, version & 0xff);
+    if(ioctl(fd, EVIOCGBIT(0, EV_MAX), &evtype) == -1)
+        perror("Failed to get event types");
+    else
+    {
+        printf("Events: ");
+        for(i=0; i<EV_MAX; i++)
+            if(evtype[i/8] & (1<<(i%8)))
+                printf("%s ", strevent(i));
+        printf("\n");
+    }
+}
+#endif
+
 void usage(const char *name)
 {
     printf("Usage: %s [-f] [-d pwd] <screen>\n", name);
@@ -345,7 +434,7 @@ int main(int argc, char* argv[])
     int screen_fd, rpc_sock;
     struct sockaddr_un rpc_addr;
     
-    unsigned char screen_buf[BYTES_PER_CMD];
+    struct input_event input;
     struct tsp_cmd cmd;
     struct chain_socket *cs;
     
@@ -426,6 +515,8 @@ int main(int argc, char* argv[])
         return 4;
     }
     
+    DEBUG(print_info(screen_fd));
+    
     if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
         return ret;
     
@@ -449,55 +540,53 @@ int main(int argc, char* argv[])
         
         if(pfds[0].revents & POLLIN)
         {
-            read(screen_fd, screen_buf, BYTES_PER_CMD);
+            read(screen_fd, &input, sizeof(struct input_event));
             
             if(lock)
                 continue;
             
-            if( screen_buf[8] == 0x01 && screen_buf[9] == 0x00 &&
-                screen_buf[10] == 0x4A && screen_buf[11] == 0x01)
+            switch(input.type)
             {
-                DEBUG(printf("Button"));
-                switch(screen_buf[12])
+            case EV_KEY:
+                if(input.code != BTN_TOUCH)
+                    break;
+                switch(input.value)
                 {
-                    case 0x00:
+                    case 0:
                         if(pressed)
                         {
-                            DEBUG(printf(" released (%i,%i)\n", y, x));
+                            DEBUG(printf("Touchscreen released (%i,%i)\n", y, x));
                             send_client(TSP_EVENT_RELEASED, y, x, 0);
                             pressed = 0;
                         }
-                        else
-                            DEBUG(printf(" already released (%i,%i)\n", y, x));
                         break;
-                    case 0x01:
+                    case 1:
                         if(!pressed)
                         {
-                            DEBUG(printf(" pressed (%i,%i)\n", y, x));
+                            DEBUG(printf("Touchscreen pressed (%i,%i)\n", y, x));
                             send_client(TSP_EVENT_PRESSED, y, x, 0);
                             pressed = 1;
                         }
-                        else
-                            DEBUG(printf(" already pressed (%i,%i)\n", y, x));
                         break;
-                    default:
-                        DEBUG(printf(" unrecognized (%i,%i)\n", y, x));
                 }
-            }
-            else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
-                    screen_buf[10] == 0x00 && screen_buf[11] == 0x00)
-            {
-                y = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
-            }
-            else if(screen_buf[8] == 0x03 && screen_buf[9] == 0x00 &&
-                    screen_buf[10] == 0x01 && screen_buf[11] == 0x00)
-            {
-                x = screen_buf[13]*256+screen_buf[12]-MIN_PIXEL;
-                if(pressed)
+                break;
+            case EV_ABS:
+                switch(input.code)
                 {
-                    DEBUG(printf("Move (%i,%i)\n", y, x));
-                    send_client(TSP_EVENT_MOVED, y, x, 0);
+                case ABS_Y:
+                    y = input.value-MIN_PIXEL;
+                    break;
+                case ABS_X:
+                    x = input.value-MIN_PIXEL;
+                    if(pressed)
+                        send_client(TSP_EVENT_MOVED, y, x, 0);
+                    break;
+                case ABS_PRESSURE:
+                    break;
                 }
+                break;
+            case EV_SYN:
+                break;
             }
         }
         else if(pfds[0].revents & POLLHUP)
