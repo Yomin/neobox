@@ -36,6 +36,7 @@
 #define TKBIO_ERROR_SCREEN_POLL -7
 #define TKBIO_ERROR_SIGNAL      -8
 #define TKBIO_ERROR_POLL        -9
+#define TKBIO_ERROR_REGISTER    -10
 
 #define TKBIO_FORMAT_LANDSCAPE  0
 #define TKBIO_FORMAT_PORTRAIT   1
@@ -108,8 +109,8 @@ int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec);
 
 void tkbio_init_screen();
 
-int tkbio_switch(pid_t pid);
-int tkbio_lock(int lock);
-int tkbio_hide(pid_t pid, int priority, int hide);
+void tkbio_switch(pid_t pid);
+void tkbio_lock(int lock);
+void tkbio_hide(pid_t pid, int priority, int hide);
 
 #endif

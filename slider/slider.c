@@ -38,13 +38,18 @@ char buf[100];
 
 int handler(struct tkbio_return ret, void *state)
 {
-    int count;
+    int count, err;
     
     switch(ret.type)
     {
     case TKBIO_RETURN_INT:
         count = snprintf(buf, 100, "%i", ret.value.i*tick);
-        write(fd, buf, count);
+        if(write(fd, buf, count) == -1)
+        {
+            err = errno;
+            perror("Failed to write device");
+            return TKBIO_HANDLER_ERROR|err;
+        }
         break;
     default:
         return TKBIO_HANDLER_DEFER;
@@ -64,9 +69,10 @@ void check_num(char *str, char *name)
 
 int main(int argc, char* argv[])
 {
-    int err;
+    int ret, err;
     
-    tkbio_init_layout(sliderLayout, &argc, argv);
+    if((ret = tkbio_init_layout(sliderLayout, &argc, argv)) < 0)
+        return ret;
 
     if(argc != 4)
     {
@@ -87,16 +93,25 @@ int main(int argc, char* argv[])
         return err;
     }
     
-    read(fd, buf, 100);
+    if(read(fd, buf, 100) == -1)
+    {
+        err = errno;
+        perror("Failed to read device");
+        close(fd);
+        tkbio_finish();
+        return err;
+    }
+    
     tkbio_slider_set_ticks_pos(0, 0, atoi(argv[2]), atoi(buf)/tick, 0);
     
     tkbio_nop_set_name(1, 0, argv[0], 0);
     
-    tkbio_run(handler, 0);
+    ret = tkbio_run(handler, 0);
+    
     tkbio_finish();
     
     close(fd);
     
-    return 0;
+    return ret;
 }
 

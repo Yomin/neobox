@@ -54,7 +54,7 @@ struct tsp_cmd
     unsigned char cmd;
     pid_t pid;
     int value;
-};
+} __attribute__((packed));
 
 union tsp_value
 {
@@ -66,6 +66,6 @@ struct tsp_event
 {
     unsigned char event;
     union tsp_value value;
-};
+} __attribute__((packed));
 
 #endif

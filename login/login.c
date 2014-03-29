@@ -241,7 +241,8 @@ int main(int argc, char* argv[])
     
     config.format = TKBIO_FORMAT_PORTRAIT;
     config.layout = loginLayout;
-    tkbio_init_custom(config);
+    if((ret = tkbio_init_custom(config)) < 0)
+        return ret;
     
     srandom(time(0));
     
@@ -254,6 +255,7 @@ int main(int argc, char* argv[])
     tkbio_finish();
     
     free(line);
+    free(cmd[0]);
     free(cmd);
     
     return ret;

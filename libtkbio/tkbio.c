@@ -80,6 +80,7 @@
 
 struct tkbio_global tkbio;
 
+int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value);
 int tkbio_handle_timer(unsigned char *id, unsigned char *type);
 
 void tkbio_signal_handler(int signal)
@@ -300,36 +301,116 @@ void tkbio_init_save_data()
     }
 }
 
-int tkbio_open_socket(int tries)
+int tkbio_tsp_connect(int tries)
 {
     struct sockaddr_un addr;
+    int reuse = 1;
     
     VERBOSE(printf("[TKBIO] Connecting to rpc socket\n"));
     
-    if((tkbio.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-    {
-        VERBOSE(perror("[TKBIO] Failed to open rpc socket"));
-        return TKBIO_ERROR_RPC_OPEN;
-    }
-    
     addr.sun_family = AF_UNIX;
-    sprintf(addr.sun_path, "%s/%s", tkbio.tsp, TSP_RPC);
+    sprintf(addr.sun_path, "%s/%s", tkbio.tsp.dir, TSP_RPC);
     
-    while(connect(tkbio.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+    while(1)
     {
-        VERBOSE(perror("[TKBIO] Failed to connect rpc socket"));
-        if(errno != EADDRINUSE)
-            return TKBIO_ERROR_RPC_OPEN;
+        if(tkbio.tsp.sock)
+            close(tkbio.tsp.sock);
         
-        if(tries-- == 1)
+        if((tkbio.tsp.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+        {
+            VERBOSE(perror("[TKBIO] Failed to open rpc socket"));
+            goto retry;
+        }
+        
+        if(setsockopt(tkbio.tsp.sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1)
+        {
+            VERBOSE(perror("Failed to set SO_REUSEADDR"));
+            goto retry;
+        }
+        
+        if(connect(tkbio.tsp.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+        {
+            VERBOSE(perror("[TKBIO] Failed to connect rpc socket"));
+            goto retry;
+        }
+        
+        break;
+        
+retry:  if(tries-- == 1)
         {
             VERBOSE(perror("[TKBIO] Unable to connect rpc socket"));
             return TKBIO_ERROR_RPC_OPEN;
         }
+        
+        VERBOSE(printf("[TKBIO] Retry connecting to rpc socket in 1 second\n"));
+        
         sleep(1);
-        VERBOSE(printf("[TKBIO] Retry connecting to rpc socket\n"));
     }
+    
     return 0;
+}
+
+int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value)
+{
+    struct tsp_cmd tsp;
+    char *ptr = (char*)&tsp;
+    int count, err, size = sizeof(struct tsp_cmd);
+    
+    tsp.cmd = cmd;
+    tsp.pid = pid;
+    tsp.value = value;
+    
+    while((count = send(tkbio.tsp.sock, ptr, size, 0)) != size)
+    {
+        if(count == -1)
+        {
+            err = errno;
+            VERBOSE(perror("[TKBIO] Failed to send tsp cmd"));
+            return err;
+        }
+        ptr += count;
+        size -= count;
+    }
+    
+    return 0;
+}
+
+int tkbio_tsp_recv(struct tsp_event *event)
+{
+    char *ptr = (char*)event;
+    int count, err, size = sizeof(struct tsp_event);
+    
+    while((count = recv(tkbio.tsp.sock, ptr, size, 0)) != size)
+    {
+        if(count == -1)
+        {
+            err = errno;
+            VERBOSE(perror("[TKBIO] Failed to recv tsp event"));
+            return err;
+        }
+        ptr += count;
+        size -= count;
+    }
+    
+    return 0;
+}
+
+void tkbio_tsp_reconnect()
+{
+    while(1)
+    {
+        tkbio_tsp_connect(-1);
+        
+        if(tkbio_tsp_cmd(TSP_CMD_REGISTER, getpid(), 0))
+            continue;
+        if(tkbio.tsp.lock)
+            if(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, 1))
+                continue;
+        if(tkbio.tsp.hide)
+            if(tkbio_tsp_cmd(TSP_CMD_HIDE, 0, TSP_HIDE_MASK|tkbio.tsp.priority))
+                continue;
+        break;
+    }
 }
 
 struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config config)
@@ -415,7 +496,6 @@ int tkbio_init_custom(struct tkbio_config config)
 {
     int ret;
     struct sockaddr_un addr;
-    struct tsp_cmd tsp;
     struct sigaction sa;
     
     tkbio.verbose = config.verbose;
@@ -432,16 +512,16 @@ int tkbio_init_custom(struct tkbio_config config)
             & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
     }
     
-    tkbio.tsp = config.tsp;
+    tkbio.tsp.dir = config.tsp;
+    tkbio.tsp.sock = 0;
     
     // open rpc socket
-    if((ret = tkbio_open_socket(-1)) < 0)
+    if((ret = tkbio_tsp_connect(-1)))
         return ret;
     
     // register
-    tsp.cmd = TSP_CMD_REGISTER;
-    tsp.pid = getpid();
-    send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+    if(tkbio_tsp_cmd(TSP_CMD_REGISTER, getpid(), 0))
+        return TKBIO_ERROR_REGISTER;
     
     // open framebuffer
     if(strncmp(config.fb+strlen(config.fb)-4, ".ipc", 4))
@@ -451,20 +531,20 @@ int tkbio_init_custom(struct tkbio_config config)
         if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
         {
             VERBOSE(perror("[TKBIO] Failed to open framebuffer"));
-            close(tkbio.sock);
+            close(tkbio.tsp.sock);
             return TKBIO_ERROR_FB_OPEN;
         }
         if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
         {
             VERBOSE(perror("[TKBIO] Failed to get variable screeninfo"));
-            close(tkbio.sock);
+            close(tkbio.tsp.sock);
             close(tkbio.fb.fd);
             return TKBIO_ERROR_FB_VINFO;
         }
         if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
         {
             VERBOSE(perror("[TKBIO] Failed to get fixed screeninfo"));
-            close(tkbio.sock);
+            close(tkbio.tsp.sock);
             close(tkbio.fb.fd);
             return TKBIO_ERROR_FB_FINFO;
         }
@@ -521,7 +601,7 @@ int tkbio_init_custom(struct tkbio_config config)
         PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
     {
         VERBOSE(perror("[TKBIO] Failed to mmap framebuffer"));
-        close(tkbio.sock);
+        close(tkbio.tsp.sock);
         close(tkbio.fb.fd);
         return TKBIO_ERROR_FB_MMAP;
     }
@@ -574,7 +654,7 @@ int tkbio_init_custom(struct tkbio_config config)
     VERBOSE(printf("[TKBIO] init done\n"));
     
     // return socket for manual polling
-    return tkbio.sock;
+    return tkbio.tsp.sock;
 }
 
 struct tkbio_config tkbio_config_default(int *argc, char *argv[])
@@ -603,8 +683,6 @@ int tkbio_init_layout(struct tkbio_layout layout, int *argc, char *argv[])
 
 void tkbio_finish()
 {
-    unsigned char cmd = TSP_CMD_REMOVE;
-    
     int i, j, k, size;
     struct tkbio_point *p;
     struct tkbio_partner *partner;
@@ -613,11 +691,12 @@ void tkbio_finish()
     const struct tkbio_map *map;
     struct tkbio_chain_queue *cq;
     struct tkbio_chain_timer *ct;
+    sigset_t set;
     
     VERBOSE(printf("[TKBIO] finish\n"));
     
-    send(tkbio.sock, &cmd, sizeof(unsigned char), 0);
-    close(tkbio.sock);
+    tkbio_tsp_cmd(TSP_CMD_REMOVE, 0, 0);
+    close(tkbio.tsp.sock);
     
     if(tkbio.sim)
     {
@@ -654,10 +733,19 @@ void tkbio_finish()
     }
     free(tkbio.save);
     
+    sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, 0);
+    
     while((cq = tkbio.queue.cqh_first) != (void*)&tkbio.queue)
+    {
         CIRCLEQ_REMOVE(&tkbio.queue, cq, chain);
+        free(cq);
+    }
     while((ct = tkbio.timer.cqh_first) != (void*)&tkbio.timer)
+    {
         CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
+        free(ct);
+    }
 }
 
 int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsigned int usec)
@@ -783,11 +871,8 @@ struct tkbio_return tkbio_recv_event()
     ret.id = 0;
     ret.value.i = 0;
     
-    if(recv(tkbio.sock, &event, sizeof(struct tsp_event), 0) == -1)
-    {
-        VERBOSE(perror("[TKBIO] Failed to receive event"));
+    if(tkbio_tsp_recv(&event))
         return ret;
-    }
     
     ev_y = event.value.cord.y;
     ev_x = event.value.cord.x;
@@ -964,14 +1049,10 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
                 tkbio_init_screen();
             return TKBIO_HANDLER_SUCCESS;
         case TKBIO_RETURN_DEACTIVATE:
-            tsp.cmd = TSP_CMD_ACK;
-            tsp.value = TSP_EVENT_DEACTIVATED;
-            send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            tkbio_tsp_cmd(TSP_CMD_ACK, 0, TSP_EVENT_DEACTIVATED);
             return TKBIO_HANDLER_SUCCESS;
         case TKBIO_RETURN_REMOVE:
-            tsp.cmd = TSP_CMD_ACK;
-            tsp.value = TSP_EVENT_REMOVED;
-            send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+            tkbio_tsp_cmd(TSP_CMD_ACK, 0, TSP_EVENT_REMOVED);
             tret.type = TKBIO_RETURN_QUIT;
             return tkbio_handle_return(handler(tret, state), tret, 0, 0);
         case TKBIO_RETURN_SYSTEM:
@@ -999,7 +1080,8 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
             if(tret.type != TKBIO_RETURN_NOP)
                 return tkbio_handle_return(handler(tret, state), tret, 0, 0);
             else if(tsp.cmd != TSP_CMD_REGISTER)
-                send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+                if(tkbio_tsp_cmd(tsp.cmd, 0, tsp.value))
+                    tkbio_tsp_reconnect(-1);
             return TKBIO_HANDLER_SUCCESS;
         default:
             return TKBIO_HANDLER_SUCCESS;
@@ -1048,7 +1130,7 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
     struct tkbio_return tret;
     int ret, i;
     
-    pfds[0].fd = tkbio.sock;
+    pfds[0].fd = tkbio.tsp.sock;
     pfds[0].events = POLLIN;
     
     VERBOSE(printf("[TKBIO] run\n"));
@@ -1074,7 +1156,12 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
             return TKBIO_ERROR_POLL;
         }
         
-        if(pfds[0].revents & POLLIN)
+        if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
+        {
+            VERBOSE(printf("[TKBIO] Failed to poll rpc socket\n"));
+            tkbio_tsp_reconnect(-1);
+        }
+        else if(pfds[0].revents & POLLIN)
         {
             ret = tkbio_handle_event(handler, state);
 handle:     switch(ret)
@@ -1086,11 +1173,6 @@ handle:     switch(ret)
             default:
                 return ret & ~TKBIO_HANDLER_ERROR;
             }
-        }
-        else if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
-        {
-            VERBOSE(printf("[TKBIO] Failed to poll rpc socket\n"));
-            tkbio_open_socket(-1);
         }
         else
         {
@@ -1127,31 +1209,25 @@ int tkbio_run(tkbio_handler *handler, void *state)
     return tkbio_run_pfds(handler, state, pfds, 1);
 }
 
-int tkbio_tsp(unsigned char cmd, pid_t pid, int value)
+void tkbio_switch(pid_t pid)
 {
-    struct tsp_cmd tsp;
-    
-    tsp.cmd = cmd;
-    tsp.pid = pid;
-    tsp.value = value;
-    
-    return send(tkbio.sock, &tsp, sizeof(struct tsp_cmd), 0);
+    while(tkbio_tsp_cmd(TSP_CMD_SWITCH, pid, TSP_SWITCH_PID))
+        tkbio_tsp_reconnect(-1);
 }
 
-int tkbio_switch(pid_t pid)
+void tkbio_lock(int lock)
 {
-    return tkbio_tsp(TSP_CMD_SWITCH, pid, TSP_SWITCH_PID);
+    while(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, lock))
+        tkbio_tsp_reconnect(-1);
 }
 
-int tkbio_lock(int lock)
+void tkbio_hide(pid_t pid, int priority, int hide)
 {
-    return tkbio_tsp(TSP_CMD_LOCK, 0, lock);
-}
-
-int tkbio_hide(pid_t pid, int priority, int hide)
-{
-    return tkbio_tsp(TSP_CMD_HIDE, pid,
-        hide ? TSP_HIDE_MASK|priority : priority);
+    while(tkbio_tsp_cmd(TSP_CMD_HIDE, pid,
+        hide ? TSP_HIDE_MASK|priority : priority))
+    {
+        tkbio_tsp_reconnect(-1);
+    }
 }
 
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)

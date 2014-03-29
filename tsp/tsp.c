@@ -98,6 +98,7 @@ void add_client(int fd)
     CIRCLEQ_INSERT_HEAD(&client_list, cs, chain);
     cs->sock = fd;
     cs->pid = 0;
+    cs->hide = 0;
     if(client_count+4 == pfds_cap)
     {
         pfds_cap += 10;
@@ -109,12 +110,14 @@ void add_client(int fd)
     DEBUG(printf("Client added [%i]\n", fd));
 }
 
-void send_client(unsigned char event, union tsp_value value, struct chain_socket *cs)
+int send_client(unsigned char event, union tsp_value value, struct chain_socket *cs)
 {
     struct tsp_event evnt;
+    char *ptr = (char*)&evnt;
+    int count, size = sizeof(struct tsp_event);
     
     if(client_list.cqh_first == (void*)&client_list)
-        return;
+        return 0;
     
     evnt.event = event;
     evnt.value = value;
@@ -122,7 +125,18 @@ void send_client(unsigned char event, union tsp_value value, struct chain_socket
     if(!cs)
         cs = client_list.cqh_first;
     
-    send(cs->sock, &evnt, sizeof(struct tsp_event), 0);
+    while((count = send(cs->sock, ptr, size, 0)) != size)
+    {
+        if(count == -1)
+        {
+            DEBUG(perror("Failed to send client event"));
+            return -1;
+        }
+        ptr += count;
+        size -= count;
+    }
+    
+    return 0;
 }
 
 void send_client_cord(unsigned char event, short int y, short int x, struct chain_socket *cs)
@@ -142,6 +156,25 @@ void send_client_status(unsigned char event, int status, struct chain_socket *cs
     value.status = status;
     
     send_client(event, value, cs);
+}
+
+int recv_client(int sock, struct tsp_cmd *cmd)
+{
+    char *ptr = (char*)cmd;
+    int count, size = sizeof(struct tsp_cmd);
+    
+    while((count = recv(sock, ptr, size, 0)) != size)
+    {
+        if(count == -1)
+        {
+            DEBUG(perror("Failed to recv client cmd"));
+            return -1;
+        }
+        ptr += count;
+        size -= count;
+    }
+    
+    return 0;
 }
 
 struct chain_socket* find_client(int pos, pid_t pid)
@@ -619,6 +652,7 @@ int main(int argc, char* argv[])
     CIRCLEQ_INIT(&client_list);
     
     signal(SIGINT, signal_handler);
+    signal(SIGPIPE, SIG_IGN);
     
     DEBUG(printf("Ready\n"));
     
@@ -814,7 +848,8 @@ int main(int argc, char* argv[])
                 }
                 else if(pfds[x].revents & POLLIN)
                 {
-                    recv(pfds[x].fd, &cmd, sizeof(struct tsp_cmd), 0);
+                    if(recv_client(pfds[x].fd, &cmd))
+                        break;
                     switch(cmd.cmd)
                     {
                     case TSP_CMD_REGISTER:

@@ -261,12 +261,13 @@ int usage(const char *name)
 int main(int argc, char* argv[])
 {
     struct tkbio_config config = tkbio_config_default(&argc, argv);
-    int err, opt;
+    int err, opt, ret;
     
     config.format = TKBIO_FORMAT_PORTRAIT;
     config.layout = menuLayout;
     
-    tkbio_init_custom(config);
+    if((ret = tkbio_init_custom(config)) < 0)
+        return ret;
     
     active = 1;
     verbose = 0;
@@ -297,10 +298,11 @@ int main(int argc, char* argv[])
     tkbio_hide(0, 1, 1);
     tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
     
-    tkbio_run(handler, 0);
+    ret = tkbio_run(handler, 0);
+    
     tkbio_finish();
     
     free_apps();
     
-    return 0;
+    return ret;
 }

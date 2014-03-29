@@ -88,6 +88,15 @@ struct tkbio_parser
     unsigned char toggle; // active toggle buttons
 };
 
+struct tkbio_tsp
+{
+    const char *dir;
+    int sock;
+    int lock;       // app has screen locked
+    int hide;       // app is hidden
+    int priority;   // apps hidden priority
+};
+
 struct tkbio_partner
 {
     char flag; // check if already processed
@@ -103,16 +112,15 @@ struct tkbio_save
 
 struct tkbio_global
 {
-    const char *tsp;    // tsp directory
     int format;         // portrait or landscape
     int pause;          // pause for debouncer
     int verbose;        // verbose messages
     int redraw;         // redraw screen on activate
-    int sock;           // unix socket to tsp
     int sim;            // sim enabled
     char flagstat;      // last partner flag
     
     struct tkbio_fb fb;
+    struct tkbio_tsp tsp;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
     struct tkbio_save **save; // button save array
