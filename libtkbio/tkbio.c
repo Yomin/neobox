@@ -775,7 +775,7 @@ struct tkbio_return tkbio_recv_event()
     struct tkbio_partner *partner_last;
     struct tkbio_point *p;
     
-    int y, x, button_y, button_x, i;
+    int y, x, button_y, button_x, i, ev_y, ev_x;
     int width, height, fb_height, fb_width, scr_height, scr_width;
     char sim_tmp = 'x'; // content irrelevant
     
@@ -788,6 +788,9 @@ struct tkbio_return tkbio_recv_event()
         VERBOSE(perror("[TKBIO] Failed to receive event"));
         return ret;
     }
+    
+    ev_y = event.value.cord.y;
+    ev_x = event.value.cord.x;
     
     switch(event.event)
     {
@@ -803,6 +806,20 @@ struct tkbio_return tkbio_recv_event()
         VERBOSE(printf("[TKBIO] removed\n"));
         ret.type = TKBIO_RETURN_REMOVE;
         return ret;
+    case TSP_EVENT_AUX:
+        VERBOSE(printf("[TKBIO] AUX %s\n",
+            event.value.status ? "pressed" : "released"));
+        ret.type = TKBIO_RETURN_BUTTON;
+        ret.id = TKBIO_BUTTON_AUX;
+        ret.value.i = event.value.status;
+        break;
+    case TSP_EVENT_POWER:
+        VERBOSE(printf("[TKBIO] Power %s\n",
+            event.value.status ? "pressed" : "released"));
+        ret.type = TKBIO_RETURN_BUTTON;
+        ret.id = TKBIO_BUTTON_POWER;
+        ret.value.i = event.value.status;
+        break;
     case TSP_EVENT_MOVED:
     case TSP_EVENT_RELEASED:
     case TSP_EVENT_PRESSED:
@@ -812,7 +829,7 @@ struct tkbio_return tkbio_recv_event()
         return ret;
     }
     
-    if(event.x >= SCREENMAX || event.y >= SCREENMAX)
+    if(ev_x >= SCREENMAX || ev_y >= SCREENMAX)
         return ret;
     
     // calculate height and width
@@ -820,8 +837,8 @@ struct tkbio_return tkbio_recv_event()
         &scr_height, &scr_width);
     
     // screen coordinates to button coordinates
-    button_y = fb_height*(((SCREENMAX-event.y)%scr_height)/(scr_height*1.0));
-    button_x = fb_width*((event.x%scr_width)/(scr_width*1.0));
+    button_y = fb_height*(((SCREENMAX-ev_y)%scr_height)/(scr_height*1.0));
+    button_x = fb_width*((ev_x%scr_width)/(scr_width*1.0));
     tkbio_fb_to_layout_pos_width(&button_y, &button_x, fb_width);
     
     // current map
@@ -834,11 +851,11 @@ struct tkbio_return tkbio_recv_event()
     // if a type broader doesnt hit calculate position of new button
     i = 1;
     if(tkbio.parser.pressed)
-        TYPEFUNC(elem_last, broader, i=, &y, &x, event.y, event.x, elem_last);
+        TYPEFUNC(elem_last, broader, i=, &y, &x, ev_y, ev_x, elem_last);
     if(!tkbio.parser.pressed || i)
     {
-        x = (event.x) / scr_width;
-        y = (SCREENMAX - event.y) / scr_height;
+        x = ev_x / scr_width;
+        y = (SCREENMAX - ev_y) / scr_height;
         tkbio_fb_to_layout_cords(&y, &x);
     }
     

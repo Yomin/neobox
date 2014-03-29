@@ -42,10 +42,12 @@
 
 #define TSP_EVENT_PRESSED       0   // button pressed
 #define TSP_EVENT_RELEASED      1   // button released
-#define TSP_EVENT_MOVED         2   // moved while pressed
+#define TSP_EVENT_MOVED         2   // moved while button pressed
 #define TSP_EVENT_ACTIVATED     3   // app activated
 #define TSP_EVENT_DEACTIVATED   4   // app deactivated
 #define TSP_EVENT_REMOVED       5   // app removed
+#define TSP_EVENT_AUX           6   // aux pressed/released
+#define TSP_EVENT_POWER         7   // power pressed/released
 
 struct tsp_cmd
 {
@@ -54,10 +56,16 @@ struct tsp_cmd
     int value;
 };
 
+union tsp_value
+{
+    struct { short int y, x; } cord;
+    int status;
+};
+
 struct tsp_event
 {
     unsigned char event;
-    int y, x;
+    union tsp_value value;
 };
 
 #endif

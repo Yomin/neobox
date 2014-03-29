@@ -24,4 +24,4 @@ touch:
 	$(shell [ ! -f debug -a -n "$(DEBUG)" ] && { touch $(NAME).c; touch debug; })
 
 sim: debug
-	./$(NAME) -f -d ../sim/ ../sim/screen.ipc
+	./$(NAME) -f -d ../sim/ config_sim

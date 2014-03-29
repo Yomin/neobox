@@ -57,9 +57,10 @@ struct chain_socket
 CIRCLEQ_HEAD(client_sockets, chain_socket);
 
 
+int screen_fd, aux_fd, power_fd, rpc_sock;
 int client_count, pfds_cap;
 struct client_sockets client_list;
-char *pwd;
+char *pwd, *screen_dev, *aux_dev, *power_dev;
 struct pollfd *pfds;
 
 
@@ -71,19 +72,19 @@ int open_rpc_socket(int *sock, struct sockaddr_un *addr)
     if((*sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
         perror("Failed to open rpc socket");
-        return 6;
+        return 11;
     }
     
     if(unlink(addr->sun_path) == -1 && errno != ENOENT)
     {
         perror("Failed to unlink rpc socket file");
-        return 7;
+        return 12;
     }
     
     if(bind(*sock, (struct sockaddr*)addr, sizeof(struct sockaddr_un)) == -1)
     {
         perror("Failed to bind rpc socket");
-        return 8;
+        return 13;
     }
     
     listen(*sock, 10);
@@ -97,18 +98,18 @@ void add_client(int fd)
     CIRCLEQ_INSERT_HEAD(&client_list, cs, chain);
     cs->sock = fd;
     cs->pid = 0;
-    if(client_count+2 == pfds_cap)
+    if(client_count+4 == pfds_cap)
     {
         pfds_cap += 10;
         pfds = realloc(pfds, pfds_cap*sizeof(struct pollfd));
     }
-    pfds[client_count+2].fd = fd;
-    pfds[client_count+2].events = POLLIN;
+    pfds[client_count+4].fd = fd;
+    pfds[client_count+4].events = POLLIN;
     client_count++;
     DEBUG(printf("Client added [%i]\n", fd));
 }
 
-void send_client(unsigned char event, int y, int x, struct chain_socket *cs)
+void send_client(unsigned char event, union tsp_value value, struct chain_socket *cs)
 {
     struct tsp_event evnt;
     
@@ -116,13 +117,31 @@ void send_client(unsigned char event, int y, int x, struct chain_socket *cs)
         return;
     
     evnt.event = event;
-    evnt.y = y;
-    evnt.x = x;
+    evnt.value = value;
     
     if(!cs)
         cs = client_list.cqh_first;
     
     send(cs->sock, &evnt, sizeof(struct tsp_event), 0);
+}
+
+void send_client_cord(unsigned char event, short int y, short int x, struct chain_socket *cs)
+{
+    union tsp_value value;
+    
+    value.cord.y = y;
+    value.cord.x = x;
+    
+    send_client(event, value, cs);
+}
+
+void send_client_status(unsigned char event, int status, struct chain_socket *cs)
+{
+    union tsp_value value;
+    
+    value.status = status;
+    
+    send_client(event, value, cs);
 }
 
 struct chain_socket* find_client(int pos, pid_t pid)
@@ -212,7 +231,7 @@ int rem_client(int pos, pid_t pid)
     pid = cs->pid;
     active = cs == client_list.cqh_first;
     
-    memcpy(pfds+pos, pfds+pos+1, client_count+2-pos-1);
+    memcpy(pfds+pos, pfds+pos+1, client_count+4-pos-1);
     CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
     client_count--;
@@ -325,11 +344,27 @@ void free_clients()
     }
 }
 
-void signal_handler(int signal)
+void cleanup()
 {
     DEBUG(printf("cleanup\n"));
-    free_clients();
+    if(screen_fd)
+        close(screen_fd);
+    if(aux_fd)
+        close(aux_fd);
+    if(power_fd)
+        close(power_fd);
+    if(rpc_sock)
+        close(rpc_sock);
+    free(screen_dev);
+    free(aux_dev);
+    free(power_dev);
     free(pfds);
+    free_clients();
+}
+
+void signal_handler(int signal)
+{
+    cleanup();
     exit(0);
 }
 
@@ -368,7 +403,11 @@ void print_info(int fd)
     int i;
     
     if(ioctl(fd, EVIOCGNAME(100), buf) == -1)
+    {
+        if(errno == ENOTTY) // sim
+            return;
         perror("Failed to get device name");
+    }
     else
         printf("Device: %s\n", buf);
     if(ioctl(fd, EVIOCGID, &id) == -1)
@@ -422,7 +461,7 @@ void print_info(int fd)
 
 void usage(const char *name)
 {
-    printf("Usage: %s [-f] [-d pwd] <screen>\n", name);
+    printf("Usage: %s [-f] [-d pwd] <config>\n", name);
 }
 
 int main(int argc, char* argv[])
@@ -430,13 +469,15 @@ int main(int argc, char* argv[])
     int opt, ret;
     int daemon = 1, lock = 0;
     int pressed, y, x;
-    char *screen_dev;
-    int screen_fd, rpc_sock;
+    char *config;
+    FILE *file;
     struct sockaddr_un rpc_addr;
     
     struct input_event input;
     struct tsp_cmd cmd;
     struct chain_socket *cs;
+    
+    size_t size;
     
     y = x = pressed = 0;
     pwd = TSP_PWD;
@@ -463,7 +504,7 @@ int main(int argc, char* argv[])
         return 0;
     }
     
-    screen_dev = argv[optind];
+    config = argv[optind];
     
     if(mkdir(pwd, 0777) == -1 && errno != EEXIST)
     {
@@ -509,13 +550,55 @@ int main(int argc, char* argv[])
         }
     }
     
-    if((screen_fd = open(screen_dev, O_RDONLY)) < 0)
+    if(!(file = fopen(config, "r")))
     {
-        perror("Failed to open screen socket");
+        perror("Failed to open config file");
         return 4;
     }
     
+    if((size = getline(&screen_dev, &size, file)) == -1)
+    {
+        fprintf(stderr, "Failed to read screen config\n");
+        return 5;
+    }
+    screen_dev[size-1] = 0;
+    
+    if((screen_fd = open(screen_dev, O_RDONLY)) == -1)
+    {
+        perror("Failed to open screen socket");
+        return 6;
+    }
+    
+    if((size = getline(&aux_dev, &size, file)) == -1)
+    {
+        fprintf(stderr, "Failed to read aux config\n");
+        return 7;
+    }
+    aux_dev[size-1] = 0;
+    
+    if((aux_fd = open(aux_dev, O_RDONLY)) == -1)
+    {
+        perror("Failed to open aux socket");
+        return 8;
+    }
+    
+    if((size = getline(&power_dev, &size, file)) == -1)
+    {
+        fprintf(stderr, "Failed to read power config\n");
+        return 9;
+    }
+    power_dev[size-1] = 0;
+    fclose(file);
+    
+    if((power_fd = open(power_dev, O_RDONLY)) == -1)
+    {
+        perror("Failed to open power socket");
+        return 10;
+    }
+    
     DEBUG(print_info(screen_fd));
+    DEBUG(print_info(aux_fd));
+    DEBUG(print_info(power_fd));
     
     if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
         return ret;
@@ -524,8 +607,12 @@ int main(int argc, char* argv[])
     pfds = malloc(pfds_cap*sizeof(struct pollfd));
     pfds[0].fd = screen_fd;
     pfds[0].events = POLLIN;
-    pfds[1].fd = rpc_sock;
+    pfds[1].fd = aux_fd;
     pfds[1].events = POLLIN;
+    pfds[2].fd = power_fd;
+    pfds[2].events = POLLIN;
+    pfds[3].fd = rpc_sock;
+    pfds[3].events = POLLIN;
     
     client_count = 0;
     CIRCLEQ_INIT(&client_list);
@@ -536,9 +623,21 @@ int main(int argc, char* argv[])
     
     while(1)
     {
-        poll(pfds, client_count+2, -1);
+        poll(pfds, client_count+4, -1);
         
-        if(pfds[0].revents & POLLIN)
+        if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
+        {
+            DEBUG(printf("pollhup/err on screen socket\n"));
+            close(screen_fd);
+            if((screen_fd = open(screen_dev, O_RDONLY)) < 0)
+            {
+                perror("Failed to open screen socket");
+                screen_fd = 0;
+                cleanup();
+                return 6;
+            }
+        }
+        else if(pfds[0].revents & POLLIN)
         {
             read(screen_fd, &input, sizeof(struct input_event));
             
@@ -556,7 +655,7 @@ int main(int argc, char* argv[])
                         if(pressed)
                         {
                             DEBUG(printf("Touchscreen released (%i,%i)\n", y, x));
-                            send_client(TSP_EVENT_RELEASED, y, x, 0);
+                            send_client_cord(TSP_EVENT_RELEASED, y, x, 0);
                             pressed = 0;
                         }
                         break;
@@ -564,7 +663,7 @@ int main(int argc, char* argv[])
                         if(!pressed)
                         {
                             DEBUG(printf("Touchscreen pressed (%i,%i)\n", y, x));
-                            send_client(TSP_EVENT_PRESSED, y, x, 0);
+                            send_client_cord(TSP_EVENT_PRESSED, y, x, 0);
                             pressed = 1;
                         }
                         break;
@@ -579,7 +678,7 @@ int main(int argc, char* argv[])
                 case ABS_X:
                     x = input.value-MIN_PIXEL;
                     if(pressed)
-                        send_client(TSP_EVENT_MOVED, y, x, 0);
+                        send_client_cord(TSP_EVENT_MOVED, y, x, 0);
                     break;
                 case ABS_PRESSURE:
                     break;
@@ -589,19 +688,76 @@ int main(int argc, char* argv[])
                 break;
             }
         }
-        else if(pfds[0].revents & POLLHUP)
+        else if(pfds[1].revents & POLLHUP || pfds[1].revents & POLLERR)
         {
-            DEBUG(printf("pollhup on screen socket\n"));
-            close(screen_fd);
-            if((screen_fd = open(screen_dev, O_RDONLY)) < 0)
+            DEBUG(printf("pollhup/err on aux socket\n"));
+            close(aux_fd);
+            if((aux_fd = open(aux_dev, O_RDONLY)) == -1)
             {
-                perror("Failed to open screen socket");
-                close(rpc_sock);
-                free_clients();
-                return 4;
+                perror("Failed to open aux socket");
+                aux_fd = 0;
+                cleanup();
+                return 8;
             }
         }
         else if(pfds[1].revents & POLLIN)
+        {
+            read(aux_fd, &input, sizeof(struct input_event));
+            switch(input.type)
+            {
+            case EV_KEY:
+                switch(input.code)
+                {
+                case KEY_PHONE:
+                    DEBUG(printf("AUX %s\n",
+                        input.value ? "pressed" : "released"));
+                    send_client_status(TSP_EVENT_AUX, input.value, 0);
+                    break;
+                }
+                break;
+            }
+        }
+        else if(pfds[2].revents & POLLHUP || pfds[2].revents & POLLERR)
+        {
+            DEBUG(printf("pollhup/err on power socket\n"));
+            close(power_fd);
+            if((power_fd = open(power_dev, O_RDONLY)) == -1)
+            {
+                perror("Failed to open power socket");
+                power_fd = 0;
+                cleanup();
+                return 10;
+            }
+        }
+        else if(pfds[2].revents & POLLIN)
+        {
+            read(power_fd, &input, sizeof(struct input_event));
+            switch(input.type)
+            {
+            case EV_KEY:
+                switch(input.code)
+                {
+                case KEY_POWER:
+                    DEBUG(printf("Power %s\n",
+                        input.value ? "pressed" : "released"));
+                    send_client_status(TSP_EVENT_POWER, input.value, 0);
+                    break;
+                }
+                break;
+            }
+        }
+        else if(pfds[3].revents & POLLHUP || pfds[3].revents & POLLERR)
+        {
+            DEBUG(printf("pollhup/err on rpc socket\n"));
+            close(rpc_sock);
+            if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
+            {
+                rpc_sock = 0;
+                cleanup();
+                return ret;
+            }
+        }
+        else if(pfds[3].revents & POLLIN)
         {
             int client;
             if((client = accept(rpc_sock, 0, 0)) == -1)
@@ -612,30 +768,19 @@ int main(int argc, char* argv[])
             cs = client_list.cqh_first;
             add_client(client);
             if(cs != (void*)&client_list)
-                send_client(TSP_EVENT_DEACTIVATED, 0, 0, cs);
+                send_client_status(TSP_EVENT_DEACTIVATED, 0, cs);
             else
-                send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
-        }
-        else if(pfds[1].revents & POLLHUP)
-        {
-            DEBUG(printf("pollhup on rpc socket\n"));
-            close(rpc_sock);
-            if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
-            {
-                close(screen_fd);
-                free_clients();
-                return ret;
-            }
+                send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
         }
         else
         {
             int x;
-            for(x=2; x<client_count+2; x++)
+            for(x=4; x<client_count+4; x++)
                 if(pfds[x].revents & POLLHUP || pfds[x].revents & POLLERR)
                 {
                     DEBUG(printf("pollhup/pollerr on client socket [%i]\n", pfds[x].fd));
                     if(rem_client(x, 0))
-                        send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                        send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
                 }
                 else if(pfds[x].revents & POLLIN)
                 {
@@ -651,20 +796,23 @@ int main(int argc, char* argv[])
                             if(cs->sock == pfds[x].fd)
                             {
                                 if(rem_client(x, cmd.pid))
-                                    send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                                    send_client_status(
+                                        TSP_EVENT_ACTIVATED, 0, 0);
                             }
                             else
                             {
                                 DEBUG(printf("Client remove [%i] %i\n",
                                     cs->sock, cs->pid));
-                                send_client(TSP_EVENT_REMOVED, 0, 0, cs);
+                                send_client_status(
+                                    TSP_EVENT_REMOVED, 0, cs);
                             }
                         }
                         break;
                     case TSP_CMD_SWITCH:
                         cs = client_list.cqh_first;
                         if(switch_client(cmd.value, x, cmd.pid))
-                            send_client(TSP_EVENT_DEACTIVATED, 0, 0, cs);
+                            send_client_status(
+                                TSP_EVENT_DEACTIVATED, 0, cs);
                         break;
                     case TSP_CMD_LOCK:
                         lock = cmd.value;
@@ -684,11 +832,13 @@ int main(int argc, char* argv[])
                             DEBUG(printf("Client switched [%i] %i -> [%i] %i\n",
                                 pfds[x].fd, find_client(x, 0)->pid,
                                 cs->sock, cs->pid));
-                            send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                            send_client_status(
+                                TSP_EVENT_ACTIVATED, 0, 0);
                             break;
                         case TSP_EVENT_REMOVED:
                             if(rem_client(x, 0))
-                                send_client(TSP_EVENT_ACTIVATED, 0, 0, 0);
+                                send_client_status(
+                                    TSP_EVENT_ACTIVATED, 0, 0);
                             break;
                         default:
                             DEBUG(printf("Client done [%i] %i\n",
@@ -704,9 +854,7 @@ int main(int argc, char* argv[])
         }
     }
     
-    close(screen_fd);
-    close(rpc_sock);
-    free_clients();
+    cleanup();
     
     return 0;
 }

@@ -21,6 +21,7 @@
  */
 
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <cairo/cairo.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -42,6 +43,8 @@
 #endif
 
 #define SCREEN_DEV    "screen.ipc"
+#define AUX_DEV       "aux.ipc"
+#define POWER_DEV     "power.ipc"
 #define PIXEL_OFFSET  100
 #define PIXEL_MAX     930
 #define SCREEN_YALIGN(pos) ((pos)*((PIXEL_MAX-PIXEL_OFFSET)/(FB_VINFO_YRES*1.0)) + PIXEL_OFFSET)
@@ -57,22 +60,20 @@
 #define FB_FINFO_LINE_LENGTH 480 // 960
 #define FB_SIZE (FB_VINFO_XRES*FB_VINFO_YRES*(FB_VINFO_BITS_PER_PIXEL/8))
 
-#define EVENT_Y         0
-#define EVENT_X         1
-#define EVENT_PRESSED   2
-#define EVENT_RELEASED  3
-
-int screen, fb_sock, fb_shm;
+int screen, aux, power, fb_sock, fb_shm;
 unsigned char *fb_ptr;
 
 GtkWidget *window;
 cairo_surface_t *surface;
-int stride, pressed, width, height, landscape;
+int stride, width, height, landscape;
+int pressed_screen, pressed_aux, pressed_power;
 
 void cleanup()
 {
     printf("Cleanup\n");
     close(screen);
+    close(aux);
+    close(power);
     close(fb_sock);
     shm_unlink(FB_SHM);
     cairo_surface_destroy(surface);
@@ -90,33 +91,15 @@ void signal_handler(int signal)
     }
 }
 
-void sent_event(int event, int data)
+void send_event(int fd, int type, int code, int value)
 {
-    struct input_event input;
-    switch(event)
-    {
-    case EVENT_Y:
-        input.type = EV_ABS;
-        input.code = ABS_Y;
-        input.value = data;
-        break;
-    case EVENT_X:
-        input.type = EV_ABS;
-        input.code = ABS_X;
-        input.value = data;
-        break;
-    case EVENT_PRESSED:
-        input.type = EV_KEY;
-        input.code = BTN_TOUCH;
-        input.value = 1;
-        break;
-    case EVENT_RELEASED:
-        input.type = EV_KEY;
-        input.code = BTN_TOUCH;
-        input.value = 0;
-        break;
-    }
-    write(screen, &input, sizeof(struct input_event));
+    struct input_event event;
+    
+    event.type = type;
+    event.code = code;
+    event.value = value;
+    
+    write(fd, &event, sizeof(struct input_event));
 }
 
 void send_fb_info(int fd)
@@ -151,6 +134,8 @@ gboolean on_button_press(GtkWidget *widget, GdkEvent *event, gpointer data)
     int x = landscape ? button_event->y : button_event->x;
     int y = landscape ? button_event->x : button_event->y;
     
+    printf("Pressed\n");
+    
     if(y >= 0 && y < height && x >= 0 && x < width)
     {
         if(landscape)
@@ -163,20 +148,66 @@ gboolean on_button_press(GtkWidget *widget, GdkEvent *event, gpointer data)
             x = SCREEN_XALIGN(button_event->x);
             y = SCREEN_YALIGN(height - button_event->y);
         }
-        sent_event(EVENT_Y, y);
-        sent_event(EVENT_X, x);
-        sent_event(EVENT_PRESSED, 0);
+        send_event(screen, EV_ABS, ABS_Y, y);
+        send_event(screen, EV_ABS, ABS_X, x);
+        send_event(screen, EV_KEY, BTN_TOUCH, 1);
     }
     
-    pressed = 1;
+    pressed_screen = 1;
     
     return FALSE;
 }
 
 gboolean on_button_release(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-    sent_event(EVENT_RELEASED, 0);
-    pressed = 0;
+    printf("Released\n");
+    
+    send_event(screen, EV_KEY, BTN_TOUCH, 0);
+    pressed_screen = 0;
+    
+    return FALSE;
+}
+
+gboolean on_key_press(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    switch(event->key.keyval)
+    {
+    case GDK_KEY_a:
+        if(!pressed_aux)
+        {
+            printf("AUX pressed\n");
+            pressed_aux = 1;
+            send_event(aux, EV_KEY, KEY_PHONE, 1);
+        }
+        break;
+    case GDK_KEY_p:
+        if(!pressed_power)
+        {
+            printf("Power pressed\n");
+            pressed_power = 1;
+            send_event(power, EV_KEY, KEY_POWER, 1);
+        }
+        break;
+    }
+    
+    return FALSE;
+}
+
+gboolean on_key_release(GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    switch(event->key.keyval)
+    {
+    case GDK_KEY_a:
+        printf("AUX released\n");
+        pressed_aux = 0;
+        send_event(aux, EV_KEY, KEY_PHONE, 0);
+        break;
+    case GDK_KEY_p:
+        printf("Power released\n");
+        pressed_power = 0;
+        send_event(power, EV_KEY, KEY_POWER, 0);
+        break;
+    }
     
     return FALSE;
 }
@@ -187,7 +218,7 @@ gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
     int x = landscape ? button_event->y : button_event->x;
     int y = landscape ? button_event->x : button_event->y;
     
-    if(pressed && y >= 0 && y < height && x >= 0 && x < width)
+    if(pressed_screen && y >= 0 && y < height && x >= 0 && x < width)
     {
         if(landscape)
         {
@@ -199,8 +230,8 @@ gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
             x = SCREEN_XALIGN(button_event->x);
             y = SCREEN_YALIGN(height - button_event->y);
         }
-        sent_event(EVENT_Y, y);
-        sent_event(EVENT_X, x);
+        send_event(screen, EV_ABS, ABS_Y, y);
+        send_event(screen, EV_ABS, ABS_X, x);
     }
     
     return FALSE;
@@ -262,12 +293,36 @@ int main(int argc, char* argv[])
         return 1;
     }
     
+    if(mkfifo(AUX_DEV, 0664) == -1 && errno != EEXIST)
+    {
+        perror("Failed to create aux socket");
+        return 2;
+    }
+    
+    if(mkfifo(POWER_DEV, 0664) == -1 && errno != EEXIST)
+    {
+        perror("Failed to create power socket");
+        return 3;
+    }
+    
     printf("Waiting for tsp\n");
     
     if((screen = open(SCREEN_DEV, O_WRONLY)) == -1)
     {
         perror("Failed to open screen socket");
-        return 2;
+        return 4;
+    }
+    
+    if((aux = open(AUX_DEV, O_WRONLY)) == -1)
+    {
+        perror("Failed to open aux socket");
+        return 5;
+    }
+    
+    if((power = open(POWER_DEV, O_WRONLY)) == -1)
+    {
+        perror("Failed to open power socket");
+        return 6;
     }
     
     printf("Connected\n");
@@ -275,7 +330,7 @@ int main(int argc, char* argv[])
     if((fb_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
         perror("Failed to open fb socket");
-        return 3;
+        return 7;
     }
     
     struct sockaddr_un addr;
@@ -285,13 +340,13 @@ int main(int argc, char* argv[])
     if(unlink(addr.sun_path) == -1 && errno != ENOENT)
     {
         perror("Failed to unlink fb socket file");
-        return 4;
+        return 8;
     }
     
     if(bind(fb_sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
     {
         perror("Failed to bind fb socket");
-        return 5;
+        return 9;
     }
     
     listen(fb_sock, 0);
@@ -299,20 +354,20 @@ int main(int argc, char* argv[])
     if((fb_shm = shm_open(FB_SHM, O_CREAT|O_RDWR, 0644)) == -1)
     {
         perror("Failed to open shared memory");
-        return 6;
+        return 10;
     }
     
     if(ftruncate(fb_shm, FB_SIZE) == -1)
     {
         perror("Failed to truncate shared memory");
-        return 7;
+        return 11;
     }
     
     fb_ptr = mmap(0, FB_SIZE, PROT_READ, MAP_SHARED, fb_shm, 0);
     if(fb_ptr == MAP_FAILED)
     {
         perror("Failed to mmap shared memory");
-        return 8;
+        return 12;
     }
     
     signal(SIGINT, signal_handler);
@@ -321,7 +376,10 @@ int main(int argc, char* argv[])
     stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB16_565, width);
     surface = cairo_image_surface_create_for_data(
         fb_ptr, CAIRO_FORMAT_RGB16_565, width, height, stride);
-    pressed = 0;
+    
+    pressed_screen = 0;
+    pressed_aux = 0;
+    pressed_power = 0;
     
     gtk_init(&argc, &argv);
     
@@ -337,6 +395,8 @@ int main(int argc, char* argv[])
     g_signal_connect(window, "button-press-event", G_CALLBACK(on_button_press), NULL);
     g_signal_connect(window, "button-release-event", G_CALLBACK(on_button_release), NULL);
     g_signal_connect(window, "motion-notify-event", G_CALLBACK(on_move), NULL);
+    g_signal_connect(window, "key-press-event", G_CALLBACK(on_key_press), NULL);
+    g_signal_connect(window, "key-release-event", G_CALLBACK(on_key_release), NULL);
     
     GIOChannel *fb_chan = g_io_channel_unix_new(fb_sock);
     g_io_add_watch(fb_chan, G_IO_IN, fb_event, NULL);
