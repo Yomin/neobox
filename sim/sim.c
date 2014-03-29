@@ -33,6 +33,7 @@
 #include <string.h>
 #include <linux/fb.h>
 #include <unistd.h>
+#include <linux/input.h>
 
 #ifdef NDEBUG
 #   define DEBUG
@@ -41,7 +42,6 @@
 #endif
 
 #define SCREEN_DEV    "screen.ipc"
-#define BYTES_PER_CMD 16
 #define PIXEL_OFFSET  100
 #define PIXEL_MAX     930
 #define SCREEN_YALIGN(pos) ((pos)*((PIXEL_MAX-PIXEL_OFFSET)/(FB_VINFO_YRES*1.0)) + PIXEL_OFFSET)
@@ -62,7 +62,6 @@
 #define EVENT_PRESSED   2
 #define EVENT_RELEASED  3
 
-unsigned char screen_buf[BYTES_PER_CMD];
 int screen, fb_sock, fb_shm;
 unsigned char *fb_ptr;
 
@@ -91,35 +90,33 @@ void signal_handler(int signal)
     }
 }
 
-void sent_event(int event, short int data)
+void sent_event(int event, int data)
 {
-    memset(screen_buf, 0, BYTES_PER_CMD);
+    struct input_event input;
     switch(event)
     {
     case EVENT_Y:
-        screen_buf[8] = 0x03;
-        screen_buf[12] = data;
-        screen_buf[13] = data >> 8;
+        input.type = EV_ABS;
+        input.code = ABS_Y;
+        input.value = data;
         break;
     case EVENT_X:
-        screen_buf[8] = 0x03;
-        screen_buf[10] = 0x01;
-        screen_buf[12] = data;
-        screen_buf[13] = data >> 8;
+        input.type = EV_ABS;
+        input.code = ABS_X;
+        input.value = data;
         break;
     case EVENT_PRESSED:
-        screen_buf[8] = 0x01;
-        screen_buf[10] = 0x4A;
-        screen_buf[11] = 0x01;
-        screen_buf[12] = 0x01;
+        input.type = EV_KEY;
+        input.code = BTN_TOUCH;
+        input.value = 1;
         break;
     case EVENT_RELEASED:
-        screen_buf[8] = 0x01;
-        screen_buf[10] = 0x4A;
-        screen_buf[11] = 0x01;
+        input.type = EV_KEY;
+        input.code = BTN_TOUCH;
+        input.value = 0;
         break;
     }
-    write(screen, screen_buf, BYTES_PER_CMD);
+    write(screen, &input, sizeof(struct input_event));
 }
 
 void send_fb_info(int fd)
