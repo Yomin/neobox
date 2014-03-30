@@ -424,6 +424,14 @@ void tkbio_tsp_reconnect()
         if(tkbio.tsp.hide)
             if(tkbio_tsp_cmd(TSP_CMD_HIDE, 0, TSP_HIDE_MASK|tkbio.tsp.priority))
                 continue;
+        if(tkbio.tsp.grab & TKBIO_BUTTON_AUX)
+        {
+            if(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, TSP_GRAB_MASK|TSP_GRAB_AUX))
+                continue;
+        }
+        else if(tkbio.tsp.grab & TKBIO_BUTTON_POWER)
+            if(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, TSP_GRAB_MASK|TSP_GRAB_POWER))
+                continue;
         break;
     }
 }
@@ -915,6 +923,8 @@ struct tkbio_return tkbio_parse_event(struct tsp_event event)
         return ret;
     case TSP_EVENT_LOCK:
         return ret;
+    case TSP_EVENT_GRAB:
+        return ret;
     case TSP_EVENT_MOVED:
     case TSP_EVENT_RELEASED:
     case TSP_EVENT_PRESSED:
@@ -1281,13 +1291,69 @@ int tkbio_lock(int lock)
             continue;
         }
         
-        switch(event.value.status)
+        if(event.value.status & TSP_SUCCESS_MASK)
         {
-        case TSP_SET_SUCCESS:
             VERBOSE(printf("[TKBIO] %s success\n", lock ? "lock" : "unlock"));
             return TKBIO_SET_SUCCESS;
-        case TSP_SET_FAILURE:
+        }
+        else
+        {
             VERBOSE(printf("[TKBIO] %s failure\n", lock ? "lock" : "unlock"));
+            tkbio.tsp.lock = 0;
+            return TKBIO_SET_FAILURE;
+        }
+    }
+}
+
+int tkbio_grab(int button, int grab)
+{
+    struct tsp_event event;
+    int value = 0;
+    
+    if(grab)
+        value |= TSP_GRAB_MASK;
+    switch(button)
+    {
+    case TKBIO_BUTTON_AUX:
+        value |= TSP_GRAB_AUX;
+        break;
+    case TKBIO_BUTTON_POWER:
+        value |= TSP_GRAB_POWER;
+        break;
+    default:
+        return TKBIO_SET_FAILURE;
+    }
+    
+    while(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, value))
+        tkbio_tsp_reconnect(-1);
+    
+    if(grab)
+        tkbio.tsp.grab |= button;
+    else
+        tkbio.tsp.grab &= ~button;
+        
+    while(1)
+    {
+        while(tkbio_tsp_recv(&event))
+            tkbio_tsp_reconnect(-1);
+        
+        if(event.event != TSP_EVENT_GRAB ||
+            (event.value.status & ~TSP_SUCCESS_MASK) !=
+            (value & ~TSP_GRAB_MASK))
+        {
+            tkbio_queue_event(EVENT_TSP, &event);
+            continue;
+        }
+        
+        if(event.value.status & TSP_SUCCESS_MASK)
+        {
+            VERBOSE(printf("[TKBIO] %s success\n", grab ? "grab" : "ungrab"));
+            return TKBIO_SET_SUCCESS;
+        }
+        else
+        {
+            VERBOSE(printf("[TKBIO] %s failure\n", grab ? "grab" : "ungrab"));
+            tkbio.tsp.grab &= ~button;
             return TKBIO_SET_FAILURE;
         }
     }

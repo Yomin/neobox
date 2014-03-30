@@ -112,6 +112,7 @@ struct tkbio_tsp
     int lock;       // app has screen locked
     int hide;       // app is hidden
     int priority;   // apps hidden priority
+    int grab;       // app grabbs buttons
 };
 
 struct tkbio_partner

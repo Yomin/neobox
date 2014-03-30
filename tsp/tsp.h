@@ -35,12 +35,16 @@
 #define TSP_CMD_LOCK        4   // lock screen
 #define TSP_CMD_HIDE        5   // hide app
 #define TSP_CMD_ACK         6   // ack remove/deactivate
+#define TSP_CMD_GRAB        7   // get exclusive button
 
 #define TSP_SWITCH_PID      0       // switch to app
 #define TSP_SWITCH_PREV     1       // switch to prev app
 #define TSP_SWITCH_NEXT     2       // switch to next app
 #define TSP_SWITCH_HIDDEN   3       // switch to hidden app (lowest prio)
 #define TSP_HIDE_MASK       (1<<7)  // hide bit|prio
+#define TSP_GRAB_AUX        0       // grab/ungrab aux
+#define TSP_GRAB_POWER      1       // grab/ungrab power
+#define TSP_GRAB_MASK       (1<<7)  // grab bit|button
 
 #define TSP_EVENT_PRESSED       0   // button pressed
 #define TSP_EVENT_RELEASED      1   // button released
@@ -51,9 +55,9 @@
 #define TSP_EVENT_AUX           6   // aux pressed/released
 #define TSP_EVENT_POWER         7   // power pressed/released
 #define TSP_EVENT_LOCK          8   // screen locked/unlocked
+#define TSP_EVENT_GRAB          9   // button grabbed/ungrabbed
 
-#define TSP_SET_FAILURE         0   // lock failure
-#define TSP_SET_SUCCESS         1   // lock success
+#define TSP_SUCCESS_MASK    (1<<7)  // lock/grab success
 
 struct tsp_cmd
 {

@@ -51,7 +51,8 @@
 struct chain_socket
 {
     CIRCLEQ_ENTRY(chain_socket) chain;
-    int sock, priority, hide, lock;
+    int sock;
+    unsigned char priority, hide, lock;
     pid_t pid;
 };
 CIRCLEQ_HEAD(client_sockets, chain_socket);
@@ -175,9 +176,10 @@ int recv_client(int sock, struct tsp_cmd *cmd)
     return 0;
 }
 
-struct chain_socket* find_client(int pos, pid_t pid)
+struct chain_socket* find_client(int *pos, pid_t pid)
 {
     struct chain_socket *cs = client_list.cqh_first;
+    int i;
     
     if(pid)
     {
@@ -185,10 +187,15 @@ struct chain_socket* find_client(int pos, pid_t pid)
             cs = cs->chain.cqe_next;
         if(cs == (void*)&client_list)
             return 0;
+        
+        for(i=0; i<client_count; i++)
+            if(pfds[i+4].fd == cs->sock)
+                break;
+        *pos = i;
     }
     else
     {
-        while(cs != (void*)&client_list && cs->sock != pfds[pos].fd)
+        while(cs != (void*)&client_list && cs->sock != pfds[*pos].fd)
             cs = cs->chain.cqe_next;
         if(cs == (void*)&client_list)
             return 0;
@@ -250,18 +257,11 @@ struct chain_socket* client_list_rotate_next(int hidden)
     return cs_nxt;
 }
 
-int rem_client(int pos, pid_t pid)
+int rem_client(int pos, struct chain_socket *cs)
 {
-    struct chain_socket *cs = client_list.cqh_first;
-    int active;
-    DEBUG(int fd);
-    
-    if(!(cs = find_client(pos, pid)))
-        return 0;
-    
-    DEBUG(fd = cs->sock);
-    pid = cs->pid;
-    active = cs == client_list.cqh_first;
+    int active = cs == client_list.cqh_first;
+    DEBUG(int fd = cs->sock);
+    DEBUG(pid_t pid = cs->pid);
     
     memmove(pfds+pos, pfds+pos+1, client_count+4-pos-1);
     CIRCLEQ_REMOVE(&client_list, cs, chain);
@@ -344,7 +344,7 @@ void register_client(int pos, pid_t pid)
 {
     struct chain_socket *cs;
     
-    if(!(cs = find_client(pos, 0)))
+    if(!(cs = find_client(&pos, 0)))
         return;
     
     cs->pid = pid;
@@ -356,7 +356,7 @@ void hide_client(int pos, pid_t pid, int priority, int hide)
 {
     struct chain_socket *cs;
     
-    if(!(cs = find_client(pos, pid)))
+    if(!(cs = find_client(&pos, pid)))
         return;
     
     cs->priority = priority;
@@ -504,6 +504,8 @@ int main(int argc, char* argv[])
     char *config;
     FILE *file;
     struct sockaddr_un rpc_addr;
+    
+    struct chain_socket *aux_grabber = 0, *power_grabber = 0;
     
     struct input_event input;
     struct tsp_cmd cmd;
@@ -763,7 +765,8 @@ int main(int argc, char* argv[])
                 case SYN_REPORT:
                     DEBUG(printf("AUX %s\n",
                         aux_pressed ? "pressed" : "released"));
-                    send_client_status(TSP_EVENT_AUX, aux_pressed, 0);
+                    cs = aux_grabber ? aux_grabber : 0;
+                    send_client_status(TSP_EVENT_AUX, aux_pressed, cs);
                     break;
                 }
                 break;
@@ -802,7 +805,8 @@ int main(int argc, char* argv[])
                 case SYN_REPORT:
                     DEBUG(printf("Power %s\n",
                         power_pressed ? "pressed" : "released"));
-                    send_client_status(TSP_EVENT_POWER, power_pressed, 0);
+                    cs = power_grabber ? power_grabber : 0;
+                    send_client_status(TSP_EVENT_POWER, power_pressed, cs);
                     break;
                 }
                 break;
@@ -841,8 +845,22 @@ int main(int argc, char* argv[])
                 if(pfds[x].revents & POLLHUP || pfds[x].revents & POLLERR)
                 {
                     DEBUG(printf("pollhup/pollerr on client socket [%i]\n", pfds[x].fd));
-                    if(rem_client(x, 0))
+                    cs = find_client(&x, 0);
+remove:             if(cs == aux_grabber)
+                    {
+                        DEBUG(printf("AUX ungrabbed [%i] %i\n",
+                            cs->sock, cs->pid));
+                        aux_grabber = 0;
+                    }
+                    if(cs == power_grabber)
+                    {
+                        DEBUG(printf("Power ungrabbed [%i] %i\n",
+                            cs->sock, cs->pid));
+                        power_grabber = 0;
+                    }
+                    if(rem_client(x, cs))
                         send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
+                    break;
                 }
                 else if(pfds[x].revents & POLLIN)
                 {
@@ -854,14 +872,10 @@ int main(int argc, char* argv[])
                         register_client(x, cmd.pid);
                         break;
                     case TSP_CMD_REMOVE:
-                        if((cs = find_client(x, cmd.pid)))
+                        if((cs = find_client(&x, cmd.pid)))
                         {
                             if(cs->sock == pfds[x].fd)
-                            {
-                                if(rem_client(x, cmd.pid))
-                                    send_client_status(
-                                        TSP_EVENT_ACTIVATED, 0, 0);
-                            }
+                                goto remove;
                             else
                             {
                                 DEBUG(printf("Client remove [%i] %i\n",
@@ -878,18 +892,19 @@ int main(int argc, char* argv[])
                                 TSP_EVENT_DEACTIVATED, 0, cs);
                         break;
                     case TSP_CMD_LOCK:
-                        cs = find_client(x, 0);
+                        cs = find_client(&x, 0);
                         if(!lock || cs->lock)
                         {
                             lock = cs->lock = cmd.value;
-                            DEBUG(printf("Screen %s\n",
-                                lock ? "locked" : "unlocked"));
+                            DEBUG(printf("Screen %s [%i] %i\n",
+                                lock ? "locked" : "unlocked",
+                                x, cs->pid));
                             send_client_status(
-                                TSP_EVENT_LOCK, TSP_SET_SUCCESS, cs);
+                                TSP_EVENT_LOCK, TSP_SUCCESS_MASK, cs);
                         }
                         else
                             send_client_status(
-                                TSP_EVENT_LOCK, TSP_SET_FAILURE, cs);
+                                TSP_EVENT_LOCK, 0, cs);
                         break;
                     case TSP_CMD_HIDE:
                         hide_client(x, cmd.pid,
@@ -902,26 +917,75 @@ int main(int argc, char* argv[])
                         case TSP_EVENT_DEACTIVATED:
                             cs = client_list.cqh_first;
                             DEBUG(printf("Client switched [%i] %i -> [%i] %i\n",
-                                pfds[x].fd, find_client(x, 0)->pid,
+                                pfds[x].fd, find_client(&x, 0)->pid,
                                 cs->sock, cs->pid));
                             send_client_status(
                                 TSP_EVENT_ACTIVATED, 0, 0);
                             break;
                         case TSP_EVENT_REMOVED:
-                            if(rem_client(x, 0))
-                                send_client_status(
-                                    TSP_EVENT_ACTIVATED, 0, 0);
-                            break;
+                            cs = find_client(&x, 0);
+                            goto remove;
                         default:
                             DEBUG(printf("Client done [%i] %i\n",
-                                pfds[x].fd, find_client(x, 0)->pid));
+                                pfds[x].fd, find_client(&x, 0)->pid));
+                            break;
+                        }
+                        break;
+                    case TSP_CMD_GRAB:
+                        cs = find_client(&x, 0);
+                        switch(cmd.value & ~TSP_GRAB_MASK)
+                        {
+                        case TSP_GRAB_AUX:
+                            if(!aux_grabber || cs == aux_grabber)
+                            {
+                                if(cmd.value & TSP_GRAB_MASK)
+                                {
+                                    DEBUG(printf("AUX grabbed [%i] %i\n",
+                                        cs->sock, cs->pid));
+                                    aux_grabber = cs;
+                                }
+                                else
+                                {
+                                    DEBUG(printf("AUX ungrabbed [%i] %i\n",
+                                        cs->sock, cs->pid));
+                                    aux_grabber = 0;
+                                }
+                                send_client_status(TSP_EVENT_GRAB,
+                                    TSP_SUCCESS_MASK|TSP_GRAB_AUX, cs);
+                            }
+                            else
+                                send_client_status(TSP_EVENT_GRAB,
+                                    TSP_GRAB_AUX, cs);
+                            break;
+                        case TSP_GRAB_POWER:
+                            if(!power_grabber || cs == power_grabber)
+                            {
+                                if(cmd.value & TSP_GRAB_MASK)
+                                {
+                                    DEBUG(printf("Power grabbed [%i] %i\n",
+                                        cs->sock, cs->pid));
+                                    power_grabber = cs;
+                                }
+                                else
+                                {
+                                    DEBUG(printf("Power ungrabbed [%i] %i\n",
+                                        cs->sock, cs->pid));
+                                    power_grabber = 0;
+                                }
+                                send_client_status(TSP_EVENT_GRAB,
+                                    TSP_SUCCESS_MASK|TSP_GRAB_POWER, cs);
+                            }
+                            else
+                                send_client_status(TSP_EVENT_GRAB,
+                                    TSP_GRAB_POWER, cs);
                             break;
                         }
                         break;
                     default:
                         DEBUG(printf("Unrecognized command 0x%02hhx [%i] %i\n",
-                            cmd.cmd, pfds[x].fd, find_client(x, 0)->pid));
+                            cmd.cmd, pfds[x].fd, find_client(&x, 0)->pid));
                     }
+                    break;
                 }
         }
     }
