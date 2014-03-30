@@ -51,7 +51,7 @@
 struct chain_socket
 {
     CIRCLEQ_ENTRY(chain_socket) chain;
-    int sock, priority, hide;
+    int sock, priority, hide, lock;
     pid_t pid;
 };
 CIRCLEQ_HEAD(client_sockets, chain_socket);
@@ -94,11 +94,9 @@ int open_rpc_socket(int *sock, struct sockaddr_un *addr)
 
 void add_client(int fd)
 {
-    struct chain_socket *cs = malloc(sizeof(struct chain_socket));
+    struct chain_socket *cs = calloc(1, sizeof(struct chain_socket));
     CIRCLEQ_INSERT_HEAD(&client_list, cs, chain);
     cs->sock = fd;
-    cs->pid = 0;
-    cs->hide = 0;
     if(client_count+4 == pfds_cap)
     {
         pfds_cap += 10;
@@ -880,9 +878,18 @@ int main(int argc, char* argv[])
                                 TSP_EVENT_DEACTIVATED, 0, cs);
                         break;
                     case TSP_CMD_LOCK:
-                        lock = cmd.value;
-                        DEBUG(printf("Screen %s\n",
-                            lock ? "locked" : "unlocked"));
+                        cs = find_client(x, 0);
+                        if(!lock || cs->lock)
+                        {
+                            lock = cs->lock = cmd.value;
+                            DEBUG(printf("Screen %s\n",
+                                lock ? "locked" : "unlocked"));
+                            send_client_status(
+                                TSP_EVENT_LOCK, TSP_SET_SUCCESS, cs);
+                        }
+                        else
+                            send_client_status(
+                                TSP_EVENT_LOCK, TSP_SET_FAILURE, cs);
                         break;
                     case TSP_CMD_HIDE:
                         hide_client(x, cmd.pid,

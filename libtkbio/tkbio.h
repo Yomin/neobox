@@ -52,6 +52,9 @@
 #define TKBIO_BUTTON_AUX            0
 #define TKBIO_BUTTON_POWER          1
 
+#define TKBIO_SET_FAILURE           0
+#define TKBIO_SET_SUCCESS           1
+
 #define TKBIO_RETURN_NOP            0
 #define TKBIO_RETURN_CHAR           1
 #define TKBIO_RETURN_INT            2
@@ -66,6 +69,7 @@
 #define TKBIO_RETURN_TIMER          11
 #define TKBIO_RETURN_REMOVE         12
 #define TKBIO_RETURN_BUTTON         13
+#define TKBIO_RETURN_LOCK           14
 
 #define TKBIO_HANDLER_SUCCESS       0
 #define TKBIO_HANDLER_QUIT          1
@@ -110,7 +114,8 @@ int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec);
 void tkbio_init_screen();
 
 void tkbio_switch(pid_t pid);
-void tkbio_lock(int lock);
 void tkbio_hide(pid_t pid, int priority, int hide);
+
+int tkbio_lock(int lock);
 
 #endif

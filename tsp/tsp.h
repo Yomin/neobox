@@ -23,6 +23,8 @@
 #ifndef __TSP_H__
 #define __TSP_H__
 
+#include <sys/types.h>
+
 #define TSP_NAME    "tspd"
 #define TSP_PWD     "/var/" TSP_NAME
 #define TSP_RPC     "rpc"
@@ -48,6 +50,10 @@
 #define TSP_EVENT_REMOVED       5   // app removed
 #define TSP_EVENT_AUX           6   // aux pressed/released
 #define TSP_EVENT_POWER         7   // power pressed/released
+#define TSP_EVENT_LOCK          8   // screen locked/unlocked
+
+#define TSP_SET_FAILURE         0   // lock failure
+#define TSP_SET_SUCCESS         1   // lock success
 
 struct tsp_cmd
 {

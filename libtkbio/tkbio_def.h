@@ -27,6 +27,9 @@
 #include <sys/queue.h>
 #include <sys/time.h>
 #include <alg/vector.h>
+
+#include <tsp.h>
+
 #include "tkbio.h"
 
 #ifdef NDEBUG
@@ -45,10 +48,24 @@
 #define TIMER_SYSTEM 0
 #define TIMER_USER   1
 
+#define EVENT_NOP   0
+#define EVENT_TSP   1
+#define EVENT_TKBIO 2
+
+struct tkbio_event
+{
+    char type;
+    union
+    {
+        struct tsp_event tsp;
+        struct tkbio_return tkbio;
+    } event;
+};
+
 struct tkbio_chain_queue
 {
     CIRCLEQ_ENTRY(tkbio_chain_queue) chain;
-    struct tkbio_return ret;
+    struct tkbio_event event;
 };
 CIRCLEQ_HEAD(tkbio_queue, tkbio_chain_queue);
 

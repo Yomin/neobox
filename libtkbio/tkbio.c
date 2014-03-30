@@ -44,8 +44,6 @@
 #include "tkbio_def.h"
 #include "tkbio_fb.h"
 
-#include <tsp.h>
-
 #include "tkbio_layout_default.h"
 
 #include "tkbio_type_nop.h"
@@ -102,8 +100,9 @@ void tkbio_signal_handler(int signal)
             {
                 cq = malloc(sizeof(struct tkbio_chain_queue));
                 CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
-                cq->ret.type = TKBIO_RETURN_TIMER;
-                cq->ret.id = id;
+                cq->event.type = EVENT_TKBIO;
+                cq->event.event.tkbio.type = TKBIO_RETURN_TIMER;
+                cq->event.event.tkbio.id = id;
             }
         }
         while(ret);
@@ -111,8 +110,9 @@ void tkbio_signal_handler(int signal)
     default:
         cq = malloc(sizeof(struct tkbio_chain_queue));
         CIRCLEQ_INSERT_TAIL(&tkbio.queue, cq, chain);
-        cq->ret.type = TKBIO_RETURN_SIGNAL;
-        cq->ret.value.i = signal;
+        cq->event.type = EVENT_TKBIO;
+        cq->event.event.tkbio.type = TKBIO_RETURN_SIGNAL;
+        cq->event.event.tkbio.value.i = signal;
     }
 }
 
@@ -138,19 +138,17 @@ int tkbio_catch_signal(int sig, int flags)
     return 0;
 }
 
-struct tkbio_return tkbio_get_event()
+struct tkbio_event tkbio_get_event()
 {
-    struct tkbio_return ret;
+    struct tkbio_event event;
     struct tkbio_chain_queue *cq;
     sigset_t set, oldset;
     
-    ret.type = TKBIO_RETURN_NOP;
-    ret.id = 0;
-    ret.value.i = 0;
+    event.type = EVENT_NOP;
     cq = tkbio.queue.cqh_first;
     
     if(cq == (void*)&tkbio.queue)
-        return ret;
+        return event;
     
     sigfillset(&set);
     sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -159,22 +157,32 @@ struct tkbio_return tkbio_get_event()
     
     sigprocmask(SIG_SETMASK, &oldset, 0);
     
-    ret = cq->ret;
+    event = cq->event;
     free(cq);
     
-    return ret;
+    return event;
 }
 
-void tkbio_queue_event(struct tkbio_return ret)
+void tkbio_queue_event(char type, void *event)
 {
     struct tkbio_chain_queue *cq;
     sigset_t set, oldset;
     
-    if(ret.type == TKBIO_RETURN_NOP)
-        return;
-    
-    cq = malloc(sizeof(struct tkbio_chain_queue));
-    cq->ret = ret;
+    switch(type)
+    {
+    case EVENT_TSP:
+        cq = malloc(sizeof(struct tkbio_chain_queue));
+        cq->event.type = type;
+        cq->event.event.tsp = *(struct tsp_event*)event;
+        break;
+    case EVENT_TKBIO:
+        if(((struct tkbio_return*)event)->type == TKBIO_RETURN_NOP)
+            return;
+        cq = malloc(sizeof(struct tkbio_chain_queue));
+        cq->event.type = type;
+        cq->event.event.tkbio = *(struct tkbio_return*)event;
+        break;
+    }
     
     sigfillset(&set);
     sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -853,10 +861,9 @@ int tkbio_handle_timer(unsigned char *id, unsigned char *type)
     return 0;
 }
 
-struct tkbio_return tkbio_recv_event()
+struct tkbio_return tkbio_parse_event(struct tsp_event event)
 {
     struct tkbio_return ret, ret2;
-    struct tsp_event event;
     const struct tkbio_map *map;
     const struct tkbio_mapelem *elem_last, *elem_curr;
     struct tkbio_save *save_last, *save_curr;
@@ -870,12 +877,6 @@ struct tkbio_return tkbio_recv_event()
     ret.type = TKBIO_RETURN_NOP;
     ret.id = 0;
     ret.value.i = 0;
-    
-    if(tkbio_tsp_recv(&event))
-        return ret;
-    
-    ev_y = event.value.cord.y;
-    ev_x = event.value.cord.x;
     
     switch(event.event)
     {
@@ -897,14 +898,16 @@ struct tkbio_return tkbio_recv_event()
         ret.type = TKBIO_RETURN_BUTTON;
         ret.id = TKBIO_BUTTON_AUX;
         ret.value.i = event.value.status;
-        break;
+        return ret;
     case TSP_EVENT_POWER:
         VERBOSE(printf("[TKBIO] Power %s\n",
             event.value.status ? "pressed" : "released"));
         ret.type = TKBIO_RETURN_BUTTON;
         ret.id = TKBIO_BUTTON_POWER;
         ret.value.i = event.value.status;
-        break;
+        return ret;
+    case TSP_EVENT_LOCK:
+        return ret;
     case TSP_EVENT_MOVED:
     case TSP_EVENT_RELEASED:
     case TSP_EVENT_PRESSED:
@@ -913,6 +916,9 @@ struct tkbio_return tkbio_recv_event()
         VERBOSE(printf("[TKBIO] Unrecognized event 0x%02hhx\n", event.event));
         return ret;
     }
+    
+    ev_y = event.value.cord.y;
+    ev_x = event.value.cord.x;
     
     if(ev_x >= SCREENMAX || ev_y >= SCREENMAX)
         return ret;
@@ -986,7 +992,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
                 {
                     TYPEFUNC(elem_curr, focus_in, ret2=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
-                    tkbio_queue_event(ret2);
+                    tkbio_queue_event(EVENT_TKBIO, &ret2);
                 }
             }
         }
@@ -1101,7 +1107,14 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
 
 int tkbio_handle_event(tkbio_handler *handler, void *state)
 {
-    struct tkbio_return ret = tkbio_recv_event();
+    struct tsp_event event;
+    struct tkbio_return ret;
+    
+    if(tkbio_tsp_recv(&event))
+        return TKBIO_HANDLER_SUCCESS;
+    
+    ret = tkbio_parse_event(event);
+    
     if(ret.type != TKBIO_RETURN_NOP)
         return tkbio_handle_return(handler(ret, state), ret, handler, state);
     else
@@ -1110,11 +1123,21 @@ int tkbio_handle_event(tkbio_handler *handler, void *state)
 
 int tkbio_handle_queue(tkbio_handler *handler, void *state)
 {
+    struct tkbio_event event;
     struct tkbio_return tret;
     int ret;
     
-    while((tret = tkbio_get_event()).type != TKBIO_RETURN_NOP)
+    while((event = tkbio_get_event()).type != EVENT_NOP)
     {
+        switch(event.type)
+        {
+        case EVENT_TSP:
+            tret = tkbio_parse_event(event.event.tsp);
+            break;
+        case EVENT_TKBIO:
+            tret = event.event.tkbio;
+            break;
+        }
         ret = tkbio_handle_return(handler(tret, state), tret, handler, state);
         if(ret == TKBIO_HANDLER_SUCCESS)
             continue;
@@ -1215,12 +1238,6 @@ void tkbio_switch(pid_t pid)
         tkbio_tsp_reconnect(-1);
 }
 
-void tkbio_lock(int lock)
-{
-    while(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, lock))
-        tkbio_tsp_reconnect(-1);
-}
-
 void tkbio_hide(pid_t pid, int priority, int hide)
 {
     while(tkbio_tsp_cmd(TSP_CMD_HIDE, pid,
@@ -1228,9 +1245,43 @@ void tkbio_hide(pid_t pid, int priority, int hide)
     {
         tkbio_tsp_reconnect(-1);
     }
+    tkbio.tsp.hide = hide;
+    tkbio.tsp.priority = priority;
 }
 
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
 {
     return tkbio_add_timer(id, TIMER_USER, sec, usec);
+}
+
+int tkbio_lock(int lock)
+{
+    struct tsp_event event;
+    
+    while(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, lock))
+        tkbio_tsp_reconnect(-1);
+    
+    tkbio.tsp.lock = lock;
+    
+    while(1)
+    {
+        while(tkbio_tsp_recv(&event))
+            tkbio_tsp_reconnect(-1);
+        
+        if(event.event != TSP_EVENT_LOCK)
+        {
+            tkbio_queue_event(EVENT_TSP, &event);
+            continue;
+        }
+        
+        switch(event.value.status)
+        {
+        case TSP_SET_SUCCESS:
+            VERBOSE(printf("[TKBIO] %s success\n", lock ? "lock" : "unlock"));
+            return TKBIO_SET_SUCCESS;
+        case TSP_SET_FAILURE:
+            VERBOSE(printf("[TKBIO] %s failure\n", lock ? "lock" : "unlock"));
+            return TKBIO_SET_FAILURE;
+        }
+    }
 }
