@@ -981,6 +981,17 @@ remove:             if(cs == aux_grabber)
                             break;
                         }
                         break;
+                    case TSP_CMD_POWERSAVE:
+                        DEBUG(printf("Powersave %s broadcast\n",
+                            cmd.value ? "on" : "off"));
+                        cs = client_list.cqh_first;
+                        while(cs != (void*)&client_list)
+                        {
+                            if(cs->sock != pfds[x].fd)
+                                send_client_status(
+                                    TSP_EVENT_POWERSAVE, cmd.value, cs);
+                            cs = cs->chain.cqe_next;
+                        }
                     default:
                         DEBUG(printf("Unrecognized command 0x%02hhx [%i] %i\n",
                             cmd.cmd, pfds[x].fd, find_client(&x, 0)->pid));

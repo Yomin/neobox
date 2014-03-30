@@ -36,6 +36,7 @@
 #define TSP_CMD_HIDE        5   // hide app
 #define TSP_CMD_ACK         6   // ack remove/deactivate
 #define TSP_CMD_GRAB        7   // get exclusive button
+#define TSP_CMD_POWERSAVE   8   // broadcast powersave request
 
 #define TSP_SWITCH_PID      0       // switch to app
 #define TSP_SWITCH_PREV     1       // switch to prev app
@@ -56,6 +57,7 @@
 #define TSP_EVENT_POWER         7   // power pressed/released
 #define TSP_EVENT_LOCK          8   // screen locked/unlocked
 #define TSP_EVENT_GRAB          9   // button grabbed/ungrabbed
+#define TSP_EVENT_POWERSAVE     10  // powersave request
 
 #define TSP_SUCCESS_MASK    (1<<7)  // lock/grab success
 

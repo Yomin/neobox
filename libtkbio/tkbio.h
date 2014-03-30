@@ -71,6 +71,7 @@
 #define TKBIO_RETURN_BUTTON         13
 #define TKBIO_RETURN_LOCK           14
 #define TKBIO_RETURN_GRAB           15
+#define TKBIO_RETURN_POWERSAVE      16
 
 #define TKBIO_HANDLER_SUCCESS       0
 #define TKBIO_HANDLER_QUIT          1
@@ -116,6 +117,7 @@ void tkbio_init_screen();
 
 void tkbio_switch(pid_t pid);
 void tkbio_hide(pid_t pid, int priority, int hide);
+void tkbio_powersave(int powersave);
 
 int tkbio_lock(int lock);
 int tkbio_grab(int button, int grab);

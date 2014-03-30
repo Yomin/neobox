@@ -925,6 +925,12 @@ struct tkbio_return tkbio_parse_event(struct tsp_event event)
         return ret;
     case TSP_EVENT_GRAB:
         return ret;
+    case TSP_EVENT_POWERSAVE:
+        VERBOSE(printf("[TKBIO] Powersave %s\n",
+            event.value.status ? "on" : "off"));
+        ret.type = TKBIO_RETURN_POWERSAVE;
+        ret.value.i = event.value.status;
+        return ret;
     case TSP_EVENT_MOVED:
     case TSP_EVENT_RELEASED:
     case TSP_EVENT_PRESSED:
@@ -1264,6 +1270,12 @@ void tkbio_hide(pid_t pid, int priority, int hide)
     }
     tkbio.tsp.hide = hide;
     tkbio.tsp.priority = priority;
+}
+
+void tkbio_powersave(int powersave)
+{
+    while(tkbio_tsp_cmd(TSP_CMD_POWERSAVE, 0, powersave))
+        tkbio_tsp_reconnect(-1);
 }
 
 int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
