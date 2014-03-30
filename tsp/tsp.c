@@ -263,7 +263,7 @@ int rem_client(int pos, pid_t pid)
     pid = cs->pid;
     active = cs == client_list.cqh_first;
     
-    memcpy(pfds+pos, pfds+pos+1, client_count+4-pos-1);
+    memmove(pfds+pos, pfds+pos+1, client_count+4-pos-1);
     CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
     client_count--;

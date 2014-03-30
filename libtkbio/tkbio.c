@@ -322,7 +322,7 @@ int tkbio_tsp_connect(int tries)
     while(1)
     {
         if(tkbio.tsp.sock)
-            close(tkbio.tsp.sock);
+            while(close(tkbio.tsp.sock) == -1 && errno == EINTR);
         
         if((tkbio.tsp.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
         {
@@ -336,8 +336,10 @@ int tkbio_tsp_connect(int tries)
             goto retry;
         }
         
-        if(connect(tkbio.tsp.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+        while(connect(tkbio.tsp.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
         {
+            if(errno == EINTR)
+                continue;
             VERBOSE(perror("[TKBIO] Failed to connect rpc socket"));
             goto retry;
         }
@@ -352,7 +354,7 @@ retry:  if(tries-- == 1)
         
         VERBOSE(printf("[TKBIO] Retry connecting to rpc socket in 1 second\n"));
         
-        sleep(1);
+        while(sleep(1));
     }
     
     return 0;
@@ -372,7 +374,8 @@ int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value)
     {
         if(count == -1)
         {
-            err = errno;
+            if((err = errno) == EINTR)
+                continue;
             VERBOSE(perror("[TKBIO] Failed to send tsp cmd"));
             return err;
         }
@@ -389,16 +392,20 @@ int tkbio_tsp_recv(struct tsp_event *event)
     int count, err, size = sizeof(struct tsp_event);
     
     while((count = recv(tkbio.tsp.sock, ptr, size, 0)) != size)
-    {
-        if(count == -1)
+        switch(count)
         {
-            err = errno;
+        case 0:
+            VERBOSE(perror("[TKBIO] Failed to recv tsp event"));
+            return 1;
+        case -1:
+            if((err = errno) == EINTR)
+                continue;
             VERBOSE(perror("[TKBIO] Failed to recv tsp event"));
             return err;
+        default:
+            ptr += count;
+            size -= count;
         }
-        ptr += count;
-        size -= count;
-    }
     
     return 0;
 }
