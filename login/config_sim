@@ -1,3 +1,5 @@
 ../menu/menu -v ../menu/apps_sim --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim
+/sys/class/backlight/intel_backlight/brightness
+18930
 42
 test

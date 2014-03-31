@@ -1,3 +1,4 @@
 /root/neobox/menu/menu /root/neobox/menu/apps
+/sys/class/backlight/pcf50633-backlight/brightness
 42
 test

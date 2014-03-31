@@ -858,6 +858,12 @@ remove:             if(cs == aux_grabber)
                             cs->sock, cs->pid));
                         power_grabber = 0;
                     }
+                    if(cs->lock)
+                    {
+                        DEBUG(printf("Screen unlocked [%i] %i\n",
+                            cs->sock, cs->pid));
+                        lock = 0;
+                    }
                     if(rem_client(x, cs))
                         send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
                     break;
@@ -992,6 +998,7 @@ remove:             if(cs == aux_grabber)
                                     TSP_EVENT_POWERSAVE, cmd.value, cs);
                             cs = cs->chain.cqe_next;
                         }
+                        break;
                     default:
                         DEBUG(printf("Unrecognized command 0x%02hhx [%i] %i\n",
                             cmd.cmd, pfds[x].fd, find_client(&x, 0)->pid));

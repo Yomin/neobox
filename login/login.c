@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 
 #include <tkbio.h>
@@ -40,10 +41,10 @@
 #define LEN 9
 
 unsigned int seeds[26];
-char tile[LEN], randTile[LEN*2], currentTile;
-const char *pass, *passptr;
-char **cmd;
-pid_t cmdPid;
+char tile[LEN], rand_tile[LEN*2], current_tile;
+char *pass, *passptr, **cmd, *brightness_dev, brightness_value[20];
+pid_t cmd_pid;
+int powersave, brightness_len;
 
 int gen_tile(char c)
 {
@@ -56,7 +57,7 @@ int gen_tile(char c)
     
     srandom(seed);
     
-    currentTile = c;
+    current_tile = c;
     
     tile[i++] = (seed = random())%26+'a';
     
@@ -83,28 +84,28 @@ void draw_tile(char c, int draw)
     gen_tile(c);
     
     srandom(time(0));
-    memset(randTile, 0, LEN*2);
-    randTile[0] = tile[0];
+    memset(rand_tile, 0, LEN*2);
+    rand_tile[0] = tile[0];
     
     for(i=1; i<LEN; i++)
     {
-        while(randTile[(j = (random()%(LEN-1)+1)*2)]);
-        randTile[j] = tile[i];
+        while(rand_tile[(j = (random()%(LEN-1)+1)*2)]);
+        rand_tile[j] = tile[i];
     }
     
     for(i=0; i<LEN; i++)
-        tkbio_button_set_name(i, 0, &randTile[i*2], draw);
+        tkbio_button_set_name(i, 0, &rand_tile[i*2], draw);
 }
 
 void login()
 {
-    if(cmdPid != -1)
+    if(cmd_pid != -1)
     {
-        tkbio_switch(cmdPid);
+        tkbio_switch(cmd_pid);
         return;
     }
     
-    switch((cmdPid = fork()))
+    switch((cmd_pid = fork()))
     {
     case -1:
         perror("Failed to fork");
@@ -116,6 +117,52 @@ void login()
     }
 }
 
+void zero_brightness()
+{
+    int fd;
+    
+    if((fd = open(brightness_dev, O_RDWR)) == -1)
+    {
+        perror("Failed to open brightness device");
+        brightness_len = 0;
+        return;
+    }
+    
+    if((brightness_len = read(fd, brightness_value, 20)) <= 0)
+    {
+        perror("Failed to read brightness");
+        brightness_len = 0;
+        close(fd);
+        return;
+    }
+    
+    brightness_len--;
+    
+    if(write(fd, "0", 1) == -1)
+        perror("Failed to zero brightness");
+    
+    close(fd);
+}
+
+void restore_brightness()
+{
+    int fd;
+    
+    if(!brightness_len)
+        return;
+    
+    if((fd = open(brightness_dev, O_RDWR)) == -1)
+    {
+        perror("Failed to open brightness device");
+        return;
+    }
+    
+    if(write(fd, brightness_value, brightness_len) == -1)
+        perror("Failed to restore brightness");
+    
+    close(fd);
+}
+
 int handler(struct tkbio_return ret, void *state)
 {
     char c;
@@ -123,7 +170,7 @@ int handler(struct tkbio_return ret, void *state)
     switch(ret.type)
     {
     case TKBIO_RETURN_CHAR:
-        c = randTile[ret.id*2];
+        c = rand_tile[ret.id*2];
         if(ret.id)
         {
             passptr = c == *passptr ? passptr+1 : pass;
@@ -136,7 +183,7 @@ int handler(struct tkbio_return ret, void *state)
         else
         {
             srandom(time(0)+random());
-            while(currentTile == (c = random()%26+'a'));
+            while(current_tile == (c = random()%26+'a'));
         }
         draw_tile(c, 1);
         break;
@@ -145,16 +192,41 @@ int handler(struct tkbio_return ret, void *state)
         srandom(time(0)+random());
         draw_tile(random()%26+'a', 0);
         return TKBIO_HANDLER_DEFER;
+    case TKBIO_RETURN_BUTTON:
+        switch(ret.id)
+        {
+        case TKBIO_BUTTON_POWER:
+            if(!ret.value.i)
+                break;
+powersave:  if(!powersave)
+            {
+                if(tkbio_lock(1))
+                    printf("Failed to lock screen\n");
+                zero_brightness();
+                tkbio_powersave(1);
+                powersave = 1;
+            }
+            else
+            {
+                if(tkbio_lock(0))
+                    printf("Failed to unlock screen\n");
+                restore_brightness();
+                tkbio_switch(0);
+                tkbio_powersave(0);
+                powersave = 0;
+            }
+            break;
+        }
+        return TKBIO_HANDLER_SUCCESS;
     case TKBIO_RETURN_SIGNAL:
         switch(ret.value.i)
         {
         case SIGCHLD:
             wait(0);
-            cmdPid = -1;
+            cmd_pid = -1;
             break;
         case SIGHUP:
-            tkbio_switch(0);
-            break;
+            goto powersave;
         }
     default:
         return TKBIO_HANDLER_DEFER;
@@ -166,11 +238,16 @@ int handler(struct tkbio_return ret, void *state)
 int main(int argc, char* argv[])
 {
     struct tkbio_config config = tkbio_config_default(&argc, argv);
-    int ret, i;
+    int ret, i, count;
     unsigned int seed;
-    FILE *file;
+    FILE *file = 0;
     size_t size;
     char *line = 0;
+    
+    cmd_pid = -1;
+    cmd = 0;
+    powersave = 0;
+    brightness_dev = 0;
     
     if(argc != 2)
     {
@@ -180,53 +257,66 @@ int main(int argc, char* argv[])
     
     if(!(file = fopen(argv[1], "r")))
     {
-        perror("Failed to open passfile");
+        perror("Failed to open config");
         return 1;
     }
     
     if(getline(&line, &size, file) == -1)
     {
         printf("Failed to read cmd\n");
-        if(line)
-            free(line);
-        fclose(file);
-        return 2;
+        ret = 2;
+        goto cleanup;
     }
     
-    cmdPid = -1;
     cmd = tkbio_util_parse_cmd(line);
     line = 0;
+    
+    if((count = getline(&brightness_dev, &size, file)) == -1)
+    {
+        printf("Failed to read brightness device\n");
+        ret = 3;
+        goto cleanup;
+    }
+    
+    brightness_dev[count-1] = 0;
+    if((ret = open(brightness_dev, O_RDWR)) == -1)
+    {
+        perror("Failed to open brightness device");
+        ret = 4;
+        goto cleanup;
+    }
+    
+    close(ret);
     
     if(getline(&line, &size, file) == -1)
     {
         printf("Failed to read seed\n");
-        free(line);
-        fclose(file);
-        return 3;
+        ret = 5;
+        goto cleanup;
     }
     
     if(strspn(line, "1234567890\n") != strlen(line))
     {
         printf("Seed not numeric\n");
-        free(line);
-        fclose(file);
-        return 4;
+        ret = 6;
+        goto cleanup;
     }
     
     seed = atoi(line);
     
-    if(getline(&line, &size, file) == -1)
+    if((count = getline(&pass, &size, file)) == -1)
     {
         printf("Failed to read passphrase\n");
-        free(line);
-        fclose(file);
-        return 5;
+        ret = 7;
+        goto cleanup;
     }
     
-    line[strlen(line)-1] = 0;
-    pass = passptr = line;
+    pass[count-1] = 0;
     
     fclose(file);
+    free(line);
+    file = 0;
+    line = 0;
     
     for(i=0; i<26; i++)
     {
@@ -234,19 +324,20 @@ int main(int argc, char* argv[])
         if(!(seed = gen_tile(i+'a')))
         {
             printf("Passphrase not usable\n");
-            free(line);
-            return 6;
+            ret = 8;
+            goto cleanup;
         }
     }
     
     config.format = TKBIO_FORMAT_PORTRAIT;
     config.layout = loginLayout;
     if((ret = tkbio_init_custom(config)) < 0)
-        return ret;
+        goto cleanup;
     
     srandom(time(0));
     
     tkbio_hide(0, 0, 1);
+    tkbio_grab(TKBIO_BUTTON_POWER, 1);
     tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
     tkbio_catch_signal(SIGHUP, 0);
     
@@ -254,9 +345,18 @@ int main(int argc, char* argv[])
     
     tkbio_finish();
     
-    free(line);
-    free(cmd[0]);
-    free(cmd);
+cleanup:
+    if(file)
+        fclose(file);
+    if(line)
+        free(line);
+    if(cmd)
+    {
+        free(cmd[0]);
+        free(cmd);
+    }
+    if(brightness_dev)
+        free(brightness_dev);
     
     return ret;
 }

@@ -52,8 +52,8 @@
 #define TKBIO_BUTTON_AUX            1
 #define TKBIO_BUTTON_POWER          2
 
-#define TKBIO_SET_FAILURE           0
-#define TKBIO_SET_SUCCESS           1
+#define TKBIO_SET_SUCCESS           0
+#define TKBIO_SET_FAILURE           1
 
 #define TKBIO_RETURN_NOP            0
 #define TKBIO_RETURN_CHAR           1
