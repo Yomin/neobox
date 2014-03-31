@@ -51,7 +51,7 @@ void tkbio_type_help_set_pos_value(int pos, int mappos, const void *value, int r
     const struct tkbio_map *map = &tkbio.layout.maps[mappos];
     const struct tkbio_mapelem *elem;
     struct tkbio_save *save;
-    unsigned char sim_tmp = 'x';
+    SIMV(unsigned char sim_tmp = 'x');
     
     if(pos < 0)
         return;
@@ -64,8 +64,7 @@ void tkbio_type_help_set_pos_value(int pos, int mappos, const void *value, int r
     {
         f(value, pos/map->width, pos%map->width, map, elem, save);
         // notify framebuffer for redraw
-        if(tkbio.sim)
-            send(tkbio.fb.sock, &sim_tmp, 1, 0);
+        SIMV(send(tkbio.fb.sock, &sim_tmp, 1, 0));
     }
     else
         f(value, pos/map->width, pos%map->width, 0, elem, save);

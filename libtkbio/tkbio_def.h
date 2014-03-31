@@ -38,6 +38,14 @@
 #   define DEBUG(x) x
 #endif
 
+#ifdef SIM
+#   define SIMV(x)  x
+#   define FONTMULT 1
+#else
+#   define SIMV(x)
+#   define FONTMULT 2   // fontmult pixel for 1 pixel
+#endif
+
 #define VERBOSE(x)  if(tkbio.verbose) { x; }
 
 #define SCREENMAX   830     // screen size in pixel
@@ -86,14 +94,16 @@ struct tkbio_point
 struct tkbio_fb
 {
     int fd;   // framebuffer file descriptor
-    int sock; // unix socket descriptor for sim
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
     int size; // framebuffer size
     int bpp;  // bytes per pixel
     unsigned char *ptr; // mmap'ed framebuffer pointer
     
-    char shm[20]; // shared memory segment name for sim
+#ifdef SIM
+    int sock;     // unix socket descriptor
+    char shm[20]; // shared memory segment name
+#endif
 };
 
 struct tkbio_parser
@@ -134,7 +144,6 @@ struct tkbio_global
     int pause;          // pause for debouncer
     int verbose;        // verbose messages
     int redraw;         // redraw screen on activate
-    int sim;            // sim enabled
     char flagstat;      // last partner flag
     
     struct tkbio_fb fb;

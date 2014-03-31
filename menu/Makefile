@@ -1,4 +1,4 @@
-.PHONY: all, debug, clean, touch, sim, sync
+.PHONY: all, debug, sim, clean, touch, exec, sync
 
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
@@ -17,6 +17,10 @@ debug: CFLAGS := $(CFLAGS) -ggdb
 debug: debug = debug
 debug: touch $(NAME)
 
+sim: CFLAGS := $(CFLAGS) -ggdb -DSIM
+sim: debug = sim
+sim: touch $(NAME)
+
 $(NAME): $(LIBTKBIO) $(SOURCES)
 	gcc $(SOURCES) -o $@ $(CFLAGS) $(INCLUDES) $(LIBS)
 
@@ -30,7 +34,7 @@ touch:
 	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
-sim: debug
+exec: sim
 	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose -v apps_sim
 
 sync:

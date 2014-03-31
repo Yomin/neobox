@@ -487,7 +487,8 @@ void tkbio_init_screen()
     struct tkbio_save *save, *saves = tkbio.save[tkbio.parser.map];
     const struct tkbio_mapelem *elem;
     int y, x, height, width, pos;
-    char sim_tmp = 'x'; // content irrelevant
+    SIMV(char sim_tmp = 'x');
+    unsigned char color[4] = {0};
     
     tkbio_get_sizes_current(&height, &width, 0, 0, 0, 0);
     
@@ -511,15 +512,14 @@ void tkbio_init_screen()
     tkbio.flagstat = !tkbio.flagstat;
     
     // notify framebuffer for redraw
-    if(tkbio.sim)
-        send(tkbio.fb.sock, &sim_tmp, 1, 0);
+    SIMV(send(tkbio.fb.sock, &sim_tmp, 1, 0));
 }
 
 int tkbio_init_custom(struct tkbio_config config)
 {
     int ret;
-    struct sockaddr_un addr;
     struct sigaction sa;
+    SIMV(struct sockaddr_un addr);
     
     tkbio.verbose = config.verbose;
     
@@ -547,61 +547,56 @@ int tkbio_init_custom(struct tkbio_config config)
         return TKBIO_ERROR_REGISTER;
     
     // open framebuffer
-    if(strncmp(config.fb+strlen(config.fb)-4, ".ipc", 4))
+#ifndef SIM
+    VERBOSE(printf("[TKBIO] Opening framebuffer\n"));
+    if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
     {
-        tkbio.sim = 0;
-        VERBOSE(printf("[TKBIO] Opening framebuffer\n"));
-        if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to open framebuffer"));
-            close(tkbio.tsp.sock);
-            return TKBIO_ERROR_FB_OPEN;
-        }
-        if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to get variable screeninfo"));
-            close(tkbio.tsp.sock);
-            close(tkbio.fb.fd);
-            return TKBIO_ERROR_FB_VINFO;
-        }
-        if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to get fixed screeninfo"));
-            close(tkbio.tsp.sock);
-            close(tkbio.fb.fd);
-            return TKBIO_ERROR_FB_FINFO;
-        }
+        VERBOSE(perror("[TKBIO] Failed to open framebuffer"));
+        close(tkbio.tsp.sock);
+        return TKBIO_ERROR_FB_OPEN;
     }
-    else
+    if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
     {
-        tkbio.sim = 1;
-        VERBOSE(printf("[TKBIO] Simulating framebuffer\n"));
-        tkbio.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
-        if(tkbio.fb.sock == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to open framebuffer socket"));
-            return TKBIO_ERROR_FB_OPEN;
-        }
-        
-        addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, config.fb);
-        
-        if(connect(tkbio.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to connect framebuffer socket"));
-            return TKBIO_ERROR_FB_OPEN;
-        }
-        
-        recv(tkbio.fb.sock, tkbio.fb.shm, sizeof(tkbio.fb.shm), 0);
-        recv(tkbio.fb.sock, &tkbio.fb.vinfo, sizeof(struct fb_var_screeninfo), 0);
-        recv(tkbio.fb.sock, &tkbio.fb.finfo, sizeof(struct fb_fix_screeninfo), 0);
-        
-        if((tkbio.fb.fd = shm_open(tkbio.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
-        {
-            VERBOSE(perror("[TKBIO] Failed to open shared memory"));
-            return TKBIO_ERROR_FB_OPEN;
-        }
+        VERBOSE(perror("[TKBIO] Failed to get variable screeninfo"));
+        close(tkbio.tsp.sock);
+        close(tkbio.fb.fd);
+        return TKBIO_ERROR_FB_VINFO;
     }
+    if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
+    {
+        VERBOSE(perror("[TKBIO] Failed to get fixed screeninfo"));
+        close(tkbio.tsp.sock);
+        close(tkbio.fb.fd);
+        return TKBIO_ERROR_FB_FINFO;
+    }
+#else
+    VERBOSE(printf("[TKBIO] Simulating framebuffer\n"));
+    tkbio.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if(tkbio.fb.sock == -1)
+    {
+        VERBOSE(perror("[TKBIO] Failed to open framebuffer socket"));
+        return TKBIO_ERROR_FB_OPEN;
+    }
+    
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, config.fb);
+    
+    if(connect(tkbio.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+    {
+        VERBOSE(perror("[TKBIO] Failed to connect framebuffer socket"));
+        return TKBIO_ERROR_FB_OPEN;
+    }
+    
+    recv(tkbio.fb.sock, tkbio.fb.shm, sizeof(tkbio.fb.shm), 0);
+    recv(tkbio.fb.sock, &tkbio.fb.vinfo, sizeof(struct fb_var_screeninfo), 0);
+    recv(tkbio.fb.sock, &tkbio.fb.finfo, sizeof(struct fb_fix_screeninfo), 0);
+    
+    if((tkbio.fb.fd = shm_open(tkbio.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
+    {
+        VERBOSE(perror("[TKBIO] Failed to open shared memory"));
+        return TKBIO_ERROR_FB_OPEN;
+    }
+#endif
     
     tkbio.fb.bpp = tkbio.fb.vinfo.bits_per_pixel/8;
     tkbio.fb.size = tkbio.fb.vinfo.xres*tkbio.fb.vinfo.yres*tkbio.fb.bpp;
@@ -614,11 +609,14 @@ int tkbio_init_custom(struct tkbio_config config)
         printf("[TKBIO]   line length %i\n", tkbio.fb.finfo.line_length);
     }
     
-    if(tkbio.sim && ftruncate(tkbio.fb.fd, tkbio.fb.size) == -1)
+
+#ifdef SIM
+    if(ftruncate(tkbio.fb.fd, tkbio.fb.size) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to truncate shared memory"));
         return TKBIO_ERROR_FB_OPEN;
     }
+#endif
     
     if((tkbio.fb.ptr = (unsigned char*) mmap(0, tkbio.fb.size,
         PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
@@ -721,13 +719,8 @@ void tkbio_finish()
     tkbio_tsp_cmd(TSP_CMD_REMOVE, 0, 0);
     close(tkbio.tsp.sock);
     
-    if(tkbio.sim)
-    {
-        close(tkbio.fb.fd);
-        close(tkbio.fb.sock);
-    }
-    else
-        close(tkbio.fb.fd);
+    close(tkbio.fb.fd);
+    SIMV(close(tkbio.fb.sock));
     
     for(i=0; i<tkbio.layout.size; i++)
     {
@@ -887,7 +880,7 @@ struct tkbio_return tkbio_parse_event(struct tsp_event event)
     
     int y, x, button_y, button_x, i, ev_y, ev_x;
     int width, height, fb_height, fb_width, scr_height, scr_width;
-    char sim_tmp = 'x'; // content irrelevant
+    SIMV(char sim_tmp = 'x');
     
     ret.type = TKBIO_RETURN_NOP;
     ret.id = 0;
@@ -1046,8 +1039,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
     tkbio.parser.x = x;
     
     // notify framebuffer for redraw
-    if(tkbio.sim)
-        send(tkbio.fb.sock, &sim_tmp, 1, 0);
+    SIMV(send(tkbio.fb.sock, &sim_tmp, 1, 0));
     
     return ret;
 }
