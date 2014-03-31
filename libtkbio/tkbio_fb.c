@@ -30,11 +30,25 @@
 #include "iso_font.h"
 
 extern struct tkbio_global tkbio;
+static unsigned char colorbuf[4];
 
-void tkbio_color32to16(unsigned char* dst, const unsigned char* src)
+unsigned char* tkbio_color(unsigned char dst[4], int color)
 {
-    dst[0] = (src[0]>>0 & ~7)  | (src[1]>>5 & 7);
-    dst[1] = (src[1]<<3 & ~31) | (src[2]>>3 & 31);
+    const unsigned char *src =
+        tkbio.layout.maps[tkbio.parser.map].colors[color];
+    
+    if(!dst)
+        dst = colorbuf;
+    
+    if(tkbio.fb.bpp == 2)
+    {
+        dst[0] = (src[0]>>0 & ~7)  | (src[1]>>5 & 7);
+        dst[1] = (src[1]<<3 & ~31) | (src[2]>>3 & 31);
+    }
+    else
+        memcpy(dst, src, 4);
+    
+    return dst;
 }
 
 void tkbio_get_sizes(const struct tkbio_map *map, int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width)
@@ -222,20 +236,14 @@ void tkbio_layout_draw_rect(int pos_y, int pos_x, int height, int width, int col
 {
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
-    tkbio_draw_rect(pos_y, pos_x, height, width, color, density, copy);
+    tkbio_draw_rect(pos_y, pos_x, height, width, tkbio_color(0, color), density, copy);
 }
 
-void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, int color, int density, unsigned char **copy)
+void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, unsigned char color[4], int density, unsigned char **copy)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char *ptr = base, *cpy = copy ? *copy : 0;
-    unsigned char col[4];
     int i, j, k;
-    
-    if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
-    else
-        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     for(i=0; i<height; i+=density, ptr = base)
     {
@@ -245,7 +253,7 @@ void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, int color, int
             {
                 if(cpy)
                     *(cpy++) = *ptr;
-                *(ptr++) = col[k];
+                *(ptr++) = color[k];
             }
         }
         base += density*tkbio.fb.finfo.line_length;
@@ -259,7 +267,7 @@ void tkbio_layout_draw_border(int pos_y, int pos_x, int height, int width, int c
 {
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
-    tkbio_draw_border(pos_y, pos_x, height, width, color, borders, density, copy);
+    tkbio_draw_border(pos_y, pos_x, height, width, tkbio_color(0, color), borders, density, copy);
 }
 
 void tkbio_layout_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy)
@@ -269,10 +277,10 @@ void tkbio_layout_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
     borders = tkbio_layout_connect_to_borders(cord_y, cord_x, connect);
-    tkbio_draw_border(pos_y, pos_x, height, width, color, borders, density, copy);
+    tkbio_draw_border(pos_y, pos_x, height, width, tkbio_color(0, color), borders, density, copy);
 }
 
-void tkbio_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy)
+void tkbio_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color[4], unsigned char connect, int density, unsigned char **copy)
 {
     unsigned char borders;
     
@@ -280,17 +288,11 @@ void tkbio_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height
     tkbio_draw_border(pos_y, pos_x, height, width, color, borders, density, copy);
 }
 
-void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy)
+void tkbio_draw_border(int pos_y, int pos_x, int height, int width, unsigned char color[4], unsigned char borders, int density, unsigned char **copy)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char *ptr = base, *base2 = base, *cpy = copy ? *copy : 0;
-    unsigned char col[4];
     int i, j, k, skipped;
-    
-    if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
-    else
-        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     for(i=0, skipped=0; i<(borders&TKBIO_BORDER_BOTTOM?2:1); i++, ptr = base2)
     {
@@ -303,7 +305,7 @@ void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, u
                 {
                     if(cpy)
                         *(cpy++) = *ptr;
-                    *(ptr++) = col[k];
+                    *(ptr++) = color[k];
                 }
             }
         base2 += (height-1)*tkbio.fb.finfo.line_length;
@@ -323,7 +325,7 @@ void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, u
             {
                 if(cpy)
                     *(cpy++) = *ptr;
-                *(ptr++) = col[k];
+                *(ptr++) = color[k];
             }
         }
         base2 += density*tkbio.fb.finfo.line_length;
@@ -335,22 +337,23 @@ void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, u
 
 void tkbio_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy)
 {
+    unsigned char fg[4];
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
-    tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
+    tkbio_draw_rect_border(pos_y, pos_x, height, width, tkbio_color(fg, color_fg), tkbio_color(0, color_bg), borders, density, copy);
 }
 
 void tkbio_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy)
 {
-    unsigned char borders;
+    unsigned char borders, fg[4];
     
     tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     tkbio_layout_to_fb_sizes(&height, &width);
     borders = tkbio_layout_connect_to_borders(cord_y, cord_x, connect);
-    tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
+    tkbio_draw_rect_border(pos_y, pos_x, height, width, tkbio_color(fg, color_fg), tkbio_color(0, color_bg), borders, density, copy);
 }
 
-void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy)
+void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char connect, int density, unsigned char **copy)
 {
     unsigned char borders;
     
@@ -358,42 +361,31 @@ void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int h
     tkbio_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
 }
 
-void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy)
+void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char borders, int density, unsigned char **copy)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
     unsigned char *ptr = base, *cpy = copy ? *copy : 0;
-    unsigned char fg[4], bg[4], *col = bg;
+    unsigned char *col = color_bg;
     int i, j, k, cset;
     
-    if(tkbio.fb.bpp == 2)
-    {
-        tkbio_color32to16(fg, tkbio.layout.maps[tkbio.parser.map].colors[color_fg]);
-        tkbio_color32to16(bg, tkbio.layout.maps[tkbio.parser.map].colors[color_bg]);
-    }
-    else
-    {
-        memcpy(fg, tkbio.layout.maps[tkbio.parser.map].colors[color_fg], 4);
-        memcpy(bg, tkbio.layout.maps[tkbio.parser.map].colors[color_bg], 4);
-    }
-    
-    for(i=0; i<height; i+=density, ptr = base, col = bg)
+    for(i=0; i<height; i+=density, ptr = base, col = color_bg)
     {
         if(!i && borders & TKBIO_BORDER_TOP)
-            col = fg;
+            col = color_fg;
         if(i == height-1 && borders & TKBIO_BORDER_BOTTOM)
-            col = fg;
+            col = color_fg;
         
         for(j=0; j<width; j+=density, ptr+=tkbio.fb.bpp*(density-1))
         {
-            if(col == fg)
+            if(col == color_fg)
                 cset = 1;
             else
             {
                 cset = 0;
                 if(!j && borders & TKBIO_BORDER_LEFT)
-                    col = fg;
+                    col = color_fg;
                 if(j == width-1 && borders & TKBIO_BORDER_RIGHT)
-                    col = fg;
+                    col = color_fg;
             }
             
             for(k=tkbio.fb.bpp-1; k>=0; k--)
@@ -404,7 +396,7 @@ void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int col
             }
             
             if(!cset)
-                col = bg;
+                col = color_bg;
         }
         base += density*tkbio.fb.finfo.line_length;
     }
@@ -514,7 +506,7 @@ void tkbio_fill_border(int pos_y, int pos_x, int height, int width, unsigned cha
 void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
 {
     if(tkbio.format == TKBIO_FORMAT_PORTRAIT)
-        tkbio_draw_string(pos_y, pos_x, height, width, color, align, str);
+        tkbio_draw_string(pos_y, pos_x, height, width, tkbio_color(0, color), align, str);
     else
     {
         tkbio_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
@@ -526,7 +518,7 @@ void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int c
             else
                 align--;
         }
-        tkbio_draw_string_rotate(pos_y, pos_x, height, width, color, align, str);
+        tkbio_draw_string_rotate(pos_y, pos_x, height, width, tkbio_color(0, color), align, str);
     }
 }
 
@@ -564,16 +556,11 @@ static unsigned char* align_base(int align, int height, int width, int text_heig
     return base;
 }
 
-void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
+void tkbio_draw_string(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
-    unsigned char col[4], *ptr, *base2;
+    unsigned char *ptr, *base2;
     int pos, h, w, k;
-    
-    if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
-    else
-        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     ptr = base2 = base = align_base(align, height, width,
         ISO_CHAR_HEIGHT, strlen(str)*ISO_CHAR_WIDTH,
@@ -589,7 +576,7 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, i
             {
                 if(iso_font[pos] & (1<<w))
                     for(k=tkbio.fb.bpp-1; k>=0; k--)
-                        *(ptr++) = col[k];
+                        *(ptr++) = color[k];
                 else
                     ptr += tkbio.fb.bpp;
             }
@@ -600,16 +587,11 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, i
     }
 }
 
-void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
+void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str)
 {
     unsigned char *base = tkbio.fb.ptr + pos_y*tkbio.fb.finfo.line_length + pos_x*tkbio.fb.bpp;
-    unsigned char col[4], *ptr;
+    unsigned char *ptr;
     int pos, h, w, k;
-    
-    if(tkbio.fb.bpp == 2)
-        tkbio_color32to16(col, tkbio.layout.maps[tkbio.parser.map].colors[color]);
-    else
-        memcpy(col, tkbio.layout.maps[tkbio.parser.map].colors[color], 4);
     
     ptr = base = align_base(align, height, width,
         strlen(str)*ISO_CHAR_WIDTH, ISO_CHAR_HEIGHT,
@@ -625,7 +607,7 @@ void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int c
             {
                 if(iso_font[pos+h] & (1<<w))
                     for(k=tkbio.fb.bpp-1; k>=0; k--)
-                        *(ptr++) = col[k];
+                        *(ptr++) = color[k];
                 else
                     ptr += tkbio.fb.bpp;
             }

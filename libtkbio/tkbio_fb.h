@@ -31,7 +31,7 @@
 #define TKBIO_BORDER_BOTTOM 8
 #define TKBIO_BORDER_ALL    15
 
-void tkbio_color32to16(unsigned char* dst, const unsigned char* src);
+unsigned char* tkbio_color(unsigned char dst[4], int color);
 
 void tkbio_get_sizes(const struct tkbio_map *map, int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width);
 void tkbio_get_sizes_current(int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width);
@@ -50,16 +50,16 @@ void tkbio_fb_to_layout_pos_rel(int *pos_y, int *pos_x, int width);
 unsigned char tkbio_fb_connect_to_borders(int y, int x, unsigned char connect);
 unsigned char tkbio_layout_connect_to_borders(int y, int x, unsigned char connect);
 
-void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, int color, int density, unsigned char **copy);
+void tkbio_draw_rect(int pos_y, int pos_x, int height, int width, unsigned char color[4], int density, unsigned char **copy);
 void tkbio_layout_draw_rect(int pos_y, int pos_x, int height, int width, int color, int density, unsigned char **copy);
 
-void tkbio_draw_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy);
-void tkbio_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy);
+void tkbio_draw_border(int pos_y, int pos_x, int height, int width, unsigned char color[4], unsigned char borders, int density, unsigned char **copy);
+void tkbio_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color[4], unsigned char connect, int density, unsigned char **copy);
 void tkbio_layout_draw_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy);
 void tkbio_layout_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy);
 
-void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy);
-void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy);
+void tkbio_draw_rect_border(int pos_y, int pos_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char borders, int density, unsigned char **copy);
+void tkbio_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char borders, int density, unsigned char **copy);
 void tkbio_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy);
 void tkbio_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy);
 
@@ -71,8 +71,8 @@ void tkbio_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height
 void tkbio_layout_fill_border(int pos_y, int pos_x, int height, int width, unsigned char borders, int density, unsigned char **fill);
 void tkbio_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, unsigned char **fill);
 
-void tkbio_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
-void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
+void tkbio_draw_string(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str);
+void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str);
 void tkbio_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str);
 
 #endif
