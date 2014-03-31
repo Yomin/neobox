@@ -509,6 +509,16 @@ void tkbio_init_screen()
             TYPEFUNC(elem, draw, , y, x, map, elem, save);
         }
     
+    height *= map->height;
+    width *= map->width;
+    
+    if(tkbio.format == TKBIO_FORMAT_LANDSCAPE)
+        tkbio_draw_rect(width, 0, tkbio.fb.vinfo.yres-width,
+            tkbio.fb.vinfo.xres, color, DENSITY, 0);
+    else
+        tkbio_draw_rect(height, 0, tkbio.fb.vinfo.yres-height,
+            tkbio.fb.vinfo.xres, color, DENSITY, 0);
+    
     tkbio.flagstat = !tkbio.flagstat;
     
     // notify framebuffer for redraw
