@@ -563,18 +563,19 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, unsigned cha
     int pos, h, w, k;
     
     ptr = base2 = base = align_base(align, height, width,
-        ISO_CHAR_HEIGHT, strlen(str)*ISO_CHAR_WIDTH,
-        ISO_CHAR_HEIGHT, ISO_CHAR_WIDTH, ISO_CHAR_WIDTH, base);
+        ISO_CHAR_HEIGHT*FONTMULT, strlen(str)*ISO_CHAR_WIDTH*FONTMULT,
+        ISO_CHAR_HEIGHT*FONTMULT, ISO_CHAR_WIDTH*FONTMULT,
+        ISO_CHAR_WIDTH*FONTMULT, base);
     
     while(*str)
     {
         pos = str[0]*ISO_CHAR_HEIGHT;
         
-        for(h=0; h<ISO_CHAR_HEIGHT; h++, pos++)
+        for(h=0; h<ISO_CHAR_HEIGHT*FONTMULT; h++)
         {
-            for(w=0; w<ISO_CHAR_WIDTH; w++)
+            for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
             {
-                if(iso_font[pos] & (1<<w))
+                if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
                     for(k=tkbio.fb.bpp-1; k>=0; k--)
                         *(ptr++) = color[k];
                 else
@@ -583,7 +584,7 @@ void tkbio_draw_string(int pos_y, int pos_x, int height, int width, unsigned cha
             ptr = base2 += tkbio.fb.finfo.line_length;
         }
         str++;
-        ptr = base2 = base += ISO_CHAR_WIDTH*tkbio.fb.bpp;
+        ptr = base2 = base += ISO_CHAR_WIDTH*FONTMULT*tkbio.fb.bpp;
     }
 }
 
@@ -594,18 +595,19 @@ void tkbio_draw_string_rotate(int pos_y, int pos_x, int height, int width, unsig
     int pos, h, w, k;
     
     ptr = base = align_base(align, height, width,
-        strlen(str)*ISO_CHAR_WIDTH, ISO_CHAR_HEIGHT,
-        ISO_CHAR_WIDTH, ISO_CHAR_HEIGHT, ISO_CHAR_WIDTH, base);
+        strlen(str)*ISO_CHAR_WIDTH*FONTMULT, ISO_CHAR_HEIGHT*FONTMULT,
+        ISO_CHAR_WIDTH*FONTMULT, ISO_CHAR_HEIGHT*FONTMULT,
+        ISO_CHAR_WIDTH*FONTMULT, base);
     
     while(*str)
     {
         pos = str[0]*ISO_CHAR_HEIGHT;
         
-        for(w=0; w<ISO_CHAR_WIDTH; w++)
+        for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
         {
-            for(h=ISO_CHAR_HEIGHT-1; h>=0; h--)
+            for(h=ISO_CHAR_HEIGHT*FONTMULT-1; h>=0; h--)
             {
-                if(iso_font[pos+h] & (1<<w))
+                if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
                     for(k=tkbio.fb.bpp-1; k>=0; k--)
                         *(ptr++) = color[k];
                 else
