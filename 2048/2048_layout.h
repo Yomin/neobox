@@ -29,12 +29,14 @@ const unsigned char app2048_colors[][4] =
     {
         {0x00, 0x00, 0x00, 0x00},
         {0xFF, 0xFF, 0x00, 0x00},
-        {0x00, 0xCC, 0xCC, 0x00}
+        {0x00, 0xCC, 0xCC, 0x00},
+        {0xFF, 0x00, 0x00, 0x00}
     };
 
 #define COLOR_BG    0
 #define COLOR_FG    1
 #define COLOR_ADMIN 2
+#define COLOR_MODE  3
 
 #define ONE(C)      { .c = {{C,  0,  0,  0}} }
 #define VALUE(V)    { .i = V }
@@ -47,16 +49,17 @@ const unsigned char app2048_colors[][4] =
 #define BNOP(I) {0, TKBIO_LAYOUT_TYPE_NOP, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
 #define HEAD    {0, TKBIO_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), 0}
 #define LHEAD   {0, TKBIO_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
-#define ADMIN   {0, TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
+#define ADMIN   {"Admin", TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
+#define MODE    {"Mode", TKBIO_LAYOUT_TYPE_CHAR, 23, ONE(0), COLOR(COLOR_MODE), DEFAULT_OPTIONS}
 
 const struct tkbio_mapelem app2048_map[] =
     {
-        NOP,      HEAD,     LHEAD,    NOP,
+        HEAD,     LHEAD,    LHEAD,    LHEAD,
         BNOP(0),  BTN(1),   BTN(2),   BNOP(3),
         BTN(4),   BNOP(5),  BNOP(6),  BTN(7),
         BTN(8),   BNOP(9),  BNOP(10), BTN(11),
         BNOP(12), BTN(13),  BTN(14),  BNOP(15),
-        NOP,      NOP,      NOP,      ADMIN
+        MODE,     NOP,      NOP,      ADMIN
     };
 
 const struct tkbio_map app2048_maps[] =
@@ -85,6 +88,7 @@ const struct tkbio_layout app2048Layout =
 #undef HEAD
 #undef LHEAD
 #undef ADMIN
+#undef MODE
 
 #endif
 

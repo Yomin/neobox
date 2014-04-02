@@ -37,6 +37,10 @@
 #define VECTOR_LEFT  2
 #define VECTOR_RIGHT 3
 
+#define MODE_2048       0
+#define MODE_NUMBERWANG 1
+#define MODE_COUNT      2
+
 struct tile
 {
     int num;
@@ -45,7 +49,7 @@ struct tile
 };
 
 struct tile board[4*4] = {{0}}, *vector[4][4*4];
-int last_y, last_x, used = 0, action = 1, verbose = 0, check = 1;
+int last_y, last_x, used = 0, action = 1, check = 0, mode = 0;
 
 static inline void draw(int y, int x)
 {
@@ -63,13 +67,54 @@ static inline void draw(int y, int x)
         tkbio_button_set_name(y*4+x, 0, board[y*4+x].name, 1);
 }
 
+static inline void numberwang(int vec, int pos)
+{
+    char op[4] = {'+', '-', '*', '/'};
+    
+    switch(random()%8)
+    {
+    case 0: case 1: case 2:
+        snprintf(vector[vec][pos]->name, 10, "%i",
+            (random()%5?1:-1) * (int)random()%20);
+        break;
+    case 3: case 4:
+        snprintf(vector[vec][pos]->name, 10, "%i",
+            (random()%5?1:-1) * (int)random()%100);
+        break;
+    case 5:
+        snprintf(vector[vec][pos]->name, 10, "%i",
+            (random()%5?1:-1) * (int)random()%1000);
+        break;
+    case 6:
+        snprintf(vector[vec][pos]->name, 10, "%i.%i",
+            (random()%5?1:-1) * (int)random()%100, (int)random()%100);
+        break;
+    case 7:
+        snprintf(vector[vec][pos]->name, 10, "%i%c%i",
+            (random()%2?-1:1)*(int)random()%100,
+            op[random()%4], (int)random()%100);
+        break;
+    }
+
+}
+
 void add()
 {
+    int value;
+    
     while(board[(last_y = random()%4)*4+(last_x = random()%4)].num);
     
-    board[last_y*4+last_x].num = random()%100 < 90 ? 2 : 4;
-    snprintf(board[last_y*4+last_x].name, 10,
-        "(%i)", board[last_y*4+last_x].num);
+    value = board[last_y*4+last_x].num = random()%100 < 90 ? 2 : 4;
+    
+    switch(mode)
+    {
+    case MODE_2048:
+        snprintf(board[last_y*4+last_x].name, 10, "(%i)", value);
+        break;
+    case MODE_NUMBERWANG:
+        numberwang(VECTOR_UP, last_y*4+last_x);
+        break;
+    }
     
     used++;
     
@@ -78,21 +123,41 @@ void add()
 
 static inline void merge(int vec, int pos1, int pos2)
 {
-    vector[vec][pos1]->num *= 2;
+    switch(mode)
+    {
+    case MODE_2048:
+        vector[vec][pos1]->num *= 2;
+        snprintf(vector[vec][pos1]->name, 10, "%i", vector[vec][pos1]->num);
+        if(vector[vec][pos1]->num == 2048)
+            tkbio_button_set_name(42, 0, "!! 2048 !!", 1);
+        break;
+    case MODE_NUMBERWANG:
+        tkbio_button_set_name(42, 0, "That's Numberwang!", 1);
+        vector[vec][pos1]->num *= 2;
+        numberwang(vec, pos1);
+        if(vector[vec][pos1]->num == 2048)
+            tkbio_button_set_name(42, 0, "You're the Numberwang!", 1);
+        break;
+    }
     vector[vec][pos1]->flag = vector[vec][pos2]->flag = 1;
-    snprintf(vector[vec][pos1]->name, 10, "%i", vector[vec][pos1]->num);
     vector[vec][pos2]->num = 0;
     vector[vec][pos2]->name[0] = 0;
     used--;
-    if(vector[vec][pos1]->num == 2048)
-        tkbio_button_set_name(42, 0, "!! 2048 !!", 1);
 }
 
 static inline void move(int vec, int pos1, int pos2)
 {
+    switch(mode)
+    {
+    case MODE_2048:
+        strncpy(vector[vec][pos1]->name, vector[vec][pos2]->name, 10);
+        break;
+    case MODE_NUMBERWANG:
+        numberwang(vec, pos1);
+        break;
+    }
     vector[vec][pos1]->num = vector[vec][pos2]->num;
     vector[vec][pos1]->flag = vector[vec][pos2]->flag = 1;
-    strncpy(vector[vec][pos1]->name, vector[vec][pos2]->name, 10);
     vector[vec][pos2]->num = 0;
     vector[vec][pos2]->name[0] = 0;
 }
@@ -123,7 +188,7 @@ static inline int redraw()
     return change;
 }
 
-static inline void reset()
+void reset()
 {
     int y, x;
     
@@ -138,7 +203,7 @@ static inline void reset()
     used = 0;
     action = 1;
     
-    tkbio_button_set_name(42, 0, 0, 1);
+    add();
 }
 
 int shift(int vec)
@@ -172,6 +237,7 @@ int handler(struct tkbio_return ret, void *state)
     switch(ret.type)
     {
     case TKBIO_RETURN_CHAR:
+        tkbio_button_set_name(42, 0, 0, 1);
         snprintf(board[last_y*4+last_x].name, 10,
             "%i", board[last_y*4+last_x].num);
         draw(last_y, last_x);
@@ -182,31 +248,55 @@ int handler(struct tkbio_return ret, void *state)
         case 4: case 8: change = shift(VECTOR_LEFT); break;
         case 7: case 11: change = shift(VECTOR_RIGHT); break;
         case 13: case 14: change = shift(VECTOR_DOWN); break;
-        case 42:
-            if(check)
+        case 42: // head button
+            if(check && used > 1)
             {
                 check = 0;
                 tkbio_button_set_name(42, 0, "Really?", 1);
-                return TKBIO_HANDLER_SUCCESS;
             }
             else
             {
                 reset();
-                change = 1;
+                tkbio_button_set_name(42, 0, 0, 1);
             }
-            break;
+            return TKBIO_HANDLER_SUCCESS;
+        case 23: // mode button
+            if(check && used > 1)
+            {
+                check = 0;
+                tkbio_button_set_name(42, 0, "Really?", 1);
+            }
+            else
+            {
+                mode = (mode+1)%MODE_COUNT;
+                reset();
+                switch(mode)
+                {
+                case MODE_2048:
+                    tkbio_button_set_name(42, 0, "2048", 1);
+                    break;
+                case MODE_NUMBERWANG:
+                    tkbio_button_set_name(42, 0, "Numberwang", 1);
+                    break;
+                }
+            }
+            return TKBIO_HANDLER_SUCCESS;
         }
         
-        if(!check)
-        {
-            check = 1;
-            tkbio_button_set_name(42, 0, 0, 1);
-        }
+        check = 1;
         
         if(change)
             add();
         else if(!action && used == 16)
-            tkbio_button_set_name(42, 0, "Game Over", 1);
+            switch(mode)
+            {
+            case MODE_2048:
+                tkbio_button_set_name(42, 0, "Game Over", 1);
+                break;
+            case MODE_NUMBERWANG:
+                tkbio_button_set_name(42, 0, "You've been Wangernumbed!", 1);
+                break;
+            }
         return TKBIO_HANDLER_SUCCESS;
     default:
         return TKBIO_HANDLER_DEFER;
@@ -236,6 +326,8 @@ int main(int argc, char* argv[])
         }
     
     add();
+    
+    tkbio_button_set_name(42, 0, "2048", 1);
     
     ret = tkbio_run(handler, 0);
     
