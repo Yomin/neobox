@@ -51,7 +51,7 @@
 #define SCREENMAX   830     // screen size in pixel
 #define DENSITY     1       // button draw density in pixel
 #define INCREASE    33      // button size increase in percent
-#define DELAY       100000  // debouncer pause delay in us
+#define DELAY       100     // debouncer pause delay in us
 
 #define TIMER_SYSTEM 0
 #define TIMER_USER   1
@@ -145,6 +145,7 @@ struct tkbio_global
     int verbose;        // verbose messages
     int redraw;         // redraw screen on activate
     char flagstat;      // last partner flag
+    int sleep;          // sleep status
     
     struct tkbio_fb fb;
     struct tkbio_tsp tsp;

@@ -241,7 +241,7 @@ void rotate(int pos)
     {
     case 0:
         tkbio_button_set_name(42, 0, "Let's rotate the board!", visible);
-        tkbio_timer(1, 0, 500000);
+        tkbio_timer(1, 0, 500);
         rotating = 1;
         break;
     case 13:
@@ -254,7 +254,7 @@ void rotate(int pos)
             draw(map_outer[i]/4, map_outer[i]%4, map_outer[(i+pos)%12]);
         for(i=0; i<4; i++)
             draw(map_inner[i]/4, map_inner[i]%4, map_inner[(i+pos)%4]);
-        tkbio_timer(pos+1, 0, 500000);
+        tkbio_timer(pos+1, 0, 500);
     }
 }
 

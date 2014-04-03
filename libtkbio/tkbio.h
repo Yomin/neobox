@@ -116,7 +116,8 @@ int tkbio_handle_queue(tkbio_handler *handler, void *state, sigset_t *oldset);
 
 int tkbio_catch_signal(int signal, int flags);
 
-int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec);
+int tkbio_sleep(unsigned int sec, unsigned int msec);
+int tkbio_timer(unsigned char id, unsigned int sec, unsigned int msec);
 void tkbio_timer_remove(unsigned char id);
 
 void tkbio_init_screen();

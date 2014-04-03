@@ -107,7 +107,13 @@ void tkbio_signal_handler(int signal)
             if((ret = tkbio_handle_timer(&id, &type)) == -1)
                 continue;
             if(type == TIMER_SYSTEM)
-                tkbio.pause = 0;
+            {
+                switch(id)
+                {
+                case 0: tkbio.pause = 0; break;
+                case 1: tkbio.sleep = 0; break;
+                }
+            }
             else
             {
                 cq = malloc(sizeof(struct tkbio_chain_queue));
@@ -796,7 +802,7 @@ void tkbio_finish()
     }
 }
 
-int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsigned int usec)
+int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsigned int msec)
 {
     struct tkbio_chain_timer *ct;
     struct tkbio_chain_timer *nct = malloc(sizeof(struct tkbio_chain_timer));
@@ -809,18 +815,17 @@ int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsi
     gettimeofday(tv, 0);
     sigfillset(&set);
     
-    if(sec)
-        tv->tv_sec += sec;
-    if(usec)
-    {
-        tv->tv_sec += (tv->tv_usec+usec)/1000000;
-        tv->tv_usec = (tv->tv_usec+usec)%1000000;
-    }
+    sec += msec/1000;
+    msec %= 1000;
+    
+    tv->tv_sec += sec;
+    tv->tv_sec += (tv->tv_usec+msec*1000)/1000000;
+    tv->tv_usec = (tv->tv_usec+msec*1000)%1000000;
     
     sigprocmask(SIG_BLOCK, &set, &oldset);
     
     if(tkbio.verbose && type == TIMER_USER)
-        printf("[TKBIO] add timer %i [%i,%i]\n", id, sec, usec);
+        printf("[TKBIO] add timer %i [%u.%u]\n", id, sec, msec);
     
     ct = tkbio.timer.cqh_first;
     
@@ -836,12 +841,12 @@ int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsi
         it.it_interval.tv_sec = 0;
         it.it_interval.tv_usec = 0;
         it.it_value.tv_sec = sec;
-        it.it_value.tv_usec = usec;
+        it.it_value.tv_usec = msec*1000;
         if(setitimer(ITIMER_REAL, &it, 0) == -1)
         {
-            VERBOSE(fprintf(stderr, "[TKBIO] Failed to set %s timer %i [%u,%u]: %s\n",
+            VERBOSE(fprintf(stderr, "[TKBIO] Failed to set %s timer %i [%u.%u]: %s\n",
                 type == TIMER_SYSTEM ? "system" : "user",
-                id, sec, usec, strerror(errno)));
+                id, sec, msec, strerror(errno)));
             free(nct);
             sigprocmask(SIG_SETMASK, &oldset, 0);
             return -1;
@@ -915,7 +920,8 @@ int tkbio_handle_timer(unsigned char *id, unsigned char *type)
             WRITE_STR(1, "[TKBIO] Failed to set ");
             WRITE_STR(1, ct->type == TIMER_SYSTEM ? "system timer " : "user timer ");
             WRITE_INT_STR(1, ct->id, x, buf, 10, " [");
-            WRITE_INT_STR(1, tv->tv_sec, x, buf, 10, ",");
+            WRITE_INT_STR(1, tv->tv_sec, x, buf, 10, ".");
+            tv->tv_usec /= 1000;
             WRITE_INT_STR(1, tv->tv_usec, x, buf, 10, "]: ");
             WRITE_STR(1, strerror(errno));
             WRITE_STR(1, "\n");
@@ -1424,9 +1430,9 @@ int tkbio_grab(int button, int grab)
     }
 }
 
-int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
+int tkbio_timer(unsigned char id, unsigned int sec, unsigned int msec)
 {
-    return tkbio_add_timer(id, TIMER_USER, sec, usec);
+    return tkbio_add_timer(id, TIMER_USER, sec, msec);
 }
 
 void tkbio_timer_remove(unsigned char id)
@@ -1453,4 +1459,27 @@ void tkbio_timer_remove(unsigned char id)
     }
     
     sigprocmask(SIG_SETMASK, &oldset, 0);
+}
+
+int tkbio_sleep(unsigned int sec, unsigned int msec)
+{
+    sigset_t set, oldset;
+    int ret;
+    
+    tkbio.sleep = 1;
+    
+    if((ret = tkbio_add_timer(1, TIMER_SYSTEM, sec, msec)))
+        return ret;
+    
+    VERBOSE(printf("[TKBIO] sleep %u.%u\n", sec, msec));
+    
+    sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, &oldset);
+    
+    while(tkbio.sleep)
+        sigsuspend(&oldset);
+    
+    sigprocmask(SIG_SETMASK, &oldset, 0);
+    
+    return 0;
 }
