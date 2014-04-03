@@ -1336,11 +1336,6 @@ void tkbio_powersave(int powersave)
         tkbio_tsp_reconnect(-1);
 }
 
-int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
-{
-    return tkbio_add_timer(id, TIMER_USER, sec, usec);
-}
-
 int tkbio_lock(int lock)
 {
     struct tsp_event event;
@@ -1427,4 +1422,35 @@ int tkbio_grab(int button, int grab)
             return TKBIO_SET_FAILURE;
         }
     }
+}
+
+int tkbio_timer(unsigned char id, unsigned int sec, unsigned int usec)
+{
+    return tkbio_add_timer(id, TIMER_USER, sec, usec);
+}
+
+void tkbio_timer_remove(unsigned char id)
+{
+    struct tkbio_chain_timer *ct;
+    sigset_t sig, oldset;
+    
+    sigfillset(&sig);
+    sigprocmask(SIG_BLOCK, &sig, &oldset);
+    
+    ct = tkbio.timer.cqh_first;
+    
+    while(ct != (void*)&tkbio.timer &&
+        (ct->type != TIMER_USER || ct->id != id))
+    {
+        ct = ct->chain.cqe_next;
+    }
+    
+    if(ct != (void*)&tkbio.timer)
+    {
+        VERBOSE(printf("[TKBIO] timer %i removed\n", id));
+        CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
+        free(ct);
+    }
+    
+    sigprocmask(SIG_SETMASK, &oldset, 0);
 }

@@ -115,15 +115,7 @@ void add()
     
     value = board[last_y*4+last_x].num = random()%100 < 90 ? 2 : 4;
     
-    switch(mode)
-    {
-    case MODE_2048:
-        snprintf(board[last_y*4+last_x].name, 10, "(%i)", value);
-        break;
-    case MODE_NUMBERWANG:
-        numberwang(VECTOR_UP, last_y*4+last_x);
-        break;
-    }
+    snprintf(board[last_y*4+last_x].name, 10, "(%i)", value);
     
     used++;
     
@@ -312,6 +304,7 @@ int handler(struct tkbio_return ret, void *state)
                 {
                 case MODE_2048:
                     tkbio_button_set_name(42, 0, "2048", visible);
+                    tkbio_timer_remove(0);
                     break;
                 case MODE_NUMBERWANG:
                     tkbio_button_set_name(42, 0, "Numberwang", visible);
