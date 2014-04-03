@@ -49,22 +49,31 @@ struct tile
 };
 
 struct tile board[4*4] = {{0}}, *vector[4][4*4];
-int last_y, last_x, used = 0, action = 1, check = 0, mode = 0;
+int last_y, last_x, used = 0, action = 1;
+int check = 0, mode = 0, rotating = 0, visible = 0;
 
-static inline void draw(int y, int x)
+static inline void draw(int y, int x, int id)
 {
-    int nop;
+    int nop, idy = y, idx = x;
     
-    switch(y)
+    if(id != -1)
     {
-    case 0: case 3: nop = !x || x==3; break;
-    case 1: case 2: nop = x==1 || x==2; break;
+        idy = id/4;
+        idx = id%4;
+    }
+    else
+        id = y*4+x;
+    
+    switch(idy)
+    {
+    case 0: case 3: nop = !idx || idx==3; break;
+    case 1: case 2: nop = idx==1 || idx==2; break;
     }
     
     if(nop)
-        tkbio_nop_set_name(y*4+x, 0, board[y*4+x].name, 1);
+        tkbio_nop_set_name(id, 0, board[y*4+x].name, visible);
     else
-        tkbio_button_set_name(y*4+x, 0, board[y*4+x].name, 1);
+        tkbio_button_set_name(id, 0, board[y*4+x].name, visible);
 }
 
 static inline void numberwang(int vec, int pos)
@@ -118,7 +127,7 @@ void add()
     
     used++;
     
-    draw(last_y, last_x);
+    draw(last_y, last_x, -1);
 }
 
 static inline void merge(int vec, int pos1, int pos2)
@@ -129,14 +138,14 @@ static inline void merge(int vec, int pos1, int pos2)
         vector[vec][pos1]->num *= 2;
         snprintf(vector[vec][pos1]->name, 10, "%i", vector[vec][pos1]->num);
         if(vector[vec][pos1]->num == 2048)
-            tkbio_button_set_name(42, 0, "!! 2048 !!", 1);
+            tkbio_button_set_name(42, 0, "!! 2048 !!", visible);
         break;
     case MODE_NUMBERWANG:
-        tkbio_button_set_name(42, 0, "That's Numberwang!", 1);
+        tkbio_button_set_name(42, 0, "That's Numberwang!", visible);
         vector[vec][pos1]->num *= 2;
         numberwang(vec, pos1);
         if(vector[vec][pos1]->num == 2048)
-            tkbio_button_set_name(42, 0, "You're the Numberwang!", 1);
+            tkbio_button_set_name(42, 0, "You're the Numberwang!", visible);
         break;
     }
     vector[vec][pos1]->flag = vector[vec][pos2]->flag = 1;
@@ -174,7 +183,7 @@ static inline int redraw()
             if(board[y*4+x].flag)
             {
                 board[y*4+x].flag = 0;
-                draw(y, x);
+                draw(y, x, -1);
                 change = 1;
             }
             if( (y && board[y*4+x].num == tmp[x]) ||
@@ -197,7 +206,7 @@ void reset()
         {
             board[y*4+x].num = 0;
             board[y*4+x].name[0] = 0;
-            draw(y, x);
+            draw(y, x, -1);
         }
     
     used = 0;
@@ -230,6 +239,33 @@ int shift(int vec)
     return redraw();
 }
 
+void rotate(int pos)
+{
+    int i;
+    int map_outer[16] = {0,1,2,3,7,11,15,14,13,12,8,4};
+    int map_inner[4] = {5,6,10,9};
+    
+    switch(pos)
+    {
+    case 0:
+        tkbio_button_set_name(42, 0, "Let's rotate the board!", visible);
+        tkbio_timer(1, 0, 500000);
+        rotating = 1;
+        break;
+    case 13:
+        tkbio_button_set_name(42, 0, "Let's play Numberwang!", visible);
+        tkbio_timer(0, 5*60, 0);
+        rotating = 0;
+        break;
+    default:
+        for(i=0; i<12; i++)
+            draw(map_outer[i]/4, map_outer[i]%4, map_outer[(i+pos)%12]);
+        for(i=0; i<4; i++)
+            draw(map_inner[i]/4, map_inner[i]%4, map_inner[(i+pos)%4]);
+        tkbio_timer(pos+1, 0, 500000);
+    }
+}
+
 int handler(struct tkbio_return ret, void *state)
 {
     int change;
@@ -237,10 +273,13 @@ int handler(struct tkbio_return ret, void *state)
     switch(ret.type)
     {
     case TKBIO_RETURN_CHAR:
-        tkbio_button_set_name(42, 0, 0, 1);
+        if(rotating)
+            return TKBIO_HANDLER_SUCCESS;
+        
+        tkbio_button_set_name(42, 0, 0, visible);
         snprintf(board[last_y*4+last_x].name, 10,
             "%i", board[last_y*4+last_x].num);
-        draw(last_y, last_x);
+        draw(last_y, last_x, -1);
         
         switch(ret.id)
         {
@@ -252,33 +291,34 @@ int handler(struct tkbio_return ret, void *state)
             if(check && used > 1)
             {
                 check = 0;
-                tkbio_button_set_name(42, 0, "Really?", 1);
+                tkbio_button_set_name(42, 0, "Really?", visible);
             }
             else
             {
                 reset();
-                tkbio_button_set_name(42, 0, 0, 1);
+                tkbio_button_set_name(42, 0, 0, visible);
             }
             return TKBIO_HANDLER_SUCCESS;
         case 23: // mode button
             if(check && used > 1)
             {
                 check = 0;
-                tkbio_button_set_name(42, 0, "Really?", 1);
+                tkbio_button_set_name(42, 0, "Really?", visible);
             }
             else
             {
                 mode = (mode+1)%MODE_COUNT;
-                reset();
                 switch(mode)
                 {
                 case MODE_2048:
-                    tkbio_button_set_name(42, 0, "2048", 1);
+                    tkbio_button_set_name(42, 0, "2048", visible);
                     break;
                 case MODE_NUMBERWANG:
-                    tkbio_button_set_name(42, 0, "Numberwang", 1);
+                    tkbio_button_set_name(42, 0, "Numberwang", visible);
+                    tkbio_timer(0, 5*60, 0);
                     break;
                 }
+                reset();
             }
             return TKBIO_HANDLER_SUCCESS;
         }
@@ -291,13 +331,22 @@ int handler(struct tkbio_return ret, void *state)
             switch(mode)
             {
             case MODE_2048:
-                tkbio_button_set_name(42, 0, "Game Over", 1);
+                tkbio_button_set_name(42, 0, "Game Over", visible);
                 break;
             case MODE_NUMBERWANG:
-                tkbio_button_set_name(42, 0, "You've been Wangernumbed!", 1);
+                tkbio_button_set_name(42, 0, "You've been Wangernumbed!", visible);
                 break;
             }
         return TKBIO_HANDLER_SUCCESS;
+    case TKBIO_RETURN_TIMER:
+        rotate(ret.id);
+        return TKBIO_HANDLER_SUCCESS;
+    case TKBIO_RETURN_ACTIVATE:
+        visible = 1;
+        return TKBIO_HANDLER_DEFER;
+    case TKBIO_RETURN_DEACTIVATE:
+        visible = 0;
+        return TKBIO_HANDLER_DEFER;
     default:
         return TKBIO_HANDLER_DEFER;
     }
@@ -327,7 +376,7 @@ int main(int argc, char* argv[])
     
     add();
     
-    tkbio_button_set_name(42, 0, "2048", 1);
+    tkbio_button_set_name(42, 0, "2048", visible);
     
     ret = tkbio_run(handler, 0);
     
