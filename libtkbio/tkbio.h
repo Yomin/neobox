@@ -23,8 +23,13 @@
 #ifndef __TKBIO_H__
 #define __TKBIO_H__
 
+#ifndef _POSIX_SOURCE
+#   define _POSIX_C_SOURCE 199398L
+#endif
+
 #include <sys/types.h>
 #include <poll.h>
+#include <signal.h>
 #include "tkbio_layout.h"
 
 #define TKBIO_ERROR_RPC_OPEN    -1
@@ -107,7 +112,7 @@ int tkbio_run(tkbio_handler *handler, void *state);
 int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int count);
 
 int tkbio_handle_event(tkbio_handler *handler, void *state);
-int tkbio_handle_queue(tkbio_handler *handler, void *state);
+int tkbio_handle_queue(tkbio_handler *handler, void *state, sigset_t *oldset);
 
 int tkbio_catch_signal(int signal, int flags);
 

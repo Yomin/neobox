@@ -22,7 +22,6 @@
 
 #include <string.h>
 
-#include "tkbio.h"
 #include "tkbio_def.h"
 #include "tkbio_fb.h"
 #include "tkbio_layout.h"

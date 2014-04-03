@@ -20,8 +20,9 @@
  * THE SOFTWARE.
  */
 
+#define _GNU_SOURCE
 #define _BSD_SOURCE
-#define _POSIX_SOURCE
+#define _POSIX_C_SOURCE 199309L
 
 #include <unistd.h>
 #include <stdio.h>
@@ -29,7 +30,6 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 #include <sys/mman.h>
-#include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <poll.h>
@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <time.h>
 
 #include "tkbio.h"
 #include "tkbio_def.h"
@@ -76,6 +77,17 @@
     } \
     while(0)
 
+#define WRITE_STR(fd, s) write(fd, s, strlen(s))
+#define WRITE_INT_STR(fd, i, x, buf, len, s) \
+    if(!(i)) { (buf)[0]='0'; write(fd, (buf), 1); } \
+    else \
+    { \
+        for((x)=(len)-1; (x)>=0 && (i)>0; (i)/=10,(x)--) \
+            (buf)[x]=(i)%10+'0'; \
+        write(fd, (buf)+(x)+1, (len)-(x)-1); \
+    } \
+    write(fd, s, strlen(s));
+
 struct tkbio_global tkbio;
 
 int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value);
@@ -85,7 +97,7 @@ void tkbio_signal_handler(int signal)
 {
     struct tkbio_chain_queue *cq;
     unsigned char id, type;
-    int ret;
+    int ret, err = errno;
     
     switch(signal)
     {
@@ -114,6 +126,7 @@ void tkbio_signal_handler(int signal)
         cq->event.event.tkbio.type = TKBIO_RETURN_SIGNAL;
         cq->event.event.tkbio.value.i = signal;
     }
+    errno = err;
 }
 
 int tkbio_catch_signal(int sig, int flags)
@@ -138,24 +151,33 @@ int tkbio_catch_signal(int sig, int flags)
     return 0;
 }
 
-struct tkbio_event tkbio_get_event()
+struct tkbio_event tkbio_get_event(sigset_t *oldset)
 {
     struct tkbio_event event;
     struct tkbio_chain_queue *cq;
-    sigset_t set, oldset;
-    
-    event.type = EVENT_NOP;
-    cq = tkbio.queue.cqh_first;
-    
-    if(cq == (void*)&tkbio.queue)
-        return event;
+    sigset_t set, soldset;
     
     sigfillset(&set);
-    sigprocmask(SIG_BLOCK, &set, &oldset);
+    event.type = EVENT_NOP;
+    
+    if(!oldset)
+        oldset = &soldset;
+    
+    sigprocmask(SIG_BLOCK, &set, oldset);
+    
+    if((cq = tkbio.queue.cqh_first) == (void*)&tkbio.queue)
+    {
+        // if oldset exists keep blocking
+        if(oldset == &soldset)
+            sigprocmask(SIG_SETMASK, oldset, 0);
+        return event;
+    }
     
     CIRCLEQ_REMOVE(&tkbio.queue, cq, chain);
     
-    sigprocmask(SIG_SETMASK, &oldset, 0);
+    // if oldset exists keep blocking
+    if(oldset == &soldset)
+        sigprocmask(SIG_SETMASK, oldset, 0);
     
     event = cq->event;
     free(cq);
@@ -776,12 +798,16 @@ void tkbio_finish()
 
 int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsigned int usec)
 {
-    struct tkbio_chain_timer *ct = tkbio.timer.cqh_first;
+    struct tkbio_chain_timer *ct;
     struct tkbio_chain_timer *nct = malloc(sizeof(struct tkbio_chain_timer));
     struct timeval *tv = &nct->tv;
     struct itimerval it;
+    sigset_t set, oldset;
     
+    nct->id = id;
+    nct->type = type;
     gettimeofday(tv, 0);
+    sigfillset(&set);
     
     if(sec)
         tv->tv_sec += sec;
@@ -791,15 +817,19 @@ int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsi
         tv->tv_usec = (tv->tv_usec+usec)%1000000;
     }
     
+    sigprocmask(SIG_BLOCK, &set, &oldset);
+    
+    if(tkbio.verbose && type == TIMER_USER)
+        printf("[TKBIO] add timer %i [%i,%i]\n", id, sec, usec);
+    
+    ct = tkbio.timer.cqh_first;
+    
     while(ct != (void*)&tkbio.timer &&
-        (tv->tv_sec >= ct->tv.tv_sec || tv->tv_usec >= ct->tv.tv_usec))
+        (tv->tv_sec > ct->tv.tv_sec ||
+        (tv->tv_sec == ct->tv.tv_sec && tv->tv_usec >= ct->tv.tv_usec)))
     {
         ct = ct->chain.cqe_next;
     }
-    
-    
-    nct->id = id;
-    nct->type = type;
     
     if(ct == tkbio.timer.cqh_first)
     {
@@ -813,6 +843,7 @@ int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsi
                 type == TIMER_SYSTEM ? "system" : "user",
                 id, sec, usec, strerror(errno)));
             free(nct);
+            sigprocmask(SIG_SETMASK, &oldset, 0);
             return -1;
         }
         CIRCLEQ_INSERT_HEAD(&tkbio.timer, nct, chain);
@@ -825,56 +856,74 @@ int tkbio_add_timer(unsigned char id, unsigned char type, unsigned int sec, unsi
             CIRCLEQ_INSERT_BEFORE(&tkbio.timer, ct, nct, chain);
     }
     
+    sigprocmask(SIG_SETMASK, &oldset, 0);
+    
     return 0;
 }
 
 int tkbio_handle_timer(unsigned char *id, unsigned char *type)
 {
-    struct tkbio_chain_timer *ct_fst = tkbio.timer.cqh_first, *ct_nxt;
+    struct tkbio_chain_timer *ct = tkbio.timer.cqh_first;
     struct itimerval it;
     struct timeval *tv = &it.it_value;
+    struct timespec tsp;
+    char buf[10];
+    int i, x;
     
-    *id = ct_fst->id;
-    *type = ct_fst->type;
-    
-    if((ct_nxt = ct_fst->chain.cqe_next) == (void*)&tkbio.timer)
-    {
-        CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
-        free(ct_fst);
+    if(ct == (void*)&tkbio.timer)
         return 0;
+    
+    i = *id = ct->id;
+    *type = ct->type;
+    
+    CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
+    free(ct);
+    
+    if(tkbio.verbose && *type == TIMER_USER)
+    {
+        WRITE_STR(0, "[TKBIO] timer ");
+        WRITE_INT_STR(0, i, x, buf, 10, " event\n");
     }
     
-    gettimeofday(tv, 0);
+    if((ct = tkbio.timer.cqh_first) == (void*)&tkbio.timer)
+        return 0;
+    
+    clock_gettime(CLOCK_REALTIME, &tsp);
+    
+    tv->tv_sec = tsp.tv_sec;
+    tv->tv_usec = tsp.tv_nsec/1000;
     
     it.it_interval.tv_sec = 0;
     it.it_interval.tv_usec = 0;
     
-    if(tv->tv_sec >= ct_nxt->tv.tv_sec && tv->tv_usec >= ct_nxt->tv.tv_usec)
+    if(tv->tv_sec >= ct->tv.tv_sec && tv->tv_usec >= ct->tv.tv_usec)
         return 1;
     
-    tv->tv_sec = ct_nxt->tv.tv_sec - tv->tv_sec;
-    if(tv->tv_usec <= ct_nxt->tv.tv_usec)
-        tv->tv_usec = ct_nxt->tv.tv_usec - tv->tv_usec;
+    tv->tv_sec = ct->tv.tv_sec - tv->tv_sec;
+    if(tv->tv_usec <= ct->tv.tv_usec)
+        tv->tv_usec = ct->tv.tv_usec - tv->tv_usec;
     else
     {
         tv->tv_sec--;
-        tv->tv_usec = 1000000 - tv->tv_usec + ct_nxt->tv.tv_usec;
+        tv->tv_usec = 1000000 - tv->tv_usec + ct->tv.tv_usec;
     }
     
     if(setitimer(ITIMER_REAL, &it, 0) == -1)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set %s timer %i [%li,%li]: %s\n",
-            ct_nxt->type == TIMER_SYSTEM ? "system" : "user",
-            ct_nxt->id, tv->tv_sec, tv->tv_usec, strerror(errno)));
-        CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
-        CIRCLEQ_REMOVE(&tkbio.timer, ct_nxt, chain);
-        free(ct_fst);
-        free(ct_nxt);
+        if(tkbio.verbose)
+        {
+            WRITE_STR(1, "[TKBIO] Failed to set ");
+            WRITE_STR(1, ct->type == TIMER_SYSTEM ? "system timer " : "user timer ");
+            WRITE_INT_STR(1, ct->id, x, buf, 10, " [");
+            WRITE_INT_STR(1, tv->tv_sec, x, buf, 10, ",");
+            WRITE_INT_STR(1, tv->tv_usec, x, buf, 10, "]: ");
+            WRITE_STR(1, strerror(errno));
+            WRITE_STR(1, "\n");
+        }
+        CIRCLEQ_REMOVE(&tkbio.timer, ct, chain);
+        free(ct);
         return -1;
     }
-    
-    CIRCLEQ_REMOVE(&tkbio.timer, ct_fst, chain);
-    free(ct_fst);
     
     return 0;
 }
@@ -1146,14 +1195,16 @@ int tkbio_handle_event(tkbio_handler *handler, void *state)
         return TKBIO_HANDLER_SUCCESS;
 }
 
-int tkbio_handle_queue(tkbio_handler *handler, void *state)
+int tkbio_handle_queue(tkbio_handler *handler, void *state, sigset_t *oldset)
 {
     struct tkbio_event event;
     struct tkbio_return tret;
     int ret;
     
-    while((event = tkbio_get_event()).type != EVENT_NOP)
+    while((event = tkbio_get_event(oldset)).type != EVENT_NOP)
     {
+        if(oldset)
+            sigprocmask(SIG_SETMASK, oldset, 0);
         switch(event.type)
         {
         case EVENT_TSP:
@@ -1177,6 +1228,7 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
 {
     struct tkbio_return tret;
     int ret, i;
+    sigset_t set;
     
     pfds[0].fd = tkbio.tsp.sock;
     pfds[0].events = POLLIN;
@@ -1185,7 +1237,7 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
     
     while(1)
     {
-        switch((ret = tkbio_handle_queue(handler, state)))
+        switch((ret = tkbio_handle_queue(handler, state, &set)))
         {
         case TKBIO_HANDLER_SUCCESS:
             break;
@@ -1195,14 +1247,18 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
             return ret & ~TKBIO_HANDLER_ERROR;
         }
         
-        if(poll(pfds, count, -1) == -1)
+        if(ppoll(pfds, count, 0, &set) == -1)
         {
+            sigprocmask(SIG_SETMASK, &set, 0);
+            
             if(errno == EINTR)
                 continue;
             
             VERBOSE(perror("[TKBIO] Failed to poll"));
             return TKBIO_ERROR_POLL;
         }
+        
+        sigprocmask(SIG_SETMASK, &set, 0);
         
         if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
         {

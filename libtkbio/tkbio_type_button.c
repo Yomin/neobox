@@ -24,7 +24,6 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
-#include "tkbio.h"
 #include "tkbio_fb.h"
 #include "tkbio_type_button.h"
 #include "tkbio_type_help.h"

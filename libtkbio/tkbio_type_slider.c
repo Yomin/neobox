@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "tkbio.h"
 #include "tkbio_fb.h"
 #include "tkbio_slider.h"
 #include "tkbio_type_slider.h"
