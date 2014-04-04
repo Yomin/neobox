@@ -124,7 +124,7 @@ int send_client(unsigned char event, union tsp_value value, struct chain_socket 
     if(!cs)
         cs = client_list.cqh_first;
     
-    while((count = send(cs->sock, ptr, size, 0)) != size)
+    while((count = send(cs->sock, ptr, size, MSG_NOSIGNAL)) != size)
     {
         if(count == -1)
         {
@@ -652,7 +652,6 @@ int main(int argc, char* argv[])
     CIRCLEQ_INIT(&client_list);
     
     signal(SIGINT, signal_handler);
-    signal(SIGPIPE, SIG_IGN);
     
     DEBUG(printf("Ready\n"));
     
