@@ -1293,12 +1293,15 @@ handle:     switch(ret)
                 tret.id = i;
                 tret.value.i = pfds[i].fd;
                 
-                if(pfds[i].revents & POLLIN)
+                if(pfds[i].revents & POLLHUP || pfds[i].revents & POLLERR)
+                {
+                    pfds[i].events = 0;
+                    tret.type = TKBIO_RETURN_POLLHUPERR;
+                }
+                else if(pfds[i].revents & POLLIN)
                     tret.type = TKBIO_RETURN_POLLIN;
                 else if(pfds[i].revents & POLLOUT)
                     tret.type = TKBIO_RETURN_POLLOUT;
-                else if(pfds[i].revents & POLLHUP || pfds[i].revents & POLLERR)
-                    tret.type = TKBIO_RETURN_POLLHUPERR;
                 
                 if(tret.type != TKBIO_RETURN_NOP)
                 {
