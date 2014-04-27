@@ -20,11 +20,11 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_SELECT_H__
-#define __TKBIO_SELECT_H__
+#ifndef __NEOBOX_SLIDER_H__
+#define __NEOBOX_SLIDER_H__
 
-void tkbio_select_set_name(int id, int map, const char *name, int redraw);
-void tkbio_select_set_active(int id, int map, int active, int redraw);
-void tkbio_select_set_locked(int id, int map, int locked);
+void neobox_slider_set_ticks(int id, int map, int ticks, int redraw);
+void neobox_slider_set_pos(int id, int map, int pos, int redraw);
+void neobox_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int redraw);
 
 #endif

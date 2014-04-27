@@ -20,10 +20,10 @@
  * THE SOFTWARE.
  */
 
-#include "tkbio_def.h"
-#include "tkbio_layout_default.h"
+#include "neobox_def.h"
+#include "neobox_layout_default.h"
 
-const unsigned char tkbio_colors[][4] =
+const unsigned char neobox_colors[][4] =
     {
         {0x00, 0xFF, 0x00, 0x00},   // PRIMARY
         {0x00, 0x88, 0x00, 0x00},   // SHIFT
@@ -54,44 +54,44 @@ const unsigned char admin_colors[][4] =
 #define THREE(C1, C2, C3)    { .c = { .u = {C1, C2, C3, 0} } }
 #define FOUR(C1, C2, C3, C4) { .c = { .u = {C1, C2, C3, C4} } }
 
-#define COLOR(Color)    Color,TKBIO_COLOR_BLACK,Color
+#define COLOR(Color)    Color,NEOBOX_COLOR_BLACK,Color
 #define ADCOLOR(Color)  Color,ADMIN_COLOR_BG,Color
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER|TKBIO_LAYOUT_OPTION_COPY
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_OPTION_BORDER|NEOBOX_LAYOUT_OPTION_COPY
 
-#define CHAR(N, C, Color)  {N, TKBIO_LAYOUT_TYPE_CHAR, 0, C, COLOR(Color), DEFAULT_OPTIONS}
-#define LCHAR(N, C, Color) {N, TKBIO_LAYOUT_TYPE_CHAR, 0, C, COLOR(Color), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
-#define GOTO(N, T)         {N, TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(TKBIO_TYPE_ ## T), COLOR(TKBIO_TYPE_ ## T), DEFAULT_OPTIONS}
-#define TOGG(N, T)         {N, TKBIO_LAYOUT_TYPE_TOGGLE, 0, VALUE(T), COLOR(TKBIO_COLOR_TOGGLE), DEFAULT_OPTIONS}
-#define HOLD               {"Hold", TKBIO_LAYOUT_TYPE_HOLD, 0, VALUE(0), COLOR(TKBIO_COLOR_HOLD), DEFAULT_OPTIONS}
-#define NOP                {0, TKBIO_LAYOUT_TYPE_NOP, 0, VALUE(0), 0, 0}
-#define SYS(N, V, Color)   {N, TKBIO_LAYOUT_TYPE_SYSTEM, 0, VALUE(V), ADCOLOR(Color), DEFAULT_OPTIONS}
-#define USYS(N, V, Color)  {N, TKBIO_LAYOUT_TYPE_SYSTEM, 0, VALUE(V), ADCOLOR(Color), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_UP}
+#define CHAR(N, C, Color)  {N, NEOBOX_LAYOUT_TYPE_CHAR, 0, C, COLOR(Color), DEFAULT_OPTIONS}
+#define LCHAR(N, C, Color) {N, NEOBOX_LAYOUT_TYPE_CHAR, 0, C, COLOR(Color), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_LEFT}
+#define GOTO(N, T)         {N, NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(NEOBOX_TYPE_ ## T), COLOR(NEOBOX_TYPE_ ## T), DEFAULT_OPTIONS}
+#define TOGG(N, T)         {N, NEOBOX_LAYOUT_TYPE_TOGGLE, 0, VALUE(T), COLOR(NEOBOX_COLOR_TOGGLE), DEFAULT_OPTIONS}
+#define HOLD               {"Hold", NEOBOX_LAYOUT_TYPE_HOLD, 0, VALUE(0), COLOR(NEOBOX_COLOR_HOLD), DEFAULT_OPTIONS}
+#define NOP                {0, NEOBOX_LAYOUT_TYPE_NOP, 0, VALUE(0), 0, 0}
+#define SYS(N, V, Color)   {N, NEOBOX_LAYOUT_TYPE_SYSTEM, 0, VALUE(V), ADCOLOR(Color), DEFAULT_OPTIONS}
+#define USYS(N, V, Color)  {N, NEOBOX_LAYOUT_TYPE_SYSTEM, 0, VALUE(V), ADCOLOR(Color), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_UP}
 
-#define PRIM(C)             CHAR(0, ONE(C), TKBIO_TYPE_PRIMARY)
-#define NPRIM(N, C)         CHAR(N, ONE(C), TKBIO_TYPE_PRIMARY)
-#define SHIFT(C)            CHAR(0, ONE(C), TKBIO_TYPE_SHIFT)
-#define NSHIFT(N, C)        CHAR(N, ONE(C), TKBIO_TYPE_SHIFT)
-#define NUM(C)              CHAR(0, ONE(C), TKBIO_TYPE_NUM)
-#define SNUM1(C1)           CHAR(0, ONE(C1), TKBIO_TYPE_SNUM)
-#define SNUM2(N, C1, C2)    CHAR(N, TWO(C1, C2), TKBIO_TYPE_SNUM)
-#define META1(N, C1)        CHAR(N, ONE(C1), TKBIO_TYPE_META)
-#define LMETA1(N, C1)       LCHAR(N, ONE(C1), TKBIO_TYPE_META)
-#define META2(N, C1)        CHAR(N, THREE(27, '[', C1), TKBIO_TYPE_META)
-#define META3(N, C1)        CHAR(N, FOUR(27, '[', C1, '~'), TKBIO_TYPE_META)
-#define GER1(C1)            CHAR(0, ONE(C1), TKBIO_TYPE_GER)
-#define GER2(N, C1, C2)     CHAR(N, TWO(C1, C2), TKBIO_TYPE_GER)
-#define GER3(N, C1, C2, C3) CHAR(N, THREE(C1, C2, C3), TKBIO_TYPE_GER)
-#define FK1(N, C1)          CHAR(N, THREE(27, 'O', C1), TKBIO_TYPE_FK)
-#define FK2(N, C1, C2)      CHAR(N, FOUR(0, C1, C2, '~'), TKBIO_TYPE_FK) // 0 hack
-#define ADMIN(N, T)         SYS(N, TKBIO_SYSTEM_ ## T, ADMIN_COLOR_ ## T)
-#define VADMIN(N, V, T)     SYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
-#define UVADMIN(N, V, T)    USYS(N, TKBIO_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
+#define PRIM(C)             CHAR(0, ONE(C), NEOBOX_TYPE_PRIMARY)
+#define NPRIM(N, C)         CHAR(N, ONE(C), NEOBOX_TYPE_PRIMARY)
+#define SHIFT(C)            CHAR(0, ONE(C), NEOBOX_TYPE_SHIFT)
+#define NSHIFT(N, C)        CHAR(N, ONE(C), NEOBOX_TYPE_SHIFT)
+#define NUM(C)              CHAR(0, ONE(C), NEOBOX_TYPE_NUM)
+#define SNUM1(C1)           CHAR(0, ONE(C1), NEOBOX_TYPE_SNUM)
+#define SNUM2(N, C1, C2)    CHAR(N, TWO(C1, C2), NEOBOX_TYPE_SNUM)
+#define META1(N, C1)        CHAR(N, ONE(C1), NEOBOX_TYPE_META)
+#define LMETA1(N, C1)       LCHAR(N, ONE(C1), NEOBOX_TYPE_META)
+#define META2(N, C1)        CHAR(N, THREE(27, '[', C1), NEOBOX_TYPE_META)
+#define META3(N, C1)        CHAR(N, FOUR(27, '[', C1, '~'), NEOBOX_TYPE_META)
+#define GER1(C1)            CHAR(0, ONE(C1), NEOBOX_TYPE_GER)
+#define GER2(N, C1, C2)     CHAR(N, TWO(C1, C2), NEOBOX_TYPE_GER)
+#define GER3(N, C1, C2, C3) CHAR(N, THREE(C1, C2, C3), NEOBOX_TYPE_GER)
+#define FK1(N, C1)          CHAR(N, THREE(27, 'O', C1), NEOBOX_TYPE_FK)
+#define FK2(N, C1, C2)      CHAR(N, FOUR(0, C1, C2, '~'), NEOBOX_TYPE_FK) // 0 hack
+#define ADMIN(N, T)         SYS(N, NEOBOX_SYSTEM_ ## T, ADMIN_COLOR_ ## T)
+#define VADMIN(N, V, T)     SYS(N, NEOBOX_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
+#define UVADMIN(N, V, T)    USYS(N, NEOBOX_SYSTEM_ ## V, ADMIN_COLOR_ ## T)
 
 #define ALT     1
 #define CTRLL   2
 #define SUPER   4
 
-const struct tkbio_mapelem tkbio_map_primary[] =
+const struct neobox_mapelem neobox_map_primary[] =
     {
         PRIM('q'),           PRIM('w'),        PRIM('t'), PRIM('z'), PRIM('o'), PRIM('p'),
         PRIM('a'),           PRIM('e'),        PRIM('r'), PRIM('u'), PRIM('i'), PRIM('l'),
@@ -100,7 +100,7 @@ const struct tkbio_mapelem tkbio_map_primary[] =
         GOTO("Meta", META),  GOTO("Num", NUM), PRIM('x'), PRIM('c'), PRIM('v'), NPRIM("BkSp", '\b')
     };
 
-const struct tkbio_mapelem tkbio_map_shift[] =
+const struct neobox_mapelem neobox_map_shift[] =
     {
         SHIFT('Q'), SHIFT('W'), SHIFT('T'), SHIFT('Z'), SHIFT('O'), SHIFT('P'),
         SHIFT('A'), SHIFT('E'), SHIFT('R'), SHIFT('U'), SHIFT('I'), SHIFT('L'),
@@ -109,7 +109,7 @@ const struct tkbio_mapelem tkbio_map_shift[] =
         HOLD,       NOP,        SHIFT('X'), SHIFT('C'), SHIFT('V'), NSHIFT("BkSp", '\b')
     };
 
-const struct tkbio_mapelem tkbio_map_num[] =
+const struct neobox_mapelem neobox_map_num[] =
     {
         NUM('1'),           NUM('2'),  NUM('3'), NUM('4'), NUM('5'),  NUM('*'),
         NUM('6'),           NUM('7'),  NUM('8'), NUM('9'), NUM('0'),  NUM('/'),
@@ -118,7 +118,7 @@ const struct tkbio_mapelem tkbio_map_num[] =
         HOLD,               NUM('~'),  NUM('<'), NUM(','), NUM('.'),  NUM('_')
     };
 
-const struct tkbio_mapelem tkbio_map_snum[] =
+const struct neobox_mapelem neobox_map_snum[] =
     {
         SNUM1('!'), SNUM1('"'), SNUM2("sect", 194, 167), SNUM1('$'), SNUM1('%'), NOP,
         SNUM1('&'), SNUM1('/'), SNUM1('('),              SNUM1(')'), SNUM1('='), NOP,
@@ -127,7 +127,7 @@ const struct tkbio_mapelem tkbio_map_snum[] =
         HOLD,       NOP,        NOP,                     NOP,        NOP,        NOP
     };
 
-const struct tkbio_mapelem tkbio_map_meta[] =
+const struct neobox_mapelem neobox_map_meta[] =
     {
         META1("Esc", 27),    NOP,                 NOP,                NOP,                 NOP,                META3("PgUp", '5'),
         META1("Tab", '\t'),  GOTO("FK", FK),      NOP,                NOP,                 META2("Up", 'A'),   META3("PgDn", '6'),
@@ -136,7 +136,7 @@ const struct tkbio_mapelem tkbio_map_meta[] =
         HOLD,                TOGG("Alt", ALT),    META1("Spce", ' '), LMETA1("Spce", ' '), META3("Del", '3'),  META1("Entr", '\n')
     };
 
-const struct tkbio_mapelem tkbio_map_ger[] =
+const struct neobox_mapelem neobox_map_ger[] =
     {
         GER2("ae", 195, 164),        GER2("oe", 195, 182),   GER2("ue", 195, 188), GER2("sz", 195, 159),   NOP,                    NOP,
         GER2("Ae", 195, 132),        GER2("Oe", 105, 150),   GER2("Ue", 195, 156), NOP,                    NOP,                    NOP,
@@ -145,7 +145,7 @@ const struct tkbio_mapelem tkbio_map_ger[] =
         HOLD,                        NOP,                    NOP,                  NOP,                    NOP,                    NOP
     };
 
-const struct tkbio_mapelem tkbio_map_fk[] =
+const struct neobox_mapelem neobox_map_fk[] =
     {
         FK1("F1", 'P'),       FK1("F2", 'Q'),       FK1("F3", 'R'),      FK1("F4", 'S'),      FK2("F5", '1', '5'),  NOP,
         FK2("F6", '1', '7'),  FK2("F7", '1', '8'),  FK2("F8", '1', '9'), FK2("F9", '2', '0'), FK2("F10", '2', '1'), NOP,
@@ -154,7 +154,7 @@ const struct tkbio_mapelem tkbio_map_fk[] =
         HOLD,                 NOP,                  NOP,                 NOP,                 NOP,                  NOP
     };
 
-const struct tkbio_mapelem admin_map[] =
+const struct neobox_mapelem admin_map[] =
     {
         VADMIN("prev", PREV, SWITCH),  ADMIN("quit", QUIT),     VADMIN("next", NEXT, SWITCH),
         UVADMIN("prev", PREV, SWITCH), ADMIN("actv", ACTIVATE), UVADMIN("next", NEXT, SWITCH),
@@ -162,27 +162,27 @@ const struct tkbio_mapelem admin_map[] =
     };
 
 
-const struct tkbio_map tkbio_maps[] =
+const struct neobox_map neobox_maps[] =
     {
-        TKBIO_MAPS(0)
+        NEOBOX_MAPS(0)
     };
 
-const struct tkbio_map admin_maps[] =
+const struct neobox_map admin_maps[] =
     {
         ADMIN_MAP(0)
     };
 
-union tkbio_elem tkbio_parse(int map, union tkbio_elem elem, unsigned char toggle)
+union neobox_elem neobox_parse(int map, union neobox_elem elem, unsigned char toggle)
 {
     if(toggle & CTRLL && !(toggle & ~CTRLL))
     {
         switch(map)
         {
-            case TKBIO_TYPE_PRIMARY:
+            case NEOBOX_TYPE_PRIMARY:
                 if(elem.c.c[0] != '\b')
                     elem.c.c[0] -= 96;
                 break;
-            case TKBIO_TYPE_SHIFT:
+            case NEOBOX_TYPE_SHIFT:
                 if(elem.c.c[0] != '\b')
                     elem.c.c[0] -= 64;
                 break;
@@ -192,8 +192,8 @@ union tkbio_elem tkbio_parse(int map, union tkbio_elem elem, unsigned char toggl
     {
         switch(map)
         {
-            case TKBIO_TYPE_PRIMARY:
-            case TKBIO_TYPE_SHIFT:
+            case NEOBOX_TYPE_PRIMARY:
+            case NEOBOX_TYPE_SHIFT:
                 if(elem.c.c[0] != '\b')
                 {
                     elem.c.c[2] = elem.c.c[0];
@@ -206,18 +206,18 @@ union tkbio_elem tkbio_parse(int map, union tkbio_elem elem, unsigned char toggl
     return elem;
 }
 
-const struct tkbio_layout tkbLayoutDefault =
+const struct neobox_layout tkbLayoutDefault =
     {
-        .start  = TKBIO_TYPE_PRIMARY,
-        .size   = TKBIO_MAPS_SIZE,
-        .maps   = tkbio_maps,
-        .fun    = tkbio_parse
+        .start  = NEOBOX_TYPE_PRIMARY,
+        .size   = NEOBOX_MAPS_SIZE,
+        .maps   = neobox_maps,
+        .fun    = neobox_parse
     };
 
-const struct tkbio_layout adminLayout =
+const struct neobox_layout adminLayout =
     {
         .start  = 0,
-        .size   = sizeof(admin_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(admin_maps)/sizeof(struct neobox_map),
         .maps   = admin_maps,
         .fun    = 0
     };

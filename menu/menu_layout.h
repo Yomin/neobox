@@ -23,7 +23,7 @@
 #ifndef __MENU_LAYOUT_H__
 #define __MENU_LAYOUT_H__
 
-#include "tkbio_layout_default.h"
+#include "neobox_layout_default.h"
 
 const unsigned char menu_colors[][4] =
     {
@@ -45,20 +45,20 @@ const unsigned char menu_colors[][4] =
 
 #define COLOR(C)        C,COLOR_BG,C
 #define TEXTCOLOR(C)    C,COLOR_BG,COLOR_TEXT
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER
-#define SELECT_OPTIONS  TKBIO_LAYOUT_OPTION_BORDER|TKBIO_LAYOUT_OPTION_ALIGN_LEFT
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_OPTION_BORDER
+#define SELECT_OPTIONS  NEOBOX_LAYOUT_OPTION_BORDER|NEOBOX_LAYOUT_OPTION_ALIGN_LEFT
 
-#define CHAR(N, C)  {N, TKBIO_LAYOUT_TYPE_CHAR, 0, ONE(C), COLOR(COLOR_MENU), DEFAULT_OPTIONS}
-#define UCHAR(N, C) {N, TKBIO_LAYOUT_TYPE_CHAR, 0, ONE(C), COLOR(COLOR_MENU), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_UP}
+#define CHAR(N, C)  {N, NEOBOX_LAYOUT_TYPE_CHAR, 0, ONE(C), COLOR(COLOR_MENU), DEFAULT_OPTIONS}
+#define UCHAR(N, C) {N, NEOBOX_LAYOUT_TYPE_CHAR, 0, ONE(C), COLOR(COLOR_MENU), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_UP}
 
-#define SEL(I)  {0, TKBIO_LAYOUT_TYPE_SELECT, I, VALUE(0), TEXTCOLOR(COLOR_SELECT), SELECT_OPTIONS}
-#define LSEL(I) {0, TKBIO_LAYOUT_TYPE_SELECT, I, VALUE(0), TEXTCOLOR(COLOR_SELECT), SELECT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
+#define SEL(I)  {0, NEOBOX_LAYOUT_TYPE_SELECT, I, VALUE(0), TEXTCOLOR(COLOR_SELECT), SELECT_OPTIONS}
+#define LSEL(I) {0, NEOBOX_LAYOUT_TYPE_SELECT, I, VALUE(0), TEXTCOLOR(COLOR_SELECT), SELECT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_LEFT}
 #define SEL4(I) SEL(I),LSEL(I),LSEL(I),LSEL(I)
 
-#define ADMIN  {"Admn", TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
-#define UADMIN {"Admn", TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_UP}
+#define ADMIN  {"Admn", NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
+#define UADMIN {"Admn", NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_UP}
 
-const struct tkbio_mapelem menu_map[] =
+const struct neobox_mapelem menu_map[] =
     {
         SEL4(0), CHAR("kbd", 'k'),
         SEL4(1), UCHAR("kbd", 'k'),
@@ -72,16 +72,16 @@ const struct tkbio_mapelem menu_map[] =
         SEL4(9), UADMIN
     };
 
-const struct tkbio_map menu_maps[] =
+const struct neobox_map menu_maps[] =
     {
         {10, 5, menu_map, menu_colors},
         ADMIN_MAP(1)
     };
 
-const struct tkbio_layout menuLayout =
+const struct neobox_layout menuLayout =
     {
         .start  = 0,
-        .size   = sizeof(menu_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(menu_maps)/sizeof(struct neobox_map),
         .maps   = menu_maps,
         .fun    = 0
     };

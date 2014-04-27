@@ -20,9 +20,9 @@
  * THE SOFTWARE.
  */
 
-#include <tkbio.h>
-#include <tkbio_nop.h>
-#include <tkbio_slider.h>
+#include <neobox.h>
+#include <neobox_nop.h>
+#include <neobox_slider.h>
 
 #include "slider_layout.h"
 
@@ -36,25 +36,25 @@
 int fd, tick;
 char buf[100];
 
-int handler(struct tkbio_return ret, void *state)
+int handler(struct neobox_return ret, void *state)
 {
     int count, err;
     
     switch(ret.type)
     {
-    case TKBIO_RETURN_INT:
+    case NEOBOX_RETURN_INT:
         count = snprintf(buf, 100, "%i", ret.value.i*tick);
         if(write(fd, buf, count) == -1)
         {
             err = errno;
             perror("Failed to write device");
-            return TKBIO_HANDLER_ERROR|err;
+            return NEOBOX_HANDLER_ERROR|err;
         }
         break;
     default:
-        return TKBIO_HANDLER_DEFER;
+        return NEOBOX_HANDLER_DEFER;
     }
-    return TKBIO_HANDLER_SUCCESS;
+    return NEOBOX_HANDLER_SUCCESS;
 }
 
 void check_num(char *str, char *name)
@@ -62,7 +62,7 @@ void check_num(char *str, char *name)
     if(strspn(str, "1234567890") != strlen(str))
     {
         printf("%s value not a number\n", name);
-        tkbio_finish();
+        neobox_finish();
         exit(1);
     }
 }
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
 {
     int ret, err;
     
-    if((ret = tkbio_init_layout(sliderLayout, &argc, argv)) < 0)
+    if((ret = neobox_init_layout(sliderLayout, &argc, argv)) < 0)
         return ret;
 
     if(argc != 4)
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
     {
         err = errno;
         perror("Failed to open device");
-        tkbio_finish();
+        neobox_finish();
         return err;
     }
     
@@ -98,17 +98,17 @@ int main(int argc, char* argv[])
         err = errno;
         perror("Failed to read device");
         close(fd);
-        tkbio_finish();
+        neobox_finish();
         return err;
     }
     
-    tkbio_slider_set_ticks_pos(0, 0, atoi(argv[2]), atoi(buf)/tick, 0);
+    neobox_slider_set_ticks_pos(0, 0, atoi(argv[2]), atoi(buf)/tick, 0);
     
-    tkbio_nop_set_name(1, 0, argv[0], 0);
+    neobox_nop_set_name(1, 0, argv[0], 0);
     
-    ret = tkbio_run(handler, 0);
+    ret = neobox_run(handler, 0);
     
-    tkbio_finish();
+    neobox_finish();
     
     close(fd);
     

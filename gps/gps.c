@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <poll.h>
-#include "tkbio.h"
+#include "neobox.h"
 #include "gps_layout.h"
 
 #define NAME "gps"
@@ -39,17 +39,17 @@ int main(int argc, char* argv[])
     
     int ret = 0;
     struct pollfd pfds[2];
-    struct tkbio_config config = tkbio_default_config();
+    struct neobox_config config = neobox_default_config();
     config.layout = gpsLayout;
     
-    if((pfds[0].fd = tkbio_init_custom(NAME, config)) < 0)
+    if((pfds[0].fd = neobox_init_custom(NAME, config)) < 0)
         return pfds[0].fd;
     
     if((pfds[1].fd = open(argv[1], O_RDONLY)) < 0)
     {
         ret = errno;
         perror("Failed to open gps device");
-        tkbio_finish();
+        neobox_finish();
         return 1;
     }
     
@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
         
         if(pfds[0].revents & POLLIN)
         {
-            switch(tkbio_handle_event().c[0])
+            switch(neobox_handle_event().c[0])
             {
                 case '+':
                     break;
@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     }
     
 end:
-    tkbio_finish();
+    neobox_finish();
     close(pfds[1].fd);
     
     return ret;

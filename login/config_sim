@@ -1,4 +1,4 @@
-../menu/menu -v ../menu/apps_sim --tkbio-fb ../sim/fb.ipc --tkbio-iod ../sim
+../menu/menu -v ../menu/apps_sim --neobox-fb ../sim/fb.ipc --neobox-iod ../sim
 /sys/class/backlight/intel_backlight/brightness
 18930
 42

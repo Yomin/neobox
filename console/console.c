@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
-#include "tkbio.h"
+#include "neobox.h"
 
 #define NAME "neobox-console"
 
@@ -45,7 +45,7 @@ inline static int insert(int fd, char c)
     return 0;
 }
 
-int handler(struct tkbio_return ret, void *state)
+int handler(struct neobox_return ret, void *state)
 {
     int fd = *(int*) state;
     char *ptr = ret.value.c.c;
@@ -53,31 +53,31 @@ int handler(struct tkbio_return ret, void *state)
     
     switch(ret.type)
     {
-    case TKBIO_RETURN_CHAR:
+    case NEOBOX_RETURN_CHAR:
         break;
     default:
-        return TKBIO_HANDLER_DEFER;
+        return NEOBOX_HANDLER_DEFER;
     }
     
     // fk 0 hack
     if(!ptr[0] && ptr[1])
     {
         if((err = insert(fd, 27)))
-            return TKBIO_HANDLER_ERROR|err;
+            return NEOBOX_HANDLER_ERROR|err;
         if((err = insert(fd, '[')))
-            return TKBIO_HANDLER_ERROR|err;
+            return NEOBOX_HANDLER_ERROR|err;
         ptr++;
         i++;
     }
     
-    while(*ptr && i++ < TKBIO_CHARELEM_MAX)
+    while(*ptr && i++ < NEOBOX_CHARELEM_MAX)
     {
         if((err = insert(fd, *ptr)))
-            return TKBIO_HANDLER_ERROR|err;
+            return NEOBOX_HANDLER_ERROR|err;
         ptr++;
     }
     
-    return TKBIO_HANDLER_SUCCESS;
+    return NEOBOX_HANDLER_SUCCESS;
 }
 
 void usage(char *name)
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     int show = 0;
     char *tty;
     
-    struct tkbio_config config = tkbio_config_default(&argc, argv);
+    struct neobox_config config = neobox_config_default(&argc, argv);
     
     while((opt = getopt(argc, argv, "s")) != -1)
     {
@@ -115,21 +115,21 @@ int main(int argc, char* argv[])
     tty = argv[optind];
     
     if(!show)
-        config.options |= TKBIO_OPTION_NO_INITIAL_PRINT;
+        config.options |= NEOBOX_OPTION_NO_INITIAL_PRINT;
     
-    if((ret = tkbio_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(config)) < 0)
         return ret;
     
     if((fd = open(tty, O_RDONLY)) < 0)
     {
         err = errno;
         perror("Failed to open tty");
-        tkbio_finish();
+        neobox_finish();
         return err;
     }
     
-    ret = tkbio_run(handler, &fd);
-    tkbio_finish();
+    ret = neobox_run(handler, &fd);
+    neobox_finish();
     close(fd);
     
     return ret;

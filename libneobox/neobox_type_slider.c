@@ -23,26 +23,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "tkbio_fb.h"
-#include "tkbio_slider.h"
-#include "tkbio_type_slider.h"
-#include "tkbio_type_help.h"
+#include "neobox_fb.h"
+#include "neobox_slider.h"
+#include "neobox_type_slider.h"
+#include "neobox_type_help.h"
 
-#define COPY(e)    ((e)->options & TKBIO_LAYOUT_OPTION_COPY)
-#define BORDER(e)  ((e)->options & TKBIO_LAYOUT_OPTION_BORDER)
-#define CONNECT(e) ((e)->options & TKBIO_LAYOUT_OPTION_MASK_CONNECT)
-#define LANDSCAPE  (tkbio.format == TKBIO_FORMAT_LANDSCAPE)
-#define HSLIDER(e) ((e)->type == TKBIO_LAYOUT_TYPE_HSLIDER)
-#define NOP        (struct tkbio_return) { .type = TKBIO_RETURN_NOP }
+#define COPY(e)    ((e)->options & NEOBOX_LAYOUT_OPTION_COPY)
+#define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
+#define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
+#define LANDSCAPE  (neobox.format == NEOBOX_FORMAT_LANDSCAPE)
+#define HSLIDER(e) ((e)->type == NEOBOX_LAYOUT_TYPE_HSLIDER)
+#define NOP        (struct neobox_return) { .type = NEOBOX_RETURN_NOP }
 
-extern struct tkbio_global tkbio;
+extern struct neobox_global neobox;
 
 static int forceprint;
 
-static void alloc_copy(int height, int width, struct tkbio_save *save)
+static void alloc_copy(int height, int width, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider = save->data;
-    int size = (width/DENSITY) * (height/DENSITY) * tkbio.fb.bpp;
+    struct neobox_save_slider *slider = save->data;
+    int size = (width/DENSITY) * (height/DENSITY) * neobox.fb.bpp;
     
     if(save->partner)
     {
@@ -54,18 +54,18 @@ static void alloc_copy(int height, int width, struct tkbio_save *save)
         slider->copy = malloc(size);
 }
 
-void tkbio_type_slider_init(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void neobox_type_slider_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
-    struct tkbio_point *p;
+    struct neobox_save_slider *slider;
+    struct neobox_point *p;
     struct vector *connect;
     int i, height, width, h_y, v_y, h_x, v_x, h_max, v_max;
     
-    tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
     if(!save->partner)
     {
-        slider = save->data = malloc(sizeof(struct tkbio_save_slider));
+        slider = save->data = malloc(sizeof(struct neobox_save_slider));
         slider->y = HSLIDER(elem) ? y*height : (y+1)*height-1;
         slider->x = x*width;
         slider->start = HSLIDER(elem) ? slider->x : slider->y;
@@ -77,7 +77,7 @@ void tkbio_type_slider_init(int y, int x, const struct tkbio_map *map, const str
             return;
         
         slider = save->partner->data =
-            malloc(sizeof(struct tkbio_save_slider));
+            malloc(sizeof(struct neobox_save_slider));
         connect = save->partner->connect;
         
         h_x = v_x = map->width-1;
@@ -123,9 +123,9 @@ void tkbio_type_slider_init(int y, int x, const struct tkbio_map *map, const str
     forceprint = 0;
 }
 
-void tkbio_type_slider_finish(struct tkbio_save *save)
+void neobox_type_slider_finish(struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
+    struct neobox_save_slider *slider;
     
     if(save->data)
     {
@@ -144,22 +144,22 @@ void tkbio_type_slider_finish(struct tkbio_save *save)
     }
 }
 
-void tkbio_type_slider_draw(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void neobox_type_slider_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     forceprint = 1;
-    tkbio_type_slider_focus_out(y, x, map, elem, save);
+    neobox_type_slider_focus_out(y, x, map, elem, save);
     forceprint = 0;
 }
 
-int tkbio_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct tkbio_mapelem *elem)
+int neobox_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
 {
     int scr_height, scr_width, fb_y, fb_x;
     
-    tkbio_get_sizes_current(0, 0, 0, 0, &scr_height, &scr_width);
+    neobox_get_sizes_current(0, 0, 0, 0, &scr_height, &scr_width);
     
-    fb_y = tkbio.parser.y;
-    fb_x = tkbio.parser.x;
-    tkbio_layout_to_fb_cords(&fb_y, &fb_x);
+    fb_y = neobox.parser.y;
+    fb_x = neobox.parser.x;
+    neobox_layout_to_fb_cords(&fb_y, &fb_x);
     
     if((LANDSCAPE && !HSLIDER(elem)) || (!LANDSCAPE && HSLIDER(elem)))
     {
@@ -168,7 +168,7 @@ int tkbio_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct
         {
             *x = scr_x / scr_width;
             *y = fb_y;
-            tkbio_fb_to_layout_cords(y, x);
+            neobox_fb_to_layout_cords(y, x);
             return 0;
         }
     }
@@ -179,29 +179,29 @@ int tkbio_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct
         {
             *x = fb_x;
             *y = (SCREENMAX - scr_y) / scr_height;
-            tkbio_fb_to_layout_cords(y, x);
+            neobox_fb_to_layout_cords(y, x);
             return 0;
         }
     }
     return 1;
 }
 
-struct tkbio_return tkbio_type_slider_press(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct neobox_return neobox_type_slider_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    return tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct neobox_return neobox_type_slider_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     int i, height, width, pos, partner_x, partner_y, hticks;
     float tick;
     unsigned char *ptr;
     struct vector *connect;
-    struct tkbio_point *p;
-    struct tkbio_save_slider *slider;
-    struct tkbio_return ret;
+    struct neobox_point *p;
+    struct neobox_save_slider *slider;
+    struct neobox_return ret;
     
-    tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
     if(COPY(elem))
         alloc_copy(height, width, save);
@@ -225,15 +225,15 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                 button_x = slider->pos_tmp*tick;
             }
             
-            tkbio_layout_draw_rect(y*height, x*width, height, button_x,
+            neobox_layout_draw_rect(y*height, x*width, height, button_x,
                 elem->color_fg, DENSITY, &ptr);
             if(BORDER(elem))
-                tkbio_layout_draw_rect_connect(y*height,
+                neobox_layout_draw_rect_connect(y*height,
                     x*width+button_x, y, x, height, width-button_x,
                     elem->color_fg, elem->color_bg,
                     CONNECT(elem), DENSITY, &ptr);
             else
-                tkbio_layout_draw_rect(y*height, x*width+button_x,
+                neobox_layout_draw_rect(y*height, x*width+button_x,
                     height, width-button_x, elem->color_bg,
                     DENSITY, &ptr);
         }
@@ -251,14 +251,14 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
                 button_y = height-slider->pos_tmp*tick;
             }
             
-            tkbio_layout_draw_rect(y*height+button_y, x*width,
+            neobox_layout_draw_rect(y*height+button_y, x*width,
                 height-button_y, width, elem->color_fg, DENSITY, &ptr);
             if(BORDER(elem))
-                tkbio_layout_draw_rect_connect(y*height, x*width,
+                neobox_layout_draw_rect_connect(y*height, x*width,
                     y, x, button_y, width, elem->color_fg,
                     elem->color_bg, CONNECT(elem), DENSITY, &ptr);
             else
-                tkbio_layout_draw_rect(y*height, x*width, button_y,
+                neobox_layout_draw_rect(y*height, x*width, button_y,
                     width, elem->color_bg, DENSITY, &ptr);
         }
         slider->y_tmp = y*height+button_y;
@@ -314,63 +314,63 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             if( ( HSLIDER(elem) && partner_x+width  < pos) ||
                 (!HSLIDER(elem) && partner_y        > pos))
             {
-                tkbio_layout_draw_rect(partner_y, partner_x,
+                neobox_layout_draw_rect(partner_y, partner_x,
                     height, width, p->elem->color_fg,
                     DENSITY, &ptr);
             }
             else if(HSLIDER(elem) && partner_x < pos)
             {
-                tkbio_layout_draw_rect(partner_y, partner_x,
+                neobox_layout_draw_rect(partner_y, partner_x,
                     height, pos-partner_x, p->elem->color_fg,
                     DENSITY, &ptr);
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(partner_y,
+                    neobox_layout_draw_rect_connect(partner_y,
                         pos, p->y, p->x, height,
                         width-(pos-partner_x), p->elem->color_fg,
                         p->elem->color_bg, CONNECT(p->elem),
                         DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(partner_y,
+                    neobox_layout_draw_rect(partner_y,
                         pos, height, width-(pos-partner_x),
                         p->elem->color_bg, DENSITY, &ptr);
             }
             else if(!HSLIDER(p->elem) && partner_y+height > pos)
             {
-                tkbio_layout_draw_rect(pos, partner_x,
+                neobox_layout_draw_rect(pos, partner_x,
                     height-(pos-partner_y), width,
                     p->elem->color_fg, DENSITY, &ptr);
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(partner_y,
+                    neobox_layout_draw_rect_connect(partner_y,
                         partner_x, p->y, p->x, pos-partner_y,
                         width, p->elem->color_fg, p->elem->color_bg,
                         CONNECT(p->elem), DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(partner_y, partner_x,
+                    neobox_layout_draw_rect(partner_y, partner_x,
                         pos-partner_y, width, p->elem->color_bg,
                         DENSITY, &ptr);
             }
             else
             {
                 if(BORDER(elem))
-                    tkbio_layout_draw_rect_connect(partner_y, partner_x,
+                    neobox_layout_draw_rect_connect(partner_y, partner_x,
                         p->y, p->x, height, width, p->elem->color_fg,
                         p->elem->color_bg, CONNECT(p->elem),
                         DENSITY, &ptr);
                 else
-                    tkbio_layout_draw_rect(partner_y, partner_x,
+                    neobox_layout_draw_rect(partner_y, partner_x,
                         height, width, p->elem->color_bg,
                         DENSITY, &ptr);
             }
         }
     }
     
-    ret.type = TKBIO_RETURN_INT;
+    ret.type = NEOBOX_RETURN_INT;
     ret.id = elem->id;
     
     if(slider->ticks)
     {
         ret.value.i = slider->pos_tmp;
-        VERBOSE(printf("[TKBIO] slider %i: %i/%i\n",
+        VERBOSE(printf("[NEOBOX] slider %i: %i/%i\n",
             ret.id, ret.value.i, slider->ticks));
     }
     else
@@ -385,16 +385,16 @@ struct tkbio_return tkbio_type_slider_move(int y, int x, int button_y, int butto
             ret.value.i = (slider->start-slider->y_tmp)*100;
             ret.value.i /= slider->size;
         }
-        VERBOSE(printf("[TKBIO] slider %i: %02i%%\n",
+        VERBOSE(printf("[NEOBOX] slider %i: %02i%%\n",
             ret.id, ret.value.i));
     }
     
     return ret;
 }
 
-struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct neobox_return neobox_type_slider_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
+    struct neobox_save_slider *slider;
     
     slider = save->partner ? save->partner->data : save->data;
     
@@ -405,26 +405,26 @@ struct tkbio_return tkbio_type_slider_release(int y, int x, int button_y, int bu
     return NOP;
 }
 
-struct tkbio_return tkbio_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct neobox_return neobox_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    return tkbio_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct tkbio_return tkbio_type_slider_focus_out(int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+struct neobox_return neobox_type_slider_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
+    struct neobox_save_slider *slider;
     int height, width;
     
-    tkbio_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     slider = save->partner ? save->partner->data : save->data;
     
-    return tkbio_type_slider_move(slider->y/height, slider->x/width,
+    return neobox_type_slider_move(slider->y/height, slider->x/width,
         slider->y%height, slider->x%width, map, elem, save);
 }
 
-void tkbio_type_slider_set_ticks(const void *vticks, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void neobox_type_slider_set_ticks(const void *vticks, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
+    struct neobox_save_slider *slider;
     int ticks = *(int*)vticks;
     
     if(ticks < 0)
@@ -439,12 +439,12 @@ void tkbio_type_slider_set_ticks(const void *vticks, int y, int x, const struct 
         slider->y = slider->start;
     
     if(map)
-        tkbio_type_slider_focus_out(y, x, map, elem, save);
+        neobox_type_slider_focus_out(y, x, map, elem, save);
 }
 
-void tkbio_type_slider_set_pos(const void *vpos, int y, int x, const struct tkbio_map *map, const struct tkbio_mapelem *elem, struct tkbio_save *save)
+void neobox_type_slider_set_pos(const void *vpos, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct tkbio_save_slider *slider;
+    struct neobox_save_slider *slider;
     int pos = *(int*)vpos;
     
     slider = save->partner ? save->partner->data : save->data;
@@ -470,31 +470,31 @@ void tkbio_type_slider_set_pos(const void *vpos, int y, int x, const struct tkbi
     }
     
     if(map)
-        tkbio_type_slider_focus_out(y, x, map, elem, save);
+        neobox_type_slider_focus_out(y, x, map, elem, save);
 }
 
-void tkbio_slider_set_ticks(int id, int mappos, int ticks, int redraw)
+void neobox_slider_set_ticks(int id, int mappos, int ticks, int redraw)
 {
-    tkbio_type_help_set_range_value(TKBIO_LAYOUT_TYPE_HSLIDER,
-        TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos, &ticks, redraw,
-        tkbio_type_slider_set_ticks);
+    neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_HSLIDER,
+        NEOBOX_LAYOUT_TYPE_VSLIDER, id, mappos, &ticks, redraw,
+        neobox_type_slider_set_ticks);
 }
 
-void tkbio_slider_set_pos(int id, int mappos, int pos, int redraw)
+void neobox_slider_set_pos(int id, int mappos, int pos, int redraw)
 {
-    tkbio_type_help_set_range_value(TKBIO_LAYOUT_TYPE_HSLIDER,
-        TKBIO_LAYOUT_TYPE_VSLIDER, id, mappos, &pos, redraw,
-        tkbio_type_slider_set_ticks);
+    neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_HSLIDER,
+        NEOBOX_LAYOUT_TYPE_VSLIDER, id, mappos, &pos, redraw,
+        neobox_type_slider_set_ticks);
 }
 
-void tkbio_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int redraw)
+void neobox_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int redraw)
 {
-    int tpos = tkbio_type_help_find_type(
-        TKBIO_LAYOUT_TYPE_HSLIDER, TKBIO_LAYOUT_TYPE_VSLIDER,
+    int tpos = neobox_type_help_find_type(
+        NEOBOX_LAYOUT_TYPE_HSLIDER, NEOBOX_LAYOUT_TYPE_VSLIDER,
         id, mappos);
     
-    tkbio_type_help_set_pos_value(tpos, mappos, &ticks, 0,
-        tkbio_type_slider_set_ticks);
-    tkbio_type_help_set_pos_value(tpos, mappos, &pos, redraw,
-        tkbio_type_slider_set_pos);
+    neobox_type_help_set_pos_value(tpos, mappos, &ticks, 0,
+        neobox_type_slider_set_ticks);
+    neobox_type_help_set_pos_value(tpos, mappos, &pos, redraw,
+        neobox_type_slider_set_pos);
 }

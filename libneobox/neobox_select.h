@@ -20,10 +20,11 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_SOUND_H__
-#define __TKBIO_SOUND_H__
+#ifndef __NEOBOX_SELECT_H__
+#define __NEOBOX_SELECT_H__
 
-void* tkbio_sound_play(const char *file, int loop, int delay);
-void  tkbio_sound_stop(void *thread);
+void neobox_select_set_name(int id, int map, const char *name, int redraw);
+void neobox_select_set_active(int id, int map, int active, int redraw);
+void neobox_select_set_locked(int id, int map, int locked);
 
 #endif

@@ -1,12 +1,12 @@
 .PHONY: all, debug, sim, clean, touch, exec, sync
 
-LIBTKBIOPATH = ../libtkbio
-LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
+LIBNEOBOXPATH = ../libneobox
+LIBNEOBOX = $(LIBNEOBOXPATH)/libneobox.a
 
 CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
-INCLUDES = -I$(LIBTKBIOPATH)
+INCLUDES = -I$(LIBNEOBOXPATH)
 SOURCES = *.c
-LIBS = -L$(LIBTKBIOPATH) -ltkbio $(shell make -sC $(LIBTKBIOPATH) libs)
+LIBS = -L$(LIBNEOBOXPATH) -lneobox $(shell make -sC $(LIBNEOBOXPATH) libs)
 NAME = menu
 
 all: CFLAGS := $(CFLAGS) -DNDEBUG
@@ -21,21 +21,21 @@ sim: CFLAGS := $(CFLAGS) -ggdb -DSIM
 sim: debug = sim
 sim: touch $(NAME)
 
-$(NAME): $(LIBTKBIO) $(SOURCES)
+$(NAME): $(LIBNEOBOX) $(SOURCES)
 	gcc $(SOURCES) -o $@ $(CFLAGS) $(INCLUDES) $(LIBS)
 
-$(LIBTKBIO): $(LIBTKBIOPATH)/*.c
-	@make -C $(LIBTKBIOPATH) $(debug)
+$(LIBNEOBOX): $(LIBNEOBOXPATH)/*.c
+	@make -C $(LIBNEOBOXPATH) $(debug)
 
 clean:
 	find . ! -type d \( -perm -111 -or -name "*\.o" \) -exec rm {} \;
 
 touch:
-	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBTKBIO); })
-	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
+	$(shell [ -f debug -a -z "$(debug)" ] && { touch $(NAME).c; rm debug; rm -f $(LIBNEOBOX); })
+	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBNEOBOX); })
 
 exec: sim
-	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-iod ../sim --tkbio-verbose -v apps_sim
+	./$(NAME) --neobox-fb ../sim/fb.ipc --neobox-iod ../sim --neobox-verbose -v apps_sim
 
 sync:
 	@make -C .. sync

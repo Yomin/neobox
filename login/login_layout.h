@@ -23,7 +23,7 @@
 #ifndef __LOGIN_LAYOUT_H__
 #define __LOGIN_LAYOUT_H__
 
-#include "tkbio_layout.h"
+#include "neobox_layout.h"
 
 const unsigned char login_colors[][4] =
     {
@@ -36,19 +36,19 @@ const unsigned char login_colors[][4] =
 
 #define ONE(C)          { .c = {{C, 0, 0, 0}} }
 #define COLOR(C)        C,COLOR_BG,C
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_OPTION_BORDER
 
-#define NOP       {0, TKBIO_LAYOUT_TYPE_NOP, 0, ONE(0), 0, 0, 0, 0}
-#define CHAR(I)   {0, TKBIO_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
-#define LCHAR(I)  {0, TKBIO_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
-#define UCHAR(I)  {0, TKBIO_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_UP}
-#define LUCHAR(I) {0, TKBIO_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_LEFT|TKBIO_LAYOUT_OPTION_CONNECT_UP}
+#define NOP       {0, NEOBOX_LAYOUT_TYPE_NOP, 0, ONE(0), 0, 0, 0, 0}
+#define CHAR(I)   {0, NEOBOX_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
+#define LCHAR(I)  {0, NEOBOX_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_LEFT}
+#define UCHAR(I)  {0, NEOBOX_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_UP}
+#define LUCHAR(I) {0, NEOBOX_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_LEFT|NEOBOX_LAYOUT_OPTION_CONNECT_UP}
 
 #define NOP2    NOP,NOP
 #define BTN(I)  CHAR(I),LCHAR(I)
 #define UBTN(I) UCHAR(I),LUCHAR(I)
 
-const struct tkbio_mapelem login_map[] =
+const struct neobox_mapelem login_map[] =
     {
         NOP, NOP2,    NOP2,    NOP2,    NOP,
         NOP, BTN(1),  BTN(2),  BTN(3),  NOP,
@@ -60,15 +60,15 @@ const struct tkbio_mapelem login_map[] =
         NOP, NOP2,    NOP2,    NOP2,    NOP
     };
 
-const struct tkbio_map login_maps[] =
+const struct neobox_map login_maps[] =
     {
         {8, 8, login_map, login_colors}
     };
 
-const struct tkbio_layout loginLayout =
+const struct neobox_layout loginLayout =
     {
         .start  = 0,
-        .size   = sizeof(login_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(login_maps)/sizeof(struct neobox_map),
         .maps   = login_maps,
         .fun    = 0
     };

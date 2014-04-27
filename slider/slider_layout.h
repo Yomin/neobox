@@ -23,7 +23,7 @@
 #ifndef __SLIDER_LAYOUT_H__
 #define __SLIDER_LAYOUT_H__
 
-#include "tkbio_layout_default.h"
+#include "neobox_layout_default.h"
 
 const unsigned char slider_colors[][4] =
     {
@@ -42,23 +42,23 @@ const unsigned char slider_colors[][4] =
 
 #define COLOR(C)        C,COLOR_BG,C
 #define TEXTCOLOR(C)    C,COLOR_BG,COLOR_TEXT
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER
-#define TEXT_OPTIONS    TKBIO_LAYOUT_OPTION_ALIGN_LEFT
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_OPTION_BORDER
+#define TEXT_OPTIONS    NEOBOX_LAYOUT_OPTION_ALIGN_LEFT
 
-#define GOTO(N, P, C)  {N, TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(P), COLOR(COLOR_ ## C), DEFAULT_OPTIONS}
-#define LGOTO(N, P, C) {N, TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(P), COLOR(COLOR_ ## C), DEFAULT_OPTIONS|TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
-#define NOP            {0, TKBIO_LAYOUT_TYPE_NOP, 0, VALUE(0), 0, 0}
-#define SLID(I, C)     {0, TKBIO_LAYOUT_TYPE_HSLIDER, I, VALUE(10), COLOR(COLOR_SLIDER), DEFAULT_OPTIONS|C}
-#define TEXT           {0, TKBIO_LAYOUT_TYPE_NOP, 1, VALUE(0), TEXTCOLOR(COLOR_TEXT), TEXT_OPTIONS}
-#define LTEXT          {0, TKBIO_LAYOUT_TYPE_NOP, 1, VALUE(0), TEXTCOLOR(COLOR_TEXT), TKBIO_LAYOUT_OPTION_CONNECT_LEFT|TEXT_OPTIONS}
+#define GOTO(N, P, C)  {N, NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(P), COLOR(COLOR_ ## C), DEFAULT_OPTIONS}
+#define LGOTO(N, P, C) {N, NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(P), COLOR(COLOR_ ## C), DEFAULT_OPTIONS|NEOBOX_LAYOUT_OPTION_CONNECT_LEFT}
+#define NOP            {0, NEOBOX_LAYOUT_TYPE_NOP, 0, VALUE(0), 0, 0}
+#define SLID(I, C)     {0, NEOBOX_LAYOUT_TYPE_HSLIDER, I, VALUE(10), COLOR(COLOR_SLIDER), DEFAULT_OPTIONS|C}
+#define TEXT           {0, NEOBOX_LAYOUT_TYPE_NOP, 1, VALUE(0), TEXTCOLOR(COLOR_TEXT), TEXT_OPTIONS}
+#define LTEXT          {0, NEOBOX_LAYOUT_TYPE_NOP, 1, VALUE(0), TEXTCOLOR(COLOR_TEXT), NEOBOX_LAYOUT_OPTION_CONNECT_LEFT|TEXT_OPTIONS}
 
 #define ADMIN   GOTO("Admn", 1, ADMIN)
 #define LADMIN  LGOTO("Admn", 1, ADMIN)
 
 #define HSLID   SLID(0, 0)
-#define LHSLID  SLID(0, TKBIO_LAYOUT_OPTION_CONNECT_LEFT)
-#define UHSLID  SLID(0, TKBIO_LAYOUT_OPTION_CONNECT_UP)
-#define LUHSLID SLID(0, TKBIO_LAYOUT_OPTION_CONNECT_LEFT|TKBIO_LAYOUT_OPTION_CONNECT_UP)
+#define LHSLID  SLID(0, NEOBOX_LAYOUT_OPTION_CONNECT_LEFT)
+#define UHSLID  SLID(0, NEOBOX_LAYOUT_OPTION_CONNECT_UP)
+#define LUHSLID SLID(0, NEOBOX_LAYOUT_OPTION_CONNECT_LEFT|NEOBOX_LAYOUT_OPTION_CONNECT_UP)
 
 #define NOP3     NOP,NOP,NOP
 #define LTEXT3   LTEXT,LTEXT,LTEXT
@@ -69,7 +69,7 @@ const unsigned char slider_colors[][4] =
 #define LHSLID7  LHSLID3,LHSLID3,LHSLID
 #define LUHSLID7 LUHSLID3,LUHSLID3,LUHSLID
 
-const struct tkbio_mapelem slider_map[] =
+const struct neobox_mapelem slider_map[] =
     {
         NOP, NOP,    NOP7,     NOP,     NOP,
         NOP, HSLID,  LHSLID7,  LHSLID,  NOP,
@@ -78,16 +78,16 @@ const struct tkbio_mapelem slider_map[] =
         NOP, NOP,    NOP7,     ADMIN,   LADMIN
     };
 
-const struct tkbio_map slider_maps[] =
+const struct neobox_map slider_maps[] =
     {
         {5, 11, slider_map, slider_colors, 0},
         ADMIN_MAP(1)
     };
 
-struct tkbio_layout sliderLayout =
+struct neobox_layout sliderLayout =
     {
         .start  = 0,
-        .size   = sizeof(slider_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(slider_maps)/sizeof(struct neobox_map),
         .maps   = slider_maps,
         .fun    = 0
     };

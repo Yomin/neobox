@@ -23,7 +23,7 @@
 #ifndef __GPS_LAYOUT_H__
 #define __GPS_LAYOUT_H__
 
-#include "tkbio_layout.h"
+#include "neobox_layout.h"
 
 const char gps_colors[1][4] =
     {
@@ -35,15 +35,15 @@ const char gps_colors[1][4] =
 #define ONE(C) {{C,  0,  0,  0}}
 
 #define COLOR(Color)    Color << 4
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_TYPE_CHAR|TKBIO_LAYOUT_OPTION_BORDER
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_TYPE_CHAR|NEOBOX_LAYOUT_OPTION_BORDER
 
 #define CHAR(C)  {DEFAULT_OPTIONS, ONE(C), COLOR(GPS_TYPE_PRIMARY), 0}
-#define NOP      {TKBIO_LAYOUT_TYPE_CHAR, ONE(0), 0, 0}
+#define NOP      {NEOBOX_LAYOUT_TYPE_CHAR, ONE(0), 0, 0}
 #define BNOP     {DEFAULT_OPTIONS, ONE(0), 0, 0}
-#define CBNOP    {DEFAULT_OPTIONS, ONE(0), 0, TKBIO_LAYOUT_CONNECT_LEFT}
+#define CBNOP    {DEFAULT_OPTIONS, ONE(0), 0, NEOBOX_LAYOUT_CONNECT_LEFT}
 
 
-const struct tkbio_mapelem gps_map_primary[5*6] =
+const struct neobox_mapelem gps_map_primary[5*6] =
     {
         NOP,  NOP,   NOP,   NOP,   NOP,   CHAR('+'),
         NOP,  NOP,   NOP,   NOP,   NOP,   CHAR('-'),
@@ -52,15 +52,15 @@ const struct tkbio_mapelem gps_map_primary[5*6] =
         BNOP, CBNOP, CBNOP, CBNOP, CBNOP, CHAR('q')
     };
 
-const struct tkbio_map gps_maps[1] =
+const struct neobox_map gps_maps[1] =
     {
         {5, 6, gps_map_primary}
     };
 
-struct tkbio_layout gpsLayout =
+struct neobox_layout gpsLayout =
     {
         .start  = 0,
-        .size   = sizeof(gps_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(gps_maps)/sizeof(struct neobox_map),
         .maps   = gps_maps,
         .colors = gps_colors,
         .fun    = 0

@@ -5,7 +5,7 @@ LIBALGPATH = lib/libalg
 LIBALG = $(LIBALGPATH)/libalg.a
 IOD = include/iod
 
-NAME = tkbio
+NAME = neobox
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
 INCLUDES = -I$(LIBALGPATH) -I$(IOD)
@@ -29,8 +29,8 @@ clean:
 libs:
 	@for l in $(shell ls lib); do echo -n "-L../lib$(NAME)/lib/$$l -l$${l:3}"; done
 	@echo -n " -lrt" # needed by shared memory
-	@echo -n " -lasound" # needed tkbio_sound
-	@echo -n " -lpthread" # needed by tkbio_sound
+	@echo -n " -lasound" # needed neobox_sound
+	@echo -n " -lpthread" # needed by neobox_sound
 
 
 %.o: %.c

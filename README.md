@@ -7,7 +7,7 @@ Provides input events (touchscreen, buttons) for applications and
 manages the application stack ie which app is active, has input
 grabbed, etc.
 
-## libtkbio
+## libneobox
 Provides a generic lib to hookup with the iod, utilize a keyboard layout and
 draw simple graphics to the framebuffer.
 

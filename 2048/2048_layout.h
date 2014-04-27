@@ -23,7 +23,7 @@
 #ifndef __2048_LAYOUT_H__
 #define __2048_LAYOUT_H__
 
-#include "tkbio_layout_default.h"
+#include "neobox_layout_default.h"
 
 const unsigned char app2048_colors[][4] =
     {
@@ -42,17 +42,17 @@ const unsigned char app2048_colors[][4] =
 #define VALUE(V)    { .i = V }
 
 #define COLOR(C)        C,COLOR_BG,C
-#define DEFAULT_OPTIONS TKBIO_LAYOUT_OPTION_BORDER
+#define DEFAULT_OPTIONS NEOBOX_LAYOUT_OPTION_BORDER
 
-#define NOP     {0, TKBIO_LAYOUT_TYPE_NOP, 23, ONE(0), 0, 0}
-#define BTN(I)  {0, TKBIO_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
-#define BNOP(I) {0, TKBIO_LAYOUT_TYPE_NOP, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
-#define HEAD    {0, TKBIO_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), 0}
-#define LHEAD   {0, TKBIO_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), TKBIO_LAYOUT_OPTION_CONNECT_LEFT}
-#define ADMIN   {"Admin", TKBIO_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
-#define MODE    {"Mode", TKBIO_LAYOUT_TYPE_CHAR, 23, ONE(0), COLOR(COLOR_MODE), DEFAULT_OPTIONS}
+#define NOP     {0, NEOBOX_LAYOUT_TYPE_NOP, 23, ONE(0), 0, 0}
+#define BTN(I)  {0, NEOBOX_LAYOUT_TYPE_CHAR, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
+#define BNOP(I) {0, NEOBOX_LAYOUT_TYPE_NOP, I, ONE(0), COLOR(COLOR_FG), DEFAULT_OPTIONS}
+#define HEAD    {0, NEOBOX_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), 0}
+#define LHEAD   {0, NEOBOX_LAYOUT_TYPE_CHAR, 42, ONE(0), COLOR(COLOR_FG), NEOBOX_LAYOUT_OPTION_CONNECT_LEFT}
+#define ADMIN   {"Admin", NEOBOX_LAYOUT_TYPE_GOTO, 0, VALUE(1), COLOR(COLOR_ADMIN), DEFAULT_OPTIONS}
+#define MODE    {"Mode", NEOBOX_LAYOUT_TYPE_CHAR, 23, ONE(0), COLOR(COLOR_MODE), DEFAULT_OPTIONS}
 
-const struct tkbio_mapelem app2048_map[] =
+const struct neobox_mapelem app2048_map[] =
     {
         HEAD,     LHEAD,    LHEAD,    LHEAD,
         BNOP(0),  BTN(1),   BTN(2),   BNOP(3),
@@ -62,16 +62,16 @@ const struct tkbio_mapelem app2048_map[] =
         MODE,     NOP,      NOP,      ADMIN
     };
 
-const struct tkbio_map app2048_maps[] =
+const struct neobox_map app2048_maps[] =
     {
         {6, 4, app2048_map, app2048_colors},
         ADMIN_MAP(1)
     };
 
-const struct tkbio_layout app2048Layout =
+const struct neobox_layout app2048Layout =
     {
         .start  = 0,
-        .size   = sizeof(app2048_maps)/sizeof(struct tkbio_map),
+        .size   = sizeof(app2048_maps)/sizeof(struct neobox_map),
         .maps   = app2048_maps,
         .fun    = 0
     };

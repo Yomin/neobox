@@ -20,9 +20,9 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_UTIL_H__
-#define __TKBIO_UTIL_H__
+#ifndef __NEOBOX_BUTTON_H__
+#define __NEOBOX_BUTTON_H__
 
-char** tkbio_util_parse_cmd(char *cmd);
+void neobox_button_set_name(int id, int map, const char *name, int redraw);
 
 #endif

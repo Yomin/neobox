@@ -23,7 +23,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-char** tkbio_util_parse_cmd(char *cmd)
+char** neobox_util_parse_cmd(char *cmd)
 {
     char **argv, *ptr = cmd;
     int i = 0, count = 0, offset, start, escape;

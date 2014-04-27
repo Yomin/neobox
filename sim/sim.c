@@ -244,7 +244,7 @@ gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
     return FALSE;
 }
 
-gboolean tkbio_event(GIOChannel *channel, GIOCondition cond, gpointer data)
+gboolean neobox_event(GIOChannel *channel, GIOCondition cond, gpointer data)
 {
     char tmp;
     if(cond == G_IO_IN)
@@ -260,13 +260,13 @@ gboolean tkbio_event(GIOChannel *channel, GIOCondition cond, gpointer data)
 
 gboolean fb_event(GIOChannel *channel, GIOCondition cond, gpointer data)
 {
-    int tkbio;
-    if((tkbio = accept(fb_sock, 0, 0)) != -1)
+    int neobox;
+    if((neobox = accept(fb_sock, 0, 0)) != -1)
     {
-        printf("Connect [%i]\n", tkbio);
-        GIOChannel *tkbio_chan = g_io_channel_unix_new(tkbio);
-        g_io_add_watch(tkbio_chan, G_IO_IN|G_IO_HUP, tkbio_event, NULL);
-        send_fb_info(tkbio);
+        printf("Connect [%i]\n", neobox);
+        GIOChannel *neobox_chan = g_io_channel_unix_new(neobox);
+        g_io_add_watch(neobox_chan, G_IO_IN|G_IO_HUP, neobox_event, NULL);
+        send_fb_info(neobox);
     }
     return TRUE;
 }

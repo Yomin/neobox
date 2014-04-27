@@ -20,9 +20,17 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_BUTTON_H__
-#define __TKBIO_BUTTON_H__
+#ifndef __NEOBOX_TYPE_HELP_H__
+#define __NEOBOX_TYPE_HELP_H__
 
-void tkbio_button_set_name(int id, int map, const char *name, int redraw);
+#include "neobox_def.h"
+#include "neobox_layout.h"
+
+typedef void neobox_type_help_set_func(const void *value, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+
+int  neobox_type_help_find_type(int type_from, int type_to, int id, int map);
+void neobox_type_help_set_pos_value(int pos, int map, const void *value, int redraw, neobox_type_help_set_func f);
+void neobox_type_help_set_range_value(int type_from, int type_to, int id, int map, const void *value, int redraw, neobox_type_help_set_func f);
+void neobox_type_help_set_value(int type, int id, int map, const void *value, int redraw, neobox_type_help_set_func f);
 
 #endif

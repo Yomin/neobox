@@ -20,8 +20,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_DEF_H__
-#define __TKBIO_DEF_H__
+#ifndef __NEOBOX_DEF_H__
+#define __NEOBOX_DEF_H__
 
 #include <linux/fb.h>
 #include <sys/queue.h>
@@ -29,7 +29,7 @@
 #include <alg/vector.h>
 #include <iod.h>
 
-#include "tkbio.h"
+#include "neobox.h"
 
 #ifdef NDEBUG
 #   define DEBUG(x)
@@ -45,7 +45,7 @@
 #   define FONTMULT 2   // fontmult pixel for 1 pixel
 #endif
 
-#define VERBOSE(x)  if(tkbio.verbose) { x; }
+#define VERBOSE(x)  if(neobox.verbose) { x; }
 
 #define SCREENMAX   830     // screen size in pixel
 #define DENSITY     1       // button draw density in pixel
@@ -55,42 +55,42 @@
 #define TIMER_SYSTEM 0
 #define TIMER_USER   1
 
-#define EVENT_NOP   0
-#define EVENT_IOD   1
-#define EVENT_TKBIO 2
+#define EVENT_NOP    0
+#define EVENT_IOD    1
+#define EVENT_NEOBOX 2
 
-struct tkbio_event
+struct neobox_event
 {
     char type;
     union
     {
         struct iod_event iod;
-        struct tkbio_return tkbio;
+        struct neobox_return neobox;
     } event;
 };
 
-struct tkbio_chain_queue
+struct neobox_chain_queue
 {
-    CIRCLEQ_ENTRY(tkbio_chain_queue) chain;
-    struct tkbio_event event;
+    CIRCLEQ_ENTRY(neobox_chain_queue) chain;
+    struct neobox_event event;
 };
-CIRCLEQ_HEAD(tkbio_queue, tkbio_chain_queue);
+CIRCLEQ_HEAD(neobox_queue, neobox_chain_queue);
 
-struct tkbio_chain_timer
+struct neobox_chain_timer
 {
-    CIRCLEQ_ENTRY(tkbio_chain_timer) chain;
+    CIRCLEQ_ENTRY(neobox_chain_timer) chain;
     struct timeval tv;
     unsigned char id, type;
 };
-CIRCLEQ_HEAD(tkbio_timer, tkbio_chain_timer);
+CIRCLEQ_HEAD(neobox_timer, neobox_chain_timer);
 
-struct tkbio_point
+struct neobox_point
 {
     int y, x;
-    const struct tkbio_mapelem *elem;
+    const struct neobox_mapelem *elem;
 };
 
-struct tkbio_fb
+struct neobox_fb
 {
     int fd;   // framebuffer file descriptor
     struct fb_var_screeninfo vinfo;
@@ -105,7 +105,7 @@ struct tkbio_fb
 #endif
 };
 
-struct tkbio_parser
+struct neobox_parser
 {
     int pressed;          // button pressed
     int y, x;             // last pos (layout format)
@@ -114,7 +114,7 @@ struct tkbio_parser
     unsigned char toggle; // active toggle buttons
 };
 
-struct tkbio_iod
+struct neobox_iod
 {
     const char *dir;
     int sock;
@@ -124,20 +124,20 @@ struct tkbio_iod
     int grab;       // app grabbs buttons
 };
 
-struct tkbio_partner
+struct neobox_partner
 {
     char flag; // check if already processed
     void *data;
     struct vector *connect;
 };
 
-struct tkbio_save
+struct neobox_save
 {
     void *data;
-    struct tkbio_partner *partner;
+    struct neobox_partner *partner;
 };
 
-struct tkbio_global
+struct neobox_global
 {
     int format;         // portrait or landscape
     int pause;          // pause for debouncer
@@ -146,13 +146,13 @@ struct tkbio_global
     char flagstat;      // last partner flag
     int sleep;          // sleep status
     
-    struct tkbio_fb fb;
-    struct tkbio_iod iod;
-    struct tkbio_layout layout;
-    struct tkbio_parser parser;
-    struct tkbio_save **save; // button save array
-    struct tkbio_queue queue; // event queue
-    struct tkbio_timer timer; // timer queue
+    struct neobox_fb fb;
+    struct neobox_iod iod;
+    struct neobox_layout layout;
+    struct neobox_parser parser;
+    struct neobox_save **save; // button save array
+    struct neobox_queue queue; // event queue
+    struct neobox_timer timer; // timer queue
 };
 
 #endif

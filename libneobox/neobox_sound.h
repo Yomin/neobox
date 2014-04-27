@@ -20,9 +20,10 @@
  * THE SOFTWARE.
  */
 
-#ifndef __TKBIO_NOP_H__
-#define __TKBIO_NOP_H__
+#ifndef __NEOBOX_SOUND_H__
+#define __NEOBOX_SOUND_H__
 
-void tkbio_nop_set_name(int id, int map, const char *name, int redraw);
+void* neobox_sound_play(const char *file, int loop, int delay);
+void  neobox_sound_stop(void *thread);
 
 #endif

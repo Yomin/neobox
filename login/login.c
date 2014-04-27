@@ -32,9 +32,9 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
-#include <tkbio.h>
-#include <tkbio_util.h>
-#include <tkbio_button.h>
+#include <neobox.h>
+#include <neobox_util.h>
+#include <neobox_button.h>
 
 #include "login_layout.h"
 
@@ -94,14 +94,14 @@ void draw_tile(char c, int draw)
     }
     
     for(i=0; i<LEN; i++)
-        tkbio_button_set_name(i, 0, &rand_tile[i*2], draw);
+        neobox_button_set_name(i, 0, &rand_tile[i*2], draw);
 }
 
 void login()
 {
     if(cmd_pid != -1)
     {
-        tkbio_switch(cmd_pid);
+        neobox_switch(cmd_pid);
         return;
     }
     
@@ -163,13 +163,13 @@ void restore_brightness()
     close(fd);
 }
 
-int handler(struct tkbio_return ret, void *state)
+int handler(struct neobox_return ret, void *state)
 {
     char c;
     
     switch(ret.type)
     {
-    case TKBIO_RETURN_CHAR:
+    case NEOBOX_RETURN_CHAR:
         c = rand_tile[ret.id*2];
         if(ret.id)
         {
@@ -177,7 +177,7 @@ int handler(struct tkbio_return ret, void *state)
             if(!*passptr)
             {
                 login();
-                return TKBIO_HANDLER_SUCCESS;
+                return NEOBOX_HANDLER_SUCCESS;
             }
         }
         else
@@ -187,38 +187,38 @@ int handler(struct tkbio_return ret, void *state)
         }
         draw_tile(c, 1);
         break;
-    case TKBIO_RETURN_ACTIVATE:
+    case NEOBOX_RETURN_ACTIVATE:
         passptr = pass;
         srandom(time(0)+random());
         draw_tile(random()%26+'a', 0);
-        return TKBIO_HANDLER_DEFER;
-    case TKBIO_RETURN_BUTTON:
+        return NEOBOX_HANDLER_DEFER;
+    case NEOBOX_RETURN_BUTTON:
         switch(ret.id)
         {
-        case TKBIO_BUTTON_POWER:
+        case NEOBOX_BUTTON_POWER:
             if(!ret.value.i)
                 break;
 powersave:  if(!powersave)
             {
-                if(tkbio_lock(1))
+                if(neobox_lock(1))
                     printf("Failed to lock screen\n");
                 zero_brightness();
-                tkbio_powersave(1);
+                neobox_powersave(1);
                 powersave = 1;
             }
             else
             {
-                if(tkbio_lock(0))
+                if(neobox_lock(0))
                     printf("Failed to unlock screen\n");
                 restore_brightness();
-                tkbio_switch(0);
-                tkbio_powersave(0);
+                neobox_switch(0);
+                neobox_powersave(0);
                 powersave = 0;
             }
             break;
         }
-        return TKBIO_HANDLER_SUCCESS;
-    case TKBIO_RETURN_SIGNAL:
+        return NEOBOX_HANDLER_SUCCESS;
+    case NEOBOX_RETURN_SIGNAL:
         switch(ret.value.i)
         {
         case SIGCHLD:
@@ -229,15 +229,15 @@ powersave:  if(!powersave)
             goto powersave;
         }
     default:
-        return TKBIO_HANDLER_DEFER;
+        return NEOBOX_HANDLER_DEFER;
     }
     
-    return TKBIO_HANDLER_SUCCESS;
+    return NEOBOX_HANDLER_SUCCESS;
 }
 
 int main(int argc, char* argv[])
 {
-    struct tkbio_config config = tkbio_config_default(&argc, argv);
+    struct neobox_config config = neobox_config_default(&argc, argv);
     int ret, i, count;
     unsigned int seed;
     FILE *file = 0;
@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
         goto cleanup;
     }
     
-    cmd = tkbio_util_parse_cmd(line);
+    cmd = neobox_util_parse_cmd(line);
     line = 0;
     
     if((count = getline(&brightness_dev, &size, file)) == -1)
@@ -329,21 +329,21 @@ int main(int argc, char* argv[])
         }
     }
     
-    config.format = TKBIO_FORMAT_PORTRAIT;
+    config.format = NEOBOX_FORMAT_PORTRAIT;
     config.layout = loginLayout;
-    if((ret = tkbio_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(config)) < 0)
         goto cleanup;
     
     srandom(time(0));
     
-    tkbio_hide(0, 0, 1);
-    tkbio_grab(TKBIO_BUTTON_POWER, 1);
-    tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
-    tkbio_catch_signal(SIGHUP, 0);
+    neobox_hide(0, 0, 1);
+    neobox_grab(NEOBOX_BUTTON_POWER, 1);
+    neobox_catch_signal(SIGCHLD, SA_NOCLDSTOP);
+    neobox_catch_signal(SIGHUP, 0);
     
-    ret = tkbio_run(handler, 0);
+    ret = neobox_run(handler, 0);
     
-    tkbio_finish();
+    neobox_finish();
     
 cleanup:
     if(file)

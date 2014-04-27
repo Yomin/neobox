@@ -25,8 +25,8 @@
 #include <alsa/asoundlib.h>
 #include <pthread.h>
 
-#include "tkbio_def.h"
-#include "tkbio_sound.h"
+#include "neobox_def.h"
+#include "neobox_sound.h"
 
 #define FORMAT_TAG_PCM 0x0001
 
@@ -68,7 +68,7 @@ struct thread_state
 };
 
 
-extern struct tkbio_global tkbio;
+extern struct neobox_global neobox;
 
 
 int audio_read(void *dst, int size, FILE* file)
@@ -79,19 +79,19 @@ int audio_read(void *dst, int size, FILE* file)
     {
         if(ferror(file))
         {
-            VERBOSE(fprintf(stderr, "[TKBIO] Failed to read audio file\n"));
+            VERBOSE(fprintf(stderr, "[NEOBOX] Failed to read audio file\n"));
             return 1;
         }
         else
         {
-            VERBOSE(printf("[TKBIO] Audio file empty\n"));
+            VERBOSE(printf("[NEOBOX] Audio file empty\n"));
             return 2;
         }
     }
     return 0;
 }
 
-void* tkbio_sound_playback(void *vstate)
+void* neobox_sound_playback(void *vstate)
 {
     struct thread_state *state = vstate;
     int ret;
@@ -107,11 +107,11 @@ void* tkbio_sound_playback(void *vstate)
     buf_size = state->period_frames*sample_size;
     buf = malloc(buf_size);
     
-    VERBOSE(printf("[TKBIO] playing sound\n"));
+    VERBOSE(printf("[NEOBOX] playing sound\n"));
     
     if((ret = snd_pcm_prepare(state->pcm_handle)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to prepare audio device: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to prepare audio device: %s\n", snd_strerror(ret)));
         goto exit;
     }
     
@@ -137,13 +137,13 @@ void* tkbio_sound_playback(void *vstate)
             {
                 if((ret = snd_pcm_prepare(state->pcm_handle)) < 0)
                 {
-                    VERBOSE(fprintf(stderr, "[TKBIO] Failed to prepare audio device: %s\n", snd_strerror(ret)));
+                    VERBOSE(fprintf(stderr, "[NEOBOX] Failed to prepare audio device: %s\n", snd_strerror(ret)));
                     goto exit;
                 }
             }
             else if(ret < 0)
             {
-                VERBOSE(fprintf(stderr, "[TKBIO] Failed to write to audio device: %s\n", snd_strerror(ret)));
+                VERBOSE(fprintf(stderr, "[NEOBOX] Failed to write to audio device: %s\n", snd_strerror(ret)));
                 goto exit;
             }
             
@@ -155,7 +155,7 @@ void* tkbio_sound_playback(void *vstate)
         
         if(fseek(state->audio_file, state->audio_pos, SEEK_SET) == -1)
         {
-            VERBOSE(perror("[TKBIO] Failed to seek audio file\n"));
+            VERBOSE(perror("[NEOBOX] Failed to seek audio file\n"));
             goto exit;
         }
         
@@ -182,13 +182,13 @@ void* tkbio_sound_playback(void *vstate)
             {
                 if((ret = snd_pcm_prepare(state->pcm_handle)) < 0)
                 {
-                    VERBOSE(fprintf(stderr, "[TKBIO] Failed to prepare audio device: %s\n", snd_strerror(ret)));
+                    VERBOSE(fprintf(stderr, "[NEOBOX] Failed to prepare audio device: %s\n", snd_strerror(ret)));
                     goto exit;
                 }
             }
             else if(ret < 0)
             {
-                VERBOSE(fprintf(stderr, "[TKBIO] Failed to write to audio device: %s\n", snd_strerror(ret)));
+                VERBOSE(fprintf(stderr, "[NEOBOX] Failed to write to audio device: %s\n", snd_strerror(ret)));
                 goto exit;
             }
             
@@ -211,7 +211,7 @@ exit:
     return 0;
 }
 
-void* tkbio_sound_play(const char *file, int loop, int delay)
+void* neobox_sound_play(const char *file, int loop, int delay)
 {
     pthread_attr_t attr;
     struct thread_state *state;
@@ -230,7 +230,7 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
 	
     if(!(state->audio_file = fopen(file, "r")))
     {
-        VERBOSE(perror("[TKBIO] Failed to open audio file"));
+        VERBOSE(perror("[NEOBOX] Failed to open audio file"));
         goto exit_sfree;
     }
     
@@ -239,13 +239,13 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
     
     if(strncmp("RIFF", riff.id, 4) || strncmp("WAVE", riff.type, 4))
     {
-        VERBOSE(printf("[TKBIO] Unsupported format\n"));
+        VERBOSE(printf("[NEOBOX] Unsupported format\n"));
         goto exit_fclose;
     }
     
     if((state->audio_pos = ftell(state->audio_file)) == -1)
     {
-        VERBOSE(perror("[TKBIO] Failed to get audio file position"));
+        VERBOSE(perror("[NEOBOX] Failed to get audio file position"));
         goto exit_fclose;
     }
     
@@ -256,7 +256,7 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
         case 1:
             goto exit_fclose;
         case 2:
-            VERBOSE(printf("[TKBIO] 'fmt' header not found\n"));
+            VERBOSE(printf("[NEOBOX] 'fmt' header not found\n"));
             goto exit_fclose;
         }
         
@@ -273,7 +273,7 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
     
     if(fseek(state->audio_file, state->audio_pos, SEEK_SET) == -1)
     {
-        VERBOSE(perror("[TKBIO] Failed to seek audio file\n"));
+        VERBOSE(perror("[NEOBOX] Failed to seek audio file\n"));
         goto exit_fclose;
     }
     
@@ -284,7 +284,7 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
         case 1:
             goto exit_fclose;
         case 2:
-            VERBOSE(printf("[TKBIO] 'data' header not found\n"));
+            VERBOSE(printf("[NEOBOX] 'data' header not found\n"));
             goto exit_fclose;
         }
         
@@ -296,13 +296,13 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
     
     if((state->audio_pos = ftell(state->audio_file)) == -1)
     {
-        VERBOSE(perror("[TKBIO] Failed to get audio file position"));
+        VERBOSE(perror("[NEOBOX] Failed to get audio file position"));
         goto exit_fclose;
     }
     
     if(state->audio_format.format_tag != FORMAT_TAG_PCM)
     {
-        VERBOSE(printf("[TKBIO] Unsupported format tag\n"));
+        VERBOSE(printf("[NEOBOX] Unsupported format tag\n"));
         goto exit_fclose;
     }
     
@@ -315,70 +315,70 @@ void* tkbio_sound_play(const char *file, int loop, int delay)
         format = SND_PCM_FORMAT_S16_LE;
         break;
     default:
-        VERBOSE(printf("[TKBIO] Unsupported bits per sample\n"));
+        VERBOSE(printf("[NEOBOX] Unsupported bits per sample\n"));
         goto exit_fclose;
     }
     
     if((ret = snd_pcm_open(&state->pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to open audio device: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to open audio device: %s\n", snd_strerror(ret)));
         goto exit_fclose;
     }
     
     if((ret = snd_pcm_hw_params_malloc(&params)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to alloc hw_param: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to alloc hw_param: %s\n", snd_strerror(ret)));
         goto exit_pclose;
     }
     
     if((ret = snd_pcm_hw_params_any(state->pcm_handle, params)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to init hw_param: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to init hw_param: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params_set_access(state->pcm_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set access: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set access: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params_set_format(state->pcm_handle, params, format)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set format: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set format: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params_set_channels(state->pcm_handle, params, state->audio_format.channels)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set channels: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set channels: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params_set_rate_near(state->pcm_handle, params, &state->audio_format.samples_per_sec, 0)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set rate: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set rate: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params(state->pcm_handle, params)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to set hw_params: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set hw_params: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     if((ret = snd_pcm_hw_params_get_period_size(params, &state->period_frames, 0)) < 0)
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to get period size: %s\n", snd_strerror(ret)));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to get period size: %s\n", snd_strerror(ret)));
         goto exit_hfree;
     }
     
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
      
-    if(pthread_create(&state->thread, &attr, tkbio_sound_playback, state))
+    if(pthread_create(&state->thread, &attr, neobox_sound_playback, state))
     {
-        VERBOSE(fprintf(stderr, "[TKBIO] Failed to create pthread\n"));
+        VERBOSE(fprintf(stderr, "[NEOBOX] Failed to create pthread\n"));
         goto exit_afree;
     }
     
@@ -403,7 +403,7 @@ exit_sfree:
     return 0;
 }
 
-void tkbio_sound_stop(void *thread)
+void neobox_sound_stop(void *thread)
 {
     struct thread_state *state = thread;
     

@@ -32,9 +32,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <tkbio.h>
-#include <tkbio_util.h>
-#include <tkbio_select.h>
+#include <neobox.h>
+#include <neobox_util.h>
+#include <neobox_select.h>
 
 #include "menu_layout.h"
 
@@ -84,33 +84,33 @@ void set_apps(int draw)
         {
             if(apps[j].pid)
             {
-                tkbio_select_set_active(i, 0, 1, 0);
-                tkbio_select_set_locked(i, 0, 1);
+                neobox_select_set_active(i, 0, 1, 0);
+                neobox_select_set_locked(i, 0, 1);
             }
             else
             {
-                tkbio_select_set_active(i, 0, 0, 0);
-                tkbio_select_set_locked(i, 0, 0);
+                neobox_select_set_active(i, 0, 0, 0);
+                neobox_select_set_locked(i, 0, 0);
             }
-            tkbio_select_set_name(i, 0, apps[j].name, draw);
+            neobox_select_set_name(i, 0, apps[j].name, draw);
         }
         else
         {
-            tkbio_select_set_active(i, 0, 0, 0);
-            tkbio_select_set_locked(i, 0, 1);
-            tkbio_select_set_name(i, 0, 0, draw);
+            neobox_select_set_active(i, 0, 0, 0);
+            neobox_select_set_locked(i, 0, 1);
+            neobox_select_set_name(i, 0, 0, draw);
         }
     }
 }
 
-int handler(struct tkbio_return ret, void *state)
+int handler(struct neobox_return ret, void *state)
 {
     pid_t pid;
     int i;
     
     switch(ret.type)
     {
-    case TKBIO_RETURN_CHAR:
+    case NEOBOX_RETURN_CHAR:
         switch(ret.value.c.c[0])
         {
         case 'k':
@@ -130,30 +130,30 @@ int handler(struct tkbio_return ret, void *state)
             }
             break;
         }
-        return TKBIO_HANDLER_SUCCESS;
-    case TKBIO_RETURN_INT:
+        return NEOBOX_HANDLER_SUCCESS;
+    case NEOBOX_RETURN_INT:
         if(!ret.value.i)
             break;
         if(!apps[apppos+ret.id].pid)
         {
             if(exec(apppos+ret.id))
                 break;
-            tkbio_select_set_locked(ret.id, 0, 1);
+            neobox_select_set_locked(ret.id, 0, 1);
         }
         else
-            tkbio_switch(apps[apppos+ret.id].pid);
-        return TKBIO_HANDLER_SUCCESS;
-    case TKBIO_RETURN_SYSTEM:
-        if(ret.value.i == TKBIO_SYSTEM_MENU)
-            return TKBIO_HANDLER_SUCCESS;
+            neobox_switch(apps[apppos+ret.id].pid);
+        return NEOBOX_HANDLER_SUCCESS;
+    case NEOBOX_RETURN_SYSTEM:
+        if(ret.value.i == NEOBOX_SYSTEM_MENU)
+            return NEOBOX_HANDLER_SUCCESS;
         break;
-    case TKBIO_RETURN_DEACTIVATE:
+    case NEOBOX_RETURN_DEACTIVATE:
         active = 0;
         break;
-    case TKBIO_RETURN_ACTIVATE:
+    case NEOBOX_RETURN_ACTIVATE:
         active = 1;
         break;
-    case TKBIO_RETURN_SIGNAL:
+    case NEOBOX_RETURN_SIGNAL:
         switch(ret.value.i)
         {
         case SIGCHLD:
@@ -166,17 +166,17 @@ int handler(struct tkbio_return ret, void *state)
                     apps[i].pid = 0;
                     if(i-apppos < 10)
                     {
-                        tkbio_select_set_locked(i-apppos, 0, 0);
-                        tkbio_select_set_active(i-apppos, 0, 0, active);
+                        neobox_select_set_locked(i-apppos, 0, 0);
+                        neobox_select_set_active(i-apppos, 0, 0, active);
                     }
                     break;
                 }
-            return TKBIO_HANDLER_SUCCESS;
+            return NEOBOX_HANDLER_SUCCESS;
         }
         break;
     }
     
-    return TKBIO_HANDLER_DEFER;
+    return NEOBOX_HANDLER_DEFER;
 }
 
 int init_apps(const char *file)
@@ -218,7 +218,7 @@ int init_apps(const char *file)
         *ptr = 0;
         apps[appcount].name = line;
         apps[appcount].cmd = ptr+1;
-        apps[appcount].argv = tkbio_util_parse_cmd(ptr+1);
+        apps[appcount].argv = neobox_util_parse_cmd(ptr+1);
         apps[appcount].argv[0] = line;
         appcount++;
         line = 0;
@@ -260,13 +260,13 @@ int usage(const char *name)
 
 int main(int argc, char* argv[])
 {
-    struct tkbio_config config = tkbio_config_default(&argc, argv);
+    struct neobox_config config = neobox_config_default(&argc, argv);
     int err, opt, ret;
     
-    config.format = TKBIO_FORMAT_PORTRAIT;
+    config.format = NEOBOX_FORMAT_PORTRAIT;
     config.layout = menuLayout;
     
-    if((ret = tkbio_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(config)) < 0)
         return ret;
     
     active = 1;
@@ -289,18 +289,18 @@ int main(int argc, char* argv[])
     
     if((err = init_apps(argv[optind])))
     {
-        tkbio_finish();
+        neobox_finish();
         return err;
     }
     
     set_apps(0);
     
-    tkbio_hide(0, 1, 1);
-    tkbio_catch_signal(SIGCHLD, SA_NOCLDSTOP);
+    neobox_hide(0, 1, 1);
+    neobox_catch_signal(SIGCHLD, SA_NOCLDSTOP);
     
-    ret = tkbio_run(handler, 0);
+    ret = neobox_run(handler, 0);
     
-    tkbio_finish();
+    neobox_finish();
     
     free_apps();
     

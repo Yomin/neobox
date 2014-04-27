@@ -27,9 +27,9 @@
 #include <time.h>
 #include <string.h>
 
-#include "tkbio.h"
-#include "tkbio_nop.h"
-#include "tkbio_button.h"
+#include "neobox.h"
+#include "neobox_nop.h"
+#include "neobox_button.h"
 #include "2048_layout.h"
 
 #define VECTOR_UP    0
@@ -71,9 +71,9 @@ static inline void draw(int y, int x, int id)
     }
     
     if(nop)
-        tkbio_nop_set_name(id, 0, board[y*4+x].name, visible);
+        neobox_nop_set_name(id, 0, board[y*4+x].name, visible);
     else
-        tkbio_button_set_name(id, 0, board[y*4+x].name, visible);
+        neobox_button_set_name(id, 0, board[y*4+x].name, visible);
 }
 
 static inline void numberwang(int vec, int pos)
@@ -130,14 +130,14 @@ static inline void merge(int vec, int pos1, int pos2)
         vector[vec][pos1]->num *= 2;
         snprintf(vector[vec][pos1]->name, 10, "%i", vector[vec][pos1]->num);
         if(vector[vec][pos1]->num == 2048)
-            tkbio_button_set_name(42, 0, "!! 2048 !!", visible);
+            neobox_button_set_name(42, 0, "!! 2048 !!", visible);
         break;
     case MODE_NUMBERWANG:
-        tkbio_button_set_name(42, 0, "That's Numberwang!", visible);
+        neobox_button_set_name(42, 0, "That's Numberwang!", visible);
         vector[vec][pos1]->num *= 2;
         numberwang(vec, pos1);
         if(vector[vec][pos1]->num == 2048)
-            tkbio_button_set_name(42, 0, "You're the Numberwang!", visible);
+            neobox_button_set_name(42, 0, "You're the Numberwang!", visible);
         break;
     }
     vector[vec][pos1]->flag = vector[vec][pos2]->flag = 1;
@@ -240,13 +240,13 @@ void rotate(int pos)
     switch(pos)
     {
     case 0:
-        tkbio_button_set_name(42, 0, "Let's rotate the board!", visible);
-        tkbio_timer(1, 0, 500);
+        neobox_button_set_name(42, 0, "Let's rotate the board!", visible);
+        neobox_timer(1, 0, 500);
         rotating = 1;
         break;
     case 13:
-        tkbio_button_set_name(42, 0, "Let's play Numberwang!", visible);
-        tkbio_timer(0, 5*60, 0);
+        neobox_button_set_name(42, 0, "Let's play Numberwang!", visible);
+        neobox_timer(0, 5*60, 0);
         rotating = 0;
         break;
     default:
@@ -254,21 +254,21 @@ void rotate(int pos)
             draw(map_outer[i]/4, map_outer[i]%4, map_outer[(i+pos)%12]);
         for(i=0; i<4; i++)
             draw(map_inner[i]/4, map_inner[i]%4, map_inner[(i+pos)%4]);
-        tkbio_timer(pos+1, 0, 500);
+        neobox_timer(pos+1, 0, 500);
     }
 }
 
-int handler(struct tkbio_return ret, void *state)
+int handler(struct neobox_return ret, void *state)
 {
     int change;
     
     switch(ret.type)
     {
-    case TKBIO_RETURN_CHAR:
+    case NEOBOX_RETURN_CHAR:
         if(rotating)
-            return TKBIO_HANDLER_SUCCESS;
+            return NEOBOX_HANDLER_SUCCESS;
         
-        tkbio_button_set_name(42, 0, 0, visible);
+        neobox_button_set_name(42, 0, 0, visible);
         snprintf(board[last_y*4+last_x].name, 10,
             "%i", board[last_y*4+last_x].num);
         draw(last_y, last_x, -1);
@@ -283,19 +283,19 @@ int handler(struct tkbio_return ret, void *state)
             if(check && used > 1)
             {
                 check = 0;
-                tkbio_button_set_name(42, 0, "Really?", visible);
+                neobox_button_set_name(42, 0, "Really?", visible);
             }
             else
             {
                 reset();
-                tkbio_button_set_name(42, 0, 0, visible);
+                neobox_button_set_name(42, 0, 0, visible);
             }
-            return TKBIO_HANDLER_SUCCESS;
+            return NEOBOX_HANDLER_SUCCESS;
         case 23: // mode button
             if(check && used > 1)
             {
                 check = 0;
-                tkbio_button_set_name(42, 0, "Really?", visible);
+                neobox_button_set_name(42, 0, "Really?", visible);
             }
             else
             {
@@ -303,17 +303,17 @@ int handler(struct tkbio_return ret, void *state)
                 switch(mode)
                 {
                 case MODE_2048:
-                    tkbio_button_set_name(42, 0, "2048", visible);
-                    tkbio_timer_remove(0);
+                    neobox_button_set_name(42, 0, "2048", visible);
+                    neobox_timer_remove(0);
                     break;
                 case MODE_NUMBERWANG:
-                    tkbio_button_set_name(42, 0, "Numberwang", visible);
-                    tkbio_timer(0, 5*60, 0);
+                    neobox_button_set_name(42, 0, "Numberwang", visible);
+                    neobox_timer(0, 5*60, 0);
                     break;
                 }
                 reset();
             }
-            return TKBIO_HANDLER_SUCCESS;
+            return NEOBOX_HANDLER_SUCCESS;
         }
         
         check = 1;
@@ -324,36 +324,36 @@ int handler(struct tkbio_return ret, void *state)
             switch(mode)
             {
             case MODE_2048:
-                tkbio_button_set_name(42, 0, "Game Over", visible);
+                neobox_button_set_name(42, 0, "Game Over", visible);
                 break;
             case MODE_NUMBERWANG:
-                tkbio_button_set_name(42, 0, "You've been Wangernumbed!", visible);
+                neobox_button_set_name(42, 0, "You've been Wangernumbed!", visible);
                 break;
             }
-        return TKBIO_HANDLER_SUCCESS;
-    case TKBIO_RETURN_TIMER:
+        return NEOBOX_HANDLER_SUCCESS;
+    case NEOBOX_RETURN_TIMER:
         rotate(ret.id);
-        return TKBIO_HANDLER_SUCCESS;
-    case TKBIO_RETURN_ACTIVATE:
+        return NEOBOX_HANDLER_SUCCESS;
+    case NEOBOX_RETURN_ACTIVATE:
         visible = 1;
-        return TKBIO_HANDLER_DEFER;
-    case TKBIO_RETURN_DEACTIVATE:
+        return NEOBOX_HANDLER_DEFER;
+    case NEOBOX_RETURN_DEACTIVATE:
         visible = 0;
-        return TKBIO_HANDLER_DEFER;
+        return NEOBOX_HANDLER_DEFER;
     default:
-        return TKBIO_HANDLER_DEFER;
+        return NEOBOX_HANDLER_DEFER;
     }
 }
 
 int main(int argc, char* argv[])
 {
-    struct tkbio_config config = tkbio_config_default(&argc, argv);
+    struct neobox_config config = neobox_config_default(&argc, argv);
     int ret, y, x;
     
-    config.format = TKBIO_FORMAT_PORTRAIT;
+    config.format = NEOBOX_FORMAT_PORTRAIT;
     config.layout = app2048Layout;
     
-    if((ret = tkbio_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(config)) < 0)
         return ret;
     
     srandom(time(0));
@@ -369,11 +369,11 @@ int main(int argc, char* argv[])
     
     add();
     
-    tkbio_button_set_name(42, 0, "2048", visible);
+    neobox_button_set_name(42, 0, "2048", visible);
     
-    ret = tkbio_run(handler, 0);
+    ret = neobox_run(handler, 0);
     
-    tkbio_finish();
+    neobox_finish();
     
     return 0;
 }
