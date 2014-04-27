@@ -1,14 +1,15 @@
 
-.PHONY: all, debug, clean, touch, sim
+.PHONY: all, debug, clean, touch, exec
 
 NAME = tsp
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 
 all: DEBUG =
-all: CFLAGS = -D NDEBUG
+all: CFLAGS := $(CFLAGS) -D NDEBUG
 all: touch $(NAME)
 
 debug: DEBUG = yes
-debug: CFLAGS = -ggdb
+debug: CFLAGS := $(CFLAGS) -ggdb
 debug: touch $(NAME)
 
 clean:
@@ -16,12 +17,12 @@ clean:
 
 
 $(NAME): $(NAME).c
-	gcc -Wall $(CFLAGS) -o $@ $<
+	gcc $(CFLAGS) -o $@ $<
 
 
 touch:
 	$(shell [ -f debug -a -z "$(DEBUG)" ] && { touch $(NAME).c; rm debug; })
 	$(shell [ ! -f debug -a -n "$(DEBUG)" ] && { touch $(NAME).c; touch debug; })
 
-sim: debug
+exec: debug
 	./$(NAME) -f -d ../sim/ config_sim

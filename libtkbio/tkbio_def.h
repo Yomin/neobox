@@ -25,9 +25,8 @@
 
 #include <linux/fb.h>
 #include <sys/queue.h>
-#include <sys/time.h>
-#include <alg/vector.h>
 
+#include <alg/vector.h>
 #include <tsp.h>
 
 #include "tkbio.h"

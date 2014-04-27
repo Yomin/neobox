@@ -3,7 +3,7 @@
 LIBTKBIOPATH = ../libtkbio
 LIBTKBIO = $(LIBTKBIOPATH)/libtkbio.a
 
-CFLAGS := $(CFLAGS) -Wall -pedantic -std=c99
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 INCLUDES = -I$(LIBTKBIOPATH)
 SOURCES = *.c
 LIBS = -L$(LIBTKBIOPATH) -ltkbio $(shell make -sC $(LIBTKBIOPATH) libs)

@@ -20,28 +20,25 @@
  * THE SOFTWARE.
  */
 
+
 #define _GNU_SOURCE
-#define _BSD_SOURCE
-#define _POSIX_C_SOURCE 199309L
+#include <poll.h>
 
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <linux/fb.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
 #include <getopt.h>
-#include <libgen.h>
+#include <sys/time.h>
 #include <time.h>
 
-#include "tkbio.h"
 #include "tkbio_def.h"
 #include "tkbio_fb.h"
 

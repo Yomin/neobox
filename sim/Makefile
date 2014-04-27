@@ -2,7 +2,7 @@
 .PHONY: all, debug, clean, touch
 
 NAME = sim
-CFLAGS = $$(pkg-config --cflags --libs gtk+-3.0) -lrt
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99 $$(pkg-config --cflags --libs gtk+-3.0) -lrt
 
 all: DEBUG =
 all: CFLAGS := $(CFLAGS) -D NDEBUG
@@ -17,7 +17,7 @@ clean:
 
 
 $(NAME): $(NAME).c
-	gcc -Wall $(CFLAGS) -o $@ $<
+	gcc $(CFLAGS) -o $@ $<
 
 
 touch:

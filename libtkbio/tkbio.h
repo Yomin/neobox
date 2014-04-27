@@ -23,13 +23,10 @@
 #ifndef __TKBIO_H__
 #define __TKBIO_H__
 
-#ifndef _POSIX_SOURCE
-#   define _POSIX_C_SOURCE 199398L
-#endif
-
 #include <sys/types.h>
 #include <poll.h>
 #include <signal.h>
+
 #include "tkbio_layout.h"
 
 #define TKBIO_ERROR_RPC_OPEN    -1

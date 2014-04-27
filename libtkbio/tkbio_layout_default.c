@@ -20,7 +20,7 @@
  * THE SOFTWARE.
  */
 
-#include "tkbio.h"
+#include "tkbio_def.h"
 #include "tkbio_layout_default.h"
 
 const unsigned char tkbio_colors[][4] =

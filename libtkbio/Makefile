@@ -9,7 +9,7 @@ NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
 INCLUDES = -I$(LIBALGPATH) -I$(TSP)
-CFLAGS := $(CFLAGS) -Wall -pedantic -std=c99
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 
 all: DEBUG =
 all: CFLAGS := $(CFLAGS) -D NDEBUG
