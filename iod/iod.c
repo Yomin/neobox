@@ -36,7 +36,7 @@
 #include <sys/ioctl.h>
 #include <linux/input.h>
 
-#include "tsp.h"
+#include "iod.h"
 
 #define BYTES_PER_CMD   16
 #define MIN_PIXEL       100
@@ -68,7 +68,7 @@ struct pollfd *pfds;
 int open_rpc_socket(int *sock, struct sockaddr_un *addr)
 {
     addr->sun_family = AF_UNIX;
-    sprintf(addr->sun_path, "%s/%s", pwd, TSP_RPC);
+    sprintf(addr->sun_path, "%s/%s", pwd, IOD_RPC);
     
     if((*sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
@@ -109,11 +109,11 @@ void add_client(int fd)
     DEBUG(printf("Client added [%i]\n", fd));
 }
 
-int send_client(unsigned char event, union tsp_value value, struct chain_socket *cs)
+int send_client(unsigned char event, union iod_value value, struct chain_socket *cs)
 {
-    struct tsp_event evnt;
+    struct iod_event evnt;
     char *ptr = (char*)&evnt;
-    int count, size = sizeof(struct tsp_event);
+    int count, size = sizeof(struct iod_event);
     
     if(client_list.cqh_first == (void*)&client_list)
         return 0;
@@ -140,7 +140,7 @@ int send_client(unsigned char event, union tsp_value value, struct chain_socket 
 
 void send_client_cord(unsigned char event, short int y, short int x, struct chain_socket *cs)
 {
-    union tsp_value value;
+    union iod_value value;
     
     value.cord.y = y;
     value.cord.x = x;
@@ -150,17 +150,17 @@ void send_client_cord(unsigned char event, short int y, short int x, struct chai
 
 void send_client_status(unsigned char event, int status, struct chain_socket *cs)
 {
-    union tsp_value value;
+    union iod_value value;
     
     value.status = status;
     
     send_client(event, value, cs);
 }
 
-int recv_client(int sock, struct tsp_cmd *cmd)
+int recv_client(int sock, struct iod_cmd *cmd)
 {
     char *ptr = (char*)cmd;
-    int count, size = sizeof(struct tsp_cmd);
+    int count, size = sizeof(struct iod_cmd);
     
     while((count = recv(sock, ptr, size, 0)) != size)
     {
@@ -303,7 +303,7 @@ int switch_client(int cmd, int pos, pid_t pid)
     
     switch(cmd)
     {
-    case TSP_SWITCH_PID:
+    case IOD_SWITCH_PID:
         if(pid)
         {
             if(cs->pid == pid)
@@ -321,14 +321,14 @@ int switch_client(int cmd, int pos, pid_t pid)
                 return 0;
         }
         break;
-    case TSP_SWITCH_PREV:
+    case IOD_SWITCH_PREV:
         dir = -1;
-    case TSP_SWITCH_NEXT:
+    case IOD_SWITCH_NEXT:
         while((cs2 = client_list_rotate(dir))->hide && cs != cs2);
         if(cs == cs2)
             return 0;
         break;
-    case TSP_SWITCH_HIDDEN:
+    case IOD_SWITCH_HIDDEN:
         if(!(cs2 = client_list_rotate_next(1)) || cs == cs2)
             return 0;
         break;
@@ -508,13 +508,13 @@ int main(int argc, char* argv[])
     struct chain_socket *aux_grabber = 0, *power_grabber = 0;
     
     struct input_event input;
-    struct tsp_cmd cmd;
+    struct iod_cmd cmd;
     struct chain_socket *cs;
     
     size_t size;
     
     y = x = screen_status = aux_pressed = power_pressed = 0;
-    pwd = TSP_PWD;
+    pwd = IOD_PWD;
     
     while((opt = getopt(argc, argv, "fd:")) != -1)
     {
@@ -717,15 +717,15 @@ int main(int argc, char* argv[])
                     {
                     case 0:
                         DEBUG(printf("Touchscreen released (%i,%i)\n", y, x));
-                        send_client_cord(TSP_EVENT_RELEASED, y, x, 0);
+                        send_client_cord(IOD_EVENT_RELEASED, y, x, 0);
                         break;
                     case 1:
                         DEBUG(printf("Touchscreen pressed (%i,%i)\n", y, x));
-                        send_client_cord(TSP_EVENT_PRESSED, y, x, 0);
+                        send_client_cord(IOD_EVENT_PRESSED, y, x, 0);
                         screen_status = 2;
                         break;
                     case 2:
-                        send_client_cord(TSP_EVENT_MOVED, y, x, 0);
+                        send_client_cord(IOD_EVENT_MOVED, y, x, 0);
                         break;
                     }
                     break;
@@ -765,7 +765,7 @@ int main(int argc, char* argv[])
                     DEBUG(printf("AUX %s\n",
                         aux_pressed ? "pressed" : "released"));
                     cs = aux_grabber ? aux_grabber : 0;
-                    send_client_status(TSP_EVENT_AUX, aux_pressed, cs);
+                    send_client_status(IOD_EVENT_AUX, aux_pressed, cs);
                     break;
                 }
                 break;
@@ -805,7 +805,7 @@ int main(int argc, char* argv[])
                     DEBUG(printf("Power %s\n",
                         power_pressed ? "pressed" : "released"));
                     cs = power_grabber ? power_grabber : 0;
-                    send_client_status(TSP_EVENT_POWER, power_pressed, cs);
+                    send_client_status(IOD_EVENT_POWER, power_pressed, cs);
                     break;
                 }
                 break;
@@ -833,9 +833,9 @@ int main(int argc, char* argv[])
             cs = client_list.cqh_first;
             add_client(client);
             if(cs != (void*)&client_list)
-                send_client_status(TSP_EVENT_DEACTIVATED, 0, cs);
+                send_client_status(IOD_EVENT_DEACTIVATED, 0, cs);
             else
-                send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
+                send_client_status(IOD_EVENT_ACTIVATED, 0, 0);
         }
         else
         {
@@ -864,7 +864,7 @@ remove:             if(cs == aux_grabber)
                         lock = 0;
                     }
                     if(rem_client(x, cs))
-                        send_client_status(TSP_EVENT_ACTIVATED, 0, 0);
+                        send_client_status(IOD_EVENT_ACTIVATED, 0, 0);
                     break;
                 }
                 else if(pfds[x].revents & POLLIN)
@@ -873,10 +873,10 @@ remove:             if(cs == aux_grabber)
                         break;
                     switch(cmd.cmd)
                     {
-                    case TSP_CMD_REGISTER:
+                    case IOD_CMD_REGISTER:
                         register_client(x, cmd.pid);
                         break;
-                    case TSP_CMD_REMOVE:
+                    case IOD_CMD_REMOVE:
                         if((cs = find_client(&x, cmd.pid)))
                         {
                             if(cs->sock == pfds[x].fd)
@@ -886,17 +886,17 @@ remove:             if(cs == aux_grabber)
                                 DEBUG(printf("Client remove [%i] %i\n",
                                     cs->sock, cs->pid));
                                 send_client_status(
-                                    TSP_EVENT_REMOVED, 0, cs);
+                                    IOD_EVENT_REMOVED, 0, cs);
                             }
                         }
                         break;
-                    case TSP_CMD_SWITCH:
+                    case IOD_CMD_SWITCH:
                         cs = client_list.cqh_first;
                         if(switch_client(cmd.value, x, cmd.pid))
                             send_client_status(
-                                TSP_EVENT_DEACTIVATED, 0, cs);
+                                IOD_EVENT_DEACTIVATED, 0, cs);
                         break;
-                    case TSP_CMD_LOCK:
+                    case IOD_CMD_LOCK:
                         cs = find_client(&x, 0);
                         if(!lock || cs->lock)
                         {
@@ -905,29 +905,29 @@ remove:             if(cs == aux_grabber)
                                 lock ? "locked" : "unlocked",
                                 x, cs->pid));
                             send_client_status(
-                                TSP_EVENT_LOCK, TSP_SUCCESS_MASK, cs);
+                                IOD_EVENT_LOCK, IOD_SUCCESS_MASK, cs);
                         }
                         else
                             send_client_status(
-                                TSP_EVENT_LOCK, 0, cs);
+                                IOD_EVENT_LOCK, 0, cs);
                         break;
-                    case TSP_CMD_HIDE:
+                    case IOD_CMD_HIDE:
                         hide_client(x, cmd.pid,
-                            cmd.value & ~TSP_HIDE_MASK,
-                            cmd.value & TSP_HIDE_MASK);
+                            cmd.value & ~IOD_HIDE_MASK,
+                            cmd.value & IOD_HIDE_MASK);
                         break;
-                    case TSP_CMD_ACK:
+                    case IOD_CMD_ACK:
                         switch(cmd.value)
                         {
-                        case TSP_EVENT_DEACTIVATED:
+                        case IOD_EVENT_DEACTIVATED:
                             cs = client_list.cqh_first;
                             DEBUG(printf("Client switched [%i] %i -> [%i] %i\n",
                                 pfds[x].fd, find_client(&x, 0)->pid,
                                 cs->sock, cs->pid));
                             send_client_status(
-                                TSP_EVENT_ACTIVATED, 0, 0);
+                                IOD_EVENT_ACTIVATED, 0, 0);
                             break;
-                        case TSP_EVENT_REMOVED:
+                        case IOD_EVENT_REMOVED:
                             cs = find_client(&x, 0);
                             goto remove;
                         default:
@@ -936,14 +936,14 @@ remove:             if(cs == aux_grabber)
                             break;
                         }
                         break;
-                    case TSP_CMD_GRAB:
+                    case IOD_CMD_GRAB:
                         cs = find_client(&x, 0);
-                        switch(cmd.value & ~TSP_GRAB_MASK)
+                        switch(cmd.value & ~IOD_GRAB_MASK)
                         {
-                        case TSP_GRAB_AUX:
+                        case IOD_GRAB_AUX:
                             if(!aux_grabber || cs == aux_grabber)
                             {
-                                if(cmd.value & TSP_GRAB_MASK)
+                                if(cmd.value & IOD_GRAB_MASK)
                                 {
                                     DEBUG(printf("AUX grabbed [%i] %i\n",
                                         cs->sock, cs->pid));
@@ -955,17 +955,17 @@ remove:             if(cs == aux_grabber)
                                         cs->sock, cs->pid));
                                     aux_grabber = 0;
                                 }
-                                send_client_status(TSP_EVENT_GRAB,
-                                    TSP_SUCCESS_MASK|TSP_GRAB_AUX, cs);
+                                send_client_status(IOD_EVENT_GRAB,
+                                    IOD_SUCCESS_MASK|IOD_GRAB_AUX, cs);
                             }
                             else
-                                send_client_status(TSP_EVENT_GRAB,
-                                    TSP_GRAB_AUX, cs);
+                                send_client_status(IOD_EVENT_GRAB,
+                                    IOD_GRAB_AUX, cs);
                             break;
-                        case TSP_GRAB_POWER:
+                        case IOD_GRAB_POWER:
                             if(!power_grabber || cs == power_grabber)
                             {
-                                if(cmd.value & TSP_GRAB_MASK)
+                                if(cmd.value & IOD_GRAB_MASK)
                                 {
                                     DEBUG(printf("Power grabbed [%i] %i\n",
                                         cs->sock, cs->pid));
@@ -977,16 +977,16 @@ remove:             if(cs == aux_grabber)
                                         cs->sock, cs->pid));
                                     power_grabber = 0;
                                 }
-                                send_client_status(TSP_EVENT_GRAB,
-                                    TSP_SUCCESS_MASK|TSP_GRAB_POWER, cs);
+                                send_client_status(IOD_EVENT_GRAB,
+                                    IOD_SUCCESS_MASK|IOD_GRAB_POWER, cs);
                             }
                             else
-                                send_client_status(TSP_EVENT_GRAB,
-                                    TSP_GRAB_POWER, cs);
+                                send_client_status(IOD_EVENT_GRAB,
+                                    IOD_GRAB_POWER, cs);
                             break;
                         }
                         break;
-                    case TSP_CMD_POWERSAVE:
+                    case IOD_CMD_POWERSAVE:
                         DEBUG(printf("Powersave %s broadcast\n",
                             cmd.value ? "on" : "off"));
                         cs = client_list.cqh_first;
@@ -994,7 +994,7 @@ remove:             if(cs == aux_grabber)
                         {
                             if(cs->sock != pfds[x].fd)
                                 send_client_status(
-                                    TSP_EVENT_POWERSAVE, cmd.value, cs);
+                                    IOD_EVENT_POWERSAVE, cmd.value, cs);
                             cs = cs->chain.cqe_next;
                         }
                         break;

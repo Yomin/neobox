@@ -35,7 +35,7 @@ touch:
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBTKBIO); })
 
 exec: sim
-	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-tsp ../sim --tkbio-verbose 18930 10 /sys/class/backlight/intel_backlight/brightness
+	./$(NAME) --tkbio-fb ../sim/fb.ipc --tkbio-iod ../sim --tkbio-verbose 18930 10 /sys/class/backlight/intel_backlight/brightness
 
 sync:
 	@make -C .. sync

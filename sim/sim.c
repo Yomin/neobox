@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
         return 3;
     }
     
-    printf("Waiting for tsp\n");
+    printf("Waiting for iod\n");
     
     if((screen = open(SCREEN_DEV, O_WRONLY)) == -1)
     {

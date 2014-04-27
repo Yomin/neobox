@@ -82,7 +82,7 @@
 
 struct tkbio_config
 {
-    char *fb, *tsp;
+    char *fb, *iod;
     struct tkbio_layout layout;
     int format;
     int options;

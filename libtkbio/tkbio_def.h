@@ -27,7 +27,7 @@
 #include <sys/queue.h>
 
 #include <alg/vector.h>
-#include <tsp.h>
+#include <iod.h>
 
 #include "tkbio.h"
 
@@ -56,7 +56,7 @@
 #define TIMER_USER   1
 
 #define EVENT_NOP   0
-#define EVENT_TSP   1
+#define EVENT_IOD   1
 #define EVENT_TKBIO 2
 
 struct tkbio_event
@@ -64,7 +64,7 @@ struct tkbio_event
     char type;
     union
     {
-        struct tsp_event tsp;
+        struct iod_event iod;
         struct tkbio_return tkbio;
     } event;
 };
@@ -114,7 +114,7 @@ struct tkbio_parser
     unsigned char toggle; // active toggle buttons
 };
 
-struct tkbio_tsp
+struct tkbio_iod
 {
     const char *dir;
     int sock;
@@ -147,7 +147,7 @@ struct tkbio_global
     int sleep;          // sleep status
     
     struct tkbio_fb fb;
-    struct tkbio_tsp tsp;
+    struct tkbio_iod iod;
     struct tkbio_layout layout;
     struct tkbio_parser parser;
     struct tkbio_save **save; // button save array

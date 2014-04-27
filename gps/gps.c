@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
         }
         else if(pfds[0].revents & POLLHUP)
         {
-            printf("Failed to poll tsp socket");
+            printf("Failed to poll iod socket");
             ret = 2;
             break;
         }

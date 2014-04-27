@@ -1,7 +1,7 @@
 
 .PHONY: all, debug, clean, touch, exec
 
-NAME = tsp
+NAME = iod
 CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 
 all: DEBUG =

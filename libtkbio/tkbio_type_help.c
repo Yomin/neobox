@@ -22,8 +22,6 @@
 
 #include <sys/socket.h>
 
-#include <tsp.h>
-
 #include "tkbio_def.h"
 #include "tkbio_type_help.h"
 

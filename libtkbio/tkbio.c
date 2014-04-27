@@ -87,7 +87,7 @@
 
 struct tkbio_global tkbio;
 
-int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value);
+int tkbio_iod_cmd(unsigned char cmd, pid_t pid, int value);
 int tkbio_handle_timer(unsigned char *id, unsigned char *type);
 
 void tkbio_signal_handler(int signal)
@@ -195,10 +195,10 @@ void tkbio_queue_event(char type, void *event)
     
     switch(type)
     {
-    case EVENT_TSP:
+    case EVENT_IOD:
         cq = malloc(sizeof(struct tkbio_chain_queue));
         cq->event.type = type;
-        cq->event.event.tsp = *(struct tsp_event*)event;
+        cq->event.event.iod = *(struct iod_event*)event;
         break;
     case EVENT_TKBIO:
         if(((struct tkbio_return*)event)->type == TKBIO_RETURN_NOP)
@@ -334,7 +334,7 @@ void tkbio_init_save_data()
     }
 }
 
-int tkbio_tsp_connect(int tries)
+int tkbio_iod_connect(int tries)
 {
     struct sockaddr_un addr;
     int reuse = 1;
@@ -342,26 +342,26 @@ int tkbio_tsp_connect(int tries)
     VERBOSE(printf("[TKBIO] Connecting to rpc socket\n"));
     
     addr.sun_family = AF_UNIX;
-    sprintf(addr.sun_path, "%s/%s", tkbio.tsp.dir, TSP_RPC);
+    sprintf(addr.sun_path, "%s/%s", tkbio.iod.dir, IOD_RPC);
     
     while(1)
     {
-        if(tkbio.tsp.sock)
-            while(close(tkbio.tsp.sock) == -1 && errno == EINTR);
+        if(tkbio.iod.sock)
+            while(close(tkbio.iod.sock) == -1 && errno == EINTR);
         
-        if((tkbio.tsp.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+        if((tkbio.iod.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
         {
             VERBOSE(perror("[TKBIO] Failed to open rpc socket"));
             goto retry;
         }
         
-        if(setsockopt(tkbio.tsp.sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1)
+        if(setsockopt(tkbio.iod.sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1)
         {
             VERBOSE(perror("Failed to set SO_REUSEADDR"));
             goto retry;
         }
         
-        while(connect(tkbio.tsp.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
+        while(connect(tkbio.iod.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
         {
             if(errno == EINTR)
                 continue;
@@ -385,23 +385,23 @@ retry:  if(tries-- == 1)
     return 0;
 }
 
-int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value)
+int tkbio_iod_cmd(unsigned char cmd, pid_t pid, int value)
 {
-    struct tsp_cmd tsp;
-    char *ptr = (char*)&tsp;
-    int count, err, size = sizeof(struct tsp_cmd);
+    struct iod_cmd iod;
+    char *ptr = (char*)&iod;
+    int count, err, size = sizeof(struct iod_cmd);
     
-    tsp.cmd = cmd;
-    tsp.pid = pid;
-    tsp.value = value;
+    iod.cmd = cmd;
+    iod.pid = pid;
+    iod.value = value;
     
-    while((count = send(tkbio.tsp.sock, ptr, size, 0)) != size)
+    while((count = send(tkbio.iod.sock, ptr, size, 0)) != size)
     {
         if(count == -1)
         {
             if((err = errno) == EINTR)
                 continue;
-            VERBOSE(perror("[TKBIO] Failed to send tsp cmd"));
+            VERBOSE(perror("[TKBIO] Failed to send iod cmd"));
             return err;
         }
         ptr += count;
@@ -411,21 +411,21 @@ int tkbio_tsp_cmd(unsigned char cmd, pid_t pid, int value)
     return 0;
 }
 
-int tkbio_tsp_recv(struct tsp_event *event)
+int tkbio_iod_recv(struct iod_event *event)
 {
     char *ptr = (char*)event;
-    int count, err, size = sizeof(struct tsp_event);
+    int count, err, size = sizeof(struct iod_event);
     
-    while((count = recv(tkbio.tsp.sock, ptr, size, 0)) != size)
+    while((count = recv(tkbio.iod.sock, ptr, size, 0)) != size)
         switch(count)
         {
         case 0:
-            VERBOSE(perror("[TKBIO] Failed to recv tsp event"));
+            VERBOSE(perror("[TKBIO] Failed to recv iod event"));
             return 1;
         case -1:
             if((err = errno) == EINTR)
                 continue;
-            VERBOSE(perror("[TKBIO] Failed to recv tsp event"));
+            VERBOSE(perror("[TKBIO] Failed to recv iod event"));
             return err;
         default:
             ptr += count;
@@ -435,27 +435,27 @@ int tkbio_tsp_recv(struct tsp_event *event)
     return 0;
 }
 
-void tkbio_tsp_reconnect()
+void tkbio_iod_reconnect()
 {
     while(1)
     {
-        tkbio_tsp_connect(-1);
+        tkbio_iod_connect(-1);
         
-        if(tkbio_tsp_cmd(TSP_CMD_REGISTER, getpid(), 0))
+        if(tkbio_iod_cmd(IOD_CMD_REGISTER, getpid(), 0))
             continue;
-        if(tkbio.tsp.lock)
-            if(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, 1))
+        if(tkbio.iod.lock)
+            if(tkbio_iod_cmd(IOD_CMD_LOCK, 0, 1))
                 continue;
-        if(tkbio.tsp.hide)
-            if(tkbio_tsp_cmd(TSP_CMD_HIDE, 0, TSP_HIDE_MASK|tkbio.tsp.priority))
+        if(tkbio.iod.hide)
+            if(tkbio_iod_cmd(IOD_CMD_HIDE, 0, IOD_HIDE_MASK|tkbio.iod.priority))
                 continue;
-        if(tkbio.tsp.grab & TKBIO_BUTTON_AUX)
+        if(tkbio.iod.grab & TKBIO_BUTTON_AUX)
         {
-            if(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, TSP_GRAB_MASK|TSP_GRAB_AUX))
+            if(tkbio_iod_cmd(IOD_CMD_GRAB, 0, IOD_GRAB_MASK|IOD_GRAB_AUX))
                 continue;
         }
-        else if(tkbio.tsp.grab & TKBIO_BUTTON_POWER)
-            if(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, TSP_GRAB_MASK|TSP_GRAB_POWER))
+        else if(tkbio.iod.grab & TKBIO_BUTTON_POWER)
+            if(tkbio_iod_cmd(IOD_CMD_GRAB, 0, IOD_GRAB_MASK|IOD_GRAB_POWER))
                 continue;
         break;
     }
@@ -466,7 +466,7 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
     struct option fboption[] =
     {
         { "tkbio-fb", 1, 0, 'f' },      // path to framebuffer
-        { "tkbio-tsp", 1, 0, 't' },     // path to tsp directory
+        { "tkbio-iod", 1, 0, 't' },     // path to iod directory
         { "tkbio-verbose", 0, 0, 'v' }, // verbose messages
         { "tkbio-format", 1, 0, 'r' },  // p: portrait, l: landscape
         {0, 0, 0, 0}
@@ -482,7 +482,7 @@ struct tkbio_config tkbio_args(int *argc, char *argv[], struct tkbio_config conf
             config.fb = optarg;
             break;
         case 't':
-            config.tsp = optarg;
+            config.iod = optarg;
             break;
         case 'v':
             config.verbose = 1;
@@ -562,7 +562,7 @@ int tkbio_init_custom(struct tkbio_config config)
     {
         printf("[TKBIO] init\n");
         printf("[TKBIO] fb: %s\n", config.fb);
-        printf("[TKBIO] tsp: %s\n", config.tsp);
+        printf("[TKBIO] iod: %s\n", config.iod);
         printf("[TKBIO] format: %s\n", config.format
             == TKBIO_FORMAT_LANDSCAPE ? "landscape" : "portrait");
         printf("[TKBIO] options:\n");
@@ -570,15 +570,15 @@ int tkbio_init_custom(struct tkbio_config config)
             & TKBIO_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
     }
     
-    tkbio.tsp.dir = config.tsp;
-    tkbio.tsp.sock = 0;
+    tkbio.iod.dir = config.iod;
+    tkbio.iod.sock = 0;
     
     // open rpc socket
-    if((ret = tkbio_tsp_connect(-1)))
+    if((ret = tkbio_iod_connect(-1)))
         return ret;
     
     // register
-    if(tkbio_tsp_cmd(TSP_CMD_REGISTER, getpid(), 0))
+    if(tkbio_iod_cmd(IOD_CMD_REGISTER, getpid(), 0))
         return TKBIO_ERROR_REGISTER;
     
     // open framebuffer
@@ -587,20 +587,20 @@ int tkbio_init_custom(struct tkbio_config config)
     if((tkbio.fb.fd = open(config.fb, O_RDWR)) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to open framebuffer"));
-        close(tkbio.tsp.sock);
+        close(tkbio.iod.sock);
         return TKBIO_ERROR_FB_OPEN;
     }
     if(ioctl(tkbio.fb.fd, FBIOGET_VSCREENINFO, &(tkbio.fb.vinfo)) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to get variable screeninfo"));
-        close(tkbio.tsp.sock);
+        close(tkbio.iod.sock);
         close(tkbio.fb.fd);
         return TKBIO_ERROR_FB_VINFO;
     }
     if(ioctl(tkbio.fb.fd, FBIOGET_FSCREENINFO, &(tkbio.fb.finfo)) == -1)
     {
         VERBOSE(perror("[TKBIO] Failed to get fixed screeninfo"));
-        close(tkbio.tsp.sock);
+        close(tkbio.iod.sock);
         close(tkbio.fb.fd);
         return TKBIO_ERROR_FB_FINFO;
     }
@@ -657,7 +657,7 @@ int tkbio_init_custom(struct tkbio_config config)
         PROT_READ|PROT_WRITE, MAP_SHARED, tkbio.fb.fd, 0)) == MAP_FAILED)
     {
         VERBOSE(perror("[TKBIO] Failed to mmap framebuffer"));
-        close(tkbio.tsp.sock);
+        close(tkbio.iod.sock);
         close(tkbio.fb.fd);
         return TKBIO_ERROR_FB_MMAP;
     }
@@ -710,14 +710,14 @@ int tkbio_init_custom(struct tkbio_config config)
     VERBOSE(printf("[TKBIO] init done\n"));
     
     // return socket for manual polling
-    return tkbio.tsp.sock;
+    return tkbio.iod.sock;
 }
 
 struct tkbio_config tkbio_config_default(int *argc, char *argv[])
 {
     struct tkbio_config config;
     config.fb = "/dev/fb0";
-    config.tsp = TSP_PWD;
+    config.iod = IOD_PWD;
     config.layout = tkbLayoutDefault;
     config.format = TKBIO_FORMAT_LANDSCAPE;
     config.options = 0;
@@ -751,8 +751,8 @@ void tkbio_finish()
     
     VERBOSE(printf("[TKBIO] finish\n"));
     
-    tkbio_tsp_cmd(TSP_CMD_REMOVE, 0, 0);
-    close(tkbio.tsp.sock);
+    tkbio_iod_cmd(IOD_CMD_REMOVE, 0, 0);
+    close(tkbio.iod.sock);
     
     close(tkbio.fb.fd);
     SIMV(close(tkbio.fb.sock));
@@ -931,7 +931,7 @@ int tkbio_handle_timer(unsigned char *id, unsigned char *type)
     return 0;
 }
 
-struct tkbio_return tkbio_parse_event(struct tsp_event event)
+struct tkbio_return tkbio_parse_event(struct iod_event event)
 {
     struct tkbio_return ret, ret2;
     const struct tkbio_map *map;
@@ -950,45 +950,45 @@ struct tkbio_return tkbio_parse_event(struct tsp_event event)
     
     switch(event.event)
     {
-    case TSP_EVENT_ACTIVATED:
+    case IOD_EVENT_ACTIVATED:
         VERBOSE(printf("[TKBIO] activate\n"));
         ret.type = TKBIO_RETURN_ACTIVATE;
         return ret;
-    case TSP_EVENT_DEACTIVATED:
+    case IOD_EVENT_DEACTIVATED:
         VERBOSE(printf("[TKBIO] deactivate\n"));
         ret.type = TKBIO_RETURN_DEACTIVATE;
         return ret;
-    case TSP_EVENT_REMOVED:
+    case IOD_EVENT_REMOVED:
         VERBOSE(printf("[TKBIO] removed\n"));
         ret.type = TKBIO_RETURN_REMOVE;
         return ret;
-    case TSP_EVENT_AUX:
+    case IOD_EVENT_AUX:
         VERBOSE(printf("[TKBIO] AUX %s\n",
             event.value.status ? "pressed" : "released"));
         ret.type = TKBIO_RETURN_BUTTON;
         ret.id = TKBIO_BUTTON_AUX;
         ret.value.i = event.value.status;
         return ret;
-    case TSP_EVENT_POWER:
+    case IOD_EVENT_POWER:
         VERBOSE(printf("[TKBIO] Power %s\n",
             event.value.status ? "pressed" : "released"));
         ret.type = TKBIO_RETURN_BUTTON;
         ret.id = TKBIO_BUTTON_POWER;
         ret.value.i = event.value.status;
         return ret;
-    case TSP_EVENT_LOCK:
+    case IOD_EVENT_LOCK:
         return ret;
-    case TSP_EVENT_GRAB:
+    case IOD_EVENT_GRAB:
         return ret;
-    case TSP_EVENT_POWERSAVE:
+    case IOD_EVENT_POWERSAVE:
         VERBOSE(printf("[TKBIO] Powersave %s\n",
             event.value.status ? "on" : "off"));
         ret.type = TKBIO_RETURN_POWERSAVE;
         ret.value.i = event.value.status;
         return ret;
-    case TSP_EVENT_MOVED:
-    case TSP_EVENT_RELEASED:
-    case TSP_EVENT_PRESSED:
+    case IOD_EVENT_MOVED:
+    case IOD_EVENT_RELEASED:
+    case IOD_EVENT_PRESSED:
         break;
     default:
         VERBOSE(printf("[TKBIO] Unrecognized event 0x%02hhx\n", event.event));
@@ -1041,7 +1041,7 @@ struct tkbio_return tkbio_parse_event(struct tsp_event event)
     
     switch(event.event)
     {
-    case TSP_EVENT_MOVED:
+    case IOD_EVENT_MOVED:
         if( tkbio.parser.pressed
             && !tkbio.pause) // avoid toggling between two buttons
         {
@@ -1075,7 +1075,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
             }
         }
         break;
-    case TSP_EVENT_RELEASED:
+    case IOD_EVENT_RELEASED:
         if(tkbio.parser.pressed)
         {
             TYPEFUNC(elem_curr, release, ret=, y, x, button_y,
@@ -1084,7 +1084,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
             tkbio.parser.pressed = 0;
         }
         break;
-    case TSP_EVENT_PRESSED:
+    case IOD_EVENT_PRESSED:
         if(!tkbio.parser.pressed)
         {
             TYPEFUNC(elem_curr, press, ret=, y, x, button_y, button_x,
@@ -1108,7 +1108,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
 
 int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handler, void *state)
 {
-    struct tsp_cmd tsp = { .cmd = TSP_CMD_REGISTER, .pid = 0 };
+    struct iod_cmd iod = { .cmd = IOD_CMD_REGISTER, .pid = 0 };
     
     switch(ret)
     {
@@ -1132,10 +1132,10 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
                 tkbio_init_screen();
             return TKBIO_HANDLER_SUCCESS;
         case TKBIO_RETURN_DEACTIVATE:
-            tkbio_tsp_cmd(TSP_CMD_ACK, 0, TSP_EVENT_DEACTIVATED);
+            tkbio_iod_cmd(IOD_CMD_ACK, 0, IOD_EVENT_DEACTIVATED);
             return TKBIO_HANDLER_SUCCESS;
         case TKBIO_RETURN_REMOVE:
-            tkbio_tsp_cmd(TSP_CMD_ACK, 0, TSP_EVENT_REMOVED);
+            tkbio_iod_cmd(IOD_CMD_ACK, 0, IOD_EVENT_REMOVED);
             tret.type = TKBIO_RETURN_QUIT;
             return tkbio_handle_return(handler(tret, state), tret, 0, 0);
         case TKBIO_RETURN_SYSTEM:
@@ -1143,12 +1143,12 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
             switch(tret.value.i)
             {
             case TKBIO_SYSTEM_NEXT:
-                tsp.cmd = TSP_CMD_SWITCH;
-                tsp.value = TSP_SWITCH_NEXT;
+                iod.cmd = IOD_CMD_SWITCH;
+                iod.value = IOD_SWITCH_NEXT;
                 break;
             case TKBIO_SYSTEM_PREV:
-                tsp.cmd = TSP_CMD_SWITCH;
-                tsp.value = TSP_SWITCH_PREV;
+                iod.cmd = IOD_CMD_SWITCH;
+                iod.value = IOD_SWITCH_PREV;
                 break;
             case TKBIO_SYSTEM_QUIT:
                 tret.type = TKBIO_RETURN_QUIT;
@@ -1156,15 +1156,15 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
             case TKBIO_SYSTEM_ACTIVATE:
                 break;
             case TKBIO_SYSTEM_MENU:
-                tsp.cmd = TSP_CMD_SWITCH;
-                tsp.value = TSP_SWITCH_HIDDEN;
+                iod.cmd = IOD_CMD_SWITCH;
+                iod.value = IOD_SWITCH_HIDDEN;
                 break;
             }
             if(tret.type != TKBIO_RETURN_NOP)
                 return tkbio_handle_return(handler(tret, state), tret, 0, 0);
-            else if(tsp.cmd != TSP_CMD_REGISTER)
-                if(tkbio_tsp_cmd(tsp.cmd, 0, tsp.value))
-                    tkbio_tsp_reconnect(-1);
+            else if(iod.cmd != IOD_CMD_REGISTER)
+                if(tkbio_iod_cmd(iod.cmd, 0, iod.value))
+                    tkbio_iod_reconnect(-1);
             return TKBIO_HANDLER_SUCCESS;
         default:
             return TKBIO_HANDLER_SUCCESS;
@@ -1184,10 +1184,10 @@ int tkbio_handle_return(int ret, struct tkbio_return tret, tkbio_handler *handle
 
 int tkbio_handle_event(tkbio_handler *handler, void *state)
 {
-    struct tsp_event event;
+    struct iod_event event;
     struct tkbio_return ret;
     
-    if(tkbio_tsp_recv(&event))
+    if(tkbio_iod_recv(&event))
         return TKBIO_HANDLER_SUCCESS;
     
     ret = tkbio_parse_event(event);
@@ -1210,8 +1210,8 @@ int tkbio_handle_queue(tkbio_handler *handler, void *state, sigset_t *oldset)
             sigprocmask(SIG_SETMASK, oldset, 0);
         switch(event.type)
         {
-        case EVENT_TSP:
-            tret = tkbio_parse_event(event.event.tsp);
+        case EVENT_IOD:
+            tret = tkbio_parse_event(event.event.iod);
             break;
         case EVENT_TKBIO:
             tret = event.event.tkbio;
@@ -1233,7 +1233,7 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
     int ret, i;
     sigset_t set;
     
-    pfds[0].fd = tkbio.tsp.sock;
+    pfds[0].fd = tkbio.iod.sock;
     pfds[0].events = POLLIN;
     
     VERBOSE(printf("[TKBIO] run\n"));
@@ -1266,7 +1266,7 @@ int tkbio_run_pfds(tkbio_handler *handler, void *state, struct pollfd *pfds, int
         if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
         {
             VERBOSE(printf("[TKBIO] Failed to poll rpc socket\n"));
-            tkbio_tsp_reconnect(-1);
+            tkbio_iod_reconnect(-1);
         }
         else if(pfds[0].revents & POLLIN)
         {
@@ -1321,48 +1321,48 @@ int tkbio_run(tkbio_handler *handler, void *state)
 
 void tkbio_switch(pid_t pid)
 {
-    while(tkbio_tsp_cmd(TSP_CMD_SWITCH, pid, TSP_SWITCH_PID))
-        tkbio_tsp_reconnect(-1);
+    while(tkbio_iod_cmd(IOD_CMD_SWITCH, pid, IOD_SWITCH_PID))
+        tkbio_iod_reconnect(-1);
 }
 
 void tkbio_hide(pid_t pid, int priority, int hide)
 {
-    while(tkbio_tsp_cmd(TSP_CMD_HIDE, pid,
-        hide ? TSP_HIDE_MASK|priority : priority))
+    while(tkbio_iod_cmd(IOD_CMD_HIDE, pid,
+        hide ? IOD_HIDE_MASK|priority : priority))
     {
-        tkbio_tsp_reconnect(-1);
+        tkbio_iod_reconnect(-1);
     }
-    tkbio.tsp.hide = hide;
-    tkbio.tsp.priority = priority;
+    tkbio.iod.hide = hide;
+    tkbio.iod.priority = priority;
 }
 
 void tkbio_powersave(int powersave)
 {
-    while(tkbio_tsp_cmd(TSP_CMD_POWERSAVE, 0, powersave))
-        tkbio_tsp_reconnect(-1);
+    while(tkbio_iod_cmd(IOD_CMD_POWERSAVE, 0, powersave))
+        tkbio_iod_reconnect(-1);
 }
 
 int tkbio_lock(int lock)
 {
-    struct tsp_event event;
+    struct iod_event event;
     
-    while(tkbio_tsp_cmd(TSP_CMD_LOCK, 0, lock))
-        tkbio_tsp_reconnect(-1);
+    while(tkbio_iod_cmd(IOD_CMD_LOCK, 0, lock))
+        tkbio_iod_reconnect(-1);
     
-    tkbio.tsp.lock = lock;
+    tkbio.iod.lock = lock;
     
     while(1)
     {
-        while(tkbio_tsp_recv(&event))
-            tkbio_tsp_reconnect(-1);
+        while(tkbio_iod_recv(&event))
+            tkbio_iod_reconnect(-1);
         
-        if(event.event != TSP_EVENT_LOCK)
+        if(event.event != IOD_EVENT_LOCK)
         {
-            tkbio_queue_event(EVENT_TSP, &event);
+            tkbio_queue_event(EVENT_IOD, &event);
             continue;
         }
         
-        if(event.value.status & TSP_SUCCESS_MASK)
+        if(event.value.status & IOD_SUCCESS_MASK)
         {
             VERBOSE(printf("[TKBIO] %s success\n", lock ? "lock" : "unlock"));
             return TKBIO_SET_SUCCESS;
@@ -1370,7 +1370,7 @@ int tkbio_lock(int lock)
         else
         {
             VERBOSE(printf("[TKBIO] %s failure\n", lock ? "lock" : "unlock"));
-            tkbio.tsp.lock = 0;
+            tkbio.iod.lock = 0;
             return TKBIO_SET_FAILURE;
         }
     }
@@ -1378,45 +1378,45 @@ int tkbio_lock(int lock)
 
 int tkbio_grab(int button, int grab)
 {
-    struct tsp_event event;
+    struct iod_event event;
     int value = 0;
     
     if(grab)
-        value |= TSP_GRAB_MASK;
+        value |= IOD_GRAB_MASK;
     switch(button)
     {
     case TKBIO_BUTTON_AUX:
-        value |= TSP_GRAB_AUX;
+        value |= IOD_GRAB_AUX;
         break;
     case TKBIO_BUTTON_POWER:
-        value |= TSP_GRAB_POWER;
+        value |= IOD_GRAB_POWER;
         break;
     default:
         return TKBIO_SET_FAILURE;
     }
     
-    while(tkbio_tsp_cmd(TSP_CMD_GRAB, 0, value))
-        tkbio_tsp_reconnect(-1);
+    while(tkbio_iod_cmd(IOD_CMD_GRAB, 0, value))
+        tkbio_iod_reconnect(-1);
     
     if(grab)
-        tkbio.tsp.grab |= button;
+        tkbio.iod.grab |= button;
     else
-        tkbio.tsp.grab &= ~button;
+        tkbio.iod.grab &= ~button;
         
     while(1)
     {
-        while(tkbio_tsp_recv(&event))
-            tkbio_tsp_reconnect(-1);
+        while(tkbio_iod_recv(&event))
+            tkbio_iod_reconnect(-1);
         
-        if(event.event != TSP_EVENT_GRAB ||
-            (event.value.status & ~TSP_SUCCESS_MASK) !=
-            (value & ~TSP_GRAB_MASK))
+        if(event.event != IOD_EVENT_GRAB ||
+            (event.value.status & ~IOD_SUCCESS_MASK) !=
+            (value & ~IOD_GRAB_MASK))
         {
-            tkbio_queue_event(EVENT_TSP, &event);
+            tkbio_queue_event(EVENT_IOD, &event);
             continue;
         }
         
-        if(event.value.status & TSP_SUCCESS_MASK)
+        if(event.value.status & IOD_SUCCESS_MASK)
         {
             VERBOSE(printf("[TKBIO] %s success\n", grab ? "grab" : "ungrab"));
             return TKBIO_SET_SUCCESS;
@@ -1424,7 +1424,7 @@ int tkbio_grab(int button, int grab)
         else
         {
             VERBOSE(printf("[TKBIO] %s failure\n", grab ? "grab" : "ungrab"));
-            tkbio.tsp.grab &= ~button;
+            tkbio.iod.grab &= ~button;
             return TKBIO_SET_FAILURE;
         }
     }

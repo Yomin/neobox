@@ -3,12 +3,12 @@
 
 LIBALGPATH = lib/libalg
 LIBALG = $(LIBALGPATH)/libalg.a
-TSP = include/tsp
+IOD = include/iod
 
 NAME = tkbio
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
-INCLUDES = -I$(LIBALGPATH) -I$(TSP)
+INCLUDES = -I$(LIBALGPATH) -I$(IOD)
 CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 
 all: DEBUG =
