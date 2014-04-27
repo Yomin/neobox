@@ -45,6 +45,8 @@
 
 #define NEOBOX_OPTION_NO_INITIAL_PRINT   1
 
+#define NEOBOX_MAP_DEFAULT       -1
+
 #define NEOBOX_SYSTEM_PREV           0
 #define NEOBOX_SYSTEM_NEXT           1
 #define NEOBOX_SYSTEM_MENU           2
@@ -87,6 +89,7 @@ struct neobox_config
     int format;
     int options;
     int verbose;
+    int map;
 };
 
 struct neobox_event
@@ -125,5 +128,8 @@ void neobox_powersave(int powersave);
 
 int neobox_lock(int lock);
 int neobox_grab(int button, int grab);
+
+void neobox_map_set(int map);
+void neobox_map_reset();
 
 #endif

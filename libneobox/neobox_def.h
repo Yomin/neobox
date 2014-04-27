@@ -110,6 +110,7 @@ struct neobox_parser
     int pressed;          // button pressed
     int y, x;             // last pos (layout format)
     int map;              // current map
+    int map_main;         // main map
     int hold;             // hold mode active
     unsigned char toggle; // active toggle buttons
 };

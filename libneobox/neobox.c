@@ -674,7 +674,11 @@ int neobox_init_custom(struct neobox_config config)
     neobox_init_save_data();
     
     // init parser
-    neobox.parser.map = config.layout.start;
+    if(config.map == NEOBOX_MAP_DEFAULT)
+        neobox.parser.map = neobox.parser.map_main = config.layout.start;
+    else
+        neobox.parser.map = neobox.parser.map_main = config.map;
+    
     neobox.parser.toggle = 0;
     neobox.parser.hold = 0;
     neobox.parser.pressed = 0;
@@ -722,6 +726,7 @@ struct neobox_config neobox_config_default(int *argc, char *argv[])
     config.format = NEOBOX_FORMAT_LANDSCAPE;
     config.options = 0;
     config.verbose = 0;
+    config.map = NEOBOX_MAP_DEFAULT;
     return neobox_args(argc, argv, config);
 }
 
@@ -1080,6 +1085,9 @@ move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
         {
             TYPEFUNC(elem_curr, release, event=, y, x, button_y,
                 button_x, map, elem_curr, save_curr);
+            
+            if(elem_curr->options & NEOBOX_LAYOUT_OPTION_SET_MAP)
+                neobox.parser.map_main = neobox.parser.map;
             
             neobox.parser.pressed = 0;
         }
@@ -1482,4 +1490,14 @@ int neobox_sleep(unsigned int sec, unsigned int msec)
     sigprocmask(SIG_SETMASK, &oldset, 0);
     
     return 0;
+}
+
+void neobox_map_set(int map)
+{
+    neobox.parser.map = neobox.parser.map_main = map;
+}
+
+void neobox_map_reset()
+{
+    neobox.parser.map = neobox.parser.map_main = neobox.layout.start;
 }
