@@ -1,11 +1,14 @@
 
-.PHONY: all, debug, clean, exec, sync
+.PHONY: all, debug, sim, clean, exec, sync
 
 all: cmd=all
 all: exec
 
 debug: cmd=debug
 debug: exec
+
+sim: cmd=sim
+sim: exec
 
 clean: cmd=clean
 clean: exec
