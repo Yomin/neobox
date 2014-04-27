@@ -27,7 +27,7 @@ clean:
 	find . ! -type d ! -type l \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
 
 libs:
-	@for l in $(shell ls lib); do echo -n "-L../lib$(NAME)/lib/$$l -l$${l:3}"; done
+	@for l in $(shell ls lib); do echo -n "-L../../lib$(NAME)/lib/$$l -l$${l:3}"; done
 	@echo -n " -lrt" # needed by shared memory
 	@echo -n " -lasound" # needed neobox_sound
 	@echo -n " -lpthread" # needed by neobox_sound

@@ -1,6 +1,6 @@
 .PHONY: all, debug, clean, touch
 
-LIBNEOBOXPATH = ../libneobox
+LIBNEOBOXPATH = ../../libneobox
 LIBNEOBOX = $(LIBNEOBOXPATH)/libneobox.a
 
 CFLAGS = -Wall

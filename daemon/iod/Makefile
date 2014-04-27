@@ -25,4 +25,4 @@ touch:
 	$(shell [ ! -f debug -a -n "$(DEBUG)" ] && { touch $(NAME).c; touch debug; })
 
 exec: debug
-	./$(NAME) -f -d ../sim/ config_sim
+	./$(NAME) -f -d ../../sim/ config_sim

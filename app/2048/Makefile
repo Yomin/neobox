@@ -1,7 +1,8 @@
 .PHONY: all, debug, sim, clean, touch, exec, sync
 
-LIBNEOBOXPATH = ../libneobox
+LIBNEOBOXPATH = ../../libneobox
 LIBNEOBOX = $(LIBNEOBOXPATH)/libneobox.a
+SIMPATH = ../../sim
 
 CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
 INCLUDES = -I$(LIBNEOBOXPATH)
@@ -35,7 +36,7 @@ touch:
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBNEOBOX); })
 
 exec: sim
-	./$(NAME) --neobox-fb ../sim/fb.ipc --neobox-iod ../sim --neobox-verbose
+	./$(NAME) --neobox-fb $(SIMPATH)/fb.ipc --neobox-iod $(SIMPATH) --neobox-verbose
 
 sync:
 	@make -C .. sync
