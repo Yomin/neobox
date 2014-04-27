@@ -115,9 +115,9 @@ void neobox_signal_handler(int signal)
             {
                 cq = malloc(sizeof(struct neobox_chain_queue));
                 CIRCLEQ_INSERT_TAIL(&neobox.queue, cq, chain);
-                cq->event.type = EVENT_NEOBOX;
-                cq->event.event.neobox.type = NEOBOX_RETURN_TIMER;
-                cq->event.event.neobox.id = id;
+                cq->stash.type = STASH_NEOBOX;
+                cq->stash.event.neobox.type = NEOBOX_EVENT_TIMER;
+                cq->stash.event.neobox.id = id;
             }
         }
         while(ret);
@@ -125,9 +125,9 @@ void neobox_signal_handler(int signal)
     default:
         cq = malloc(sizeof(struct neobox_chain_queue));
         CIRCLEQ_INSERT_TAIL(&neobox.queue, cq, chain);
-        cq->event.type = EVENT_NEOBOX;
-        cq->event.event.neobox.type = NEOBOX_RETURN_SIGNAL;
-        cq->event.event.neobox.value.i = signal;
+        cq->stash.type = STASH_NEOBOX;
+        cq->stash.event.neobox.type = NEOBOX_EVENT_SIGNAL;
+        cq->stash.event.neobox.value.i = signal;
     }
     errno = err;
 }
@@ -154,14 +154,14 @@ int neobox_catch_signal(int sig, int flags)
     return 0;
 }
 
-struct neobox_event neobox_get_event(sigset_t *oldset)
+struct neobox_stash neobox_get_event(sigset_t *oldset)
 {
-    struct neobox_event event;
+    struct neobox_stash stash;
     struct neobox_chain_queue *cq;
     sigset_t set, soldset;
     
     sigfillset(&set);
-    event.type = EVENT_NOP;
+    stash.type = STASH_NOP;
     
     if(!oldset)
         oldset = &soldset;
@@ -173,7 +173,7 @@ struct neobox_event neobox_get_event(sigset_t *oldset)
         // if oldset exists keep blocking
         if(oldset == &soldset)
             sigprocmask(SIG_SETMASK, oldset, 0);
-        return event;
+        return stash;
     }
     
     CIRCLEQ_REMOVE(&neobox.queue, cq, chain);
@@ -182,10 +182,10 @@ struct neobox_event neobox_get_event(sigset_t *oldset)
     if(oldset == &soldset)
         sigprocmask(SIG_SETMASK, oldset, 0);
     
-    event = cq->event;
+    stash = cq->stash;
     free(cq);
     
-    return event;
+    return stash;
 }
 
 void neobox_queue_event(char type, void *event)
@@ -195,17 +195,17 @@ void neobox_queue_event(char type, void *event)
     
     switch(type)
     {
-    case EVENT_IOD:
+    case STASH_IOD:
         cq = malloc(sizeof(struct neobox_chain_queue));
-        cq->event.type = type;
-        cq->event.event.iod = *(struct iod_event*)event;
+        cq->stash.type = type;
+        cq->stash.event.iod = *(struct iod_event*)event;
         break;
-    case EVENT_NEOBOX:
-        if(((struct neobox_return*)event)->type == NEOBOX_RETURN_NOP)
+    case STASH_NEOBOX:
+        if(((struct neobox_event*)event)->type == NEOBOX_EVENT_NOP)
             return;
         cq = malloc(sizeof(struct neobox_chain_queue));
-        cq->event.type = type;
-        cq->event.event.neobox = *(struct neobox_return*)event;
+        cq->stash.type = type;
+        cq->stash.event.neobox = *(struct neobox_event*)event;
         break;
     }
     
@@ -931,9 +931,9 @@ int neobox_handle_timer(unsigned char *id, unsigned char *type)
     return 0;
 }
 
-struct neobox_return neobox_parse_event(struct iod_event event)
+struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
 {
-    struct neobox_return ret, ret2;
+    struct neobox_event event, event2;
     const struct neobox_map *map;
     const struct neobox_mapelem *elem_last, *elem_curr;
     struct neobox_save *save_last, *save_curr;
@@ -944,62 +944,62 @@ struct neobox_return neobox_parse_event(struct iod_event event)
     int width, height, fb_height, fb_width, scr_height, scr_width;
     SIMV(char sim_tmp = 'x');
     
-    ret.type = NEOBOX_RETURN_NOP;
-    ret.id = 0;
-    ret.value.i = 0;
+    event.type = NEOBOX_EVENT_NOP;
+    event.id = 0;
+    event.value.i = 0;
     
-    switch(event.event)
+    switch(iod_event.event)
     {
     case IOD_EVENT_ACTIVATED:
         VERBOSE(printf("[NEOBOX] activate\n"));
-        ret.type = NEOBOX_RETURN_ACTIVATE;
-        return ret;
+        event.type = NEOBOX_EVENT_ACTIVATE;
+        return event;
     case IOD_EVENT_DEACTIVATED:
         VERBOSE(printf("[NEOBOX] deactivate\n"));
-        ret.type = NEOBOX_RETURN_DEACTIVATE;
-        return ret;
+        event.type = NEOBOX_EVENT_DEACTIVATE;
+        return event;
     case IOD_EVENT_REMOVED:
         VERBOSE(printf("[NEOBOX] removed\n"));
-        ret.type = NEOBOX_RETURN_REMOVE;
-        return ret;
+        event.type = NEOBOX_EVENT_REMOVE;
+        return event;
     case IOD_EVENT_AUX:
         VERBOSE(printf("[NEOBOX] AUX %s\n",
-            event.value.status ? "pressed" : "released"));
-        ret.type = NEOBOX_RETURN_BUTTON;
-        ret.id = NEOBOX_BUTTON_AUX;
-        ret.value.i = event.value.status;
-        return ret;
+            iod_event.value.status ? "pressed" : "released"));
+        event.type = NEOBOX_EVENT_BUTTON;
+        event.id = NEOBOX_BUTTON_AUX;
+        event.value.i = iod_event.value.status;
+        return event;
     case IOD_EVENT_POWER:
         VERBOSE(printf("[NEOBOX] Power %s\n",
-            event.value.status ? "pressed" : "released"));
-        ret.type = NEOBOX_RETURN_BUTTON;
-        ret.id = NEOBOX_BUTTON_POWER;
-        ret.value.i = event.value.status;
-        return ret;
+            iod_event.value.status ? "pressed" : "released"));
+        event.type = NEOBOX_EVENT_BUTTON;
+        event.id = NEOBOX_BUTTON_POWER;
+        event.value.i = iod_event.value.status;
+        return event;
     case IOD_EVENT_LOCK:
-        return ret;
+        return event;
     case IOD_EVENT_GRAB:
-        return ret;
+        return event;
     case IOD_EVENT_POWERSAVE:
         VERBOSE(printf("[NEOBOX] Powersave %s\n",
-            event.value.status ? "on" : "off"));
-        ret.type = NEOBOX_RETURN_POWERSAVE;
-        ret.value.i = event.value.status;
-        return ret;
+            iod_event.value.status ? "on" : "off"));
+        event.type = NEOBOX_EVENT_POWERSAVE;
+        event.value.i = iod_event.value.status;
+        return event;
     case IOD_EVENT_MOVED:
     case IOD_EVENT_RELEASED:
     case IOD_EVENT_PRESSED:
         break;
     default:
-        VERBOSE(printf("[NEOBOX] Unrecognized event 0x%02hhx\n", event.event));
-        return ret;
+        VERBOSE(printf("[NEOBOX] Unrecognized iod event 0x%02hhx\n", iod_event.event));
+        return event;
     }
     
-    ev_y = event.value.cord.y;
-    ev_x = event.value.cord.x;
+    ev_y = iod_event.value.cord.y;
+    ev_x = iod_event.value.cord.x;
     
     if(ev_x >= SCREENMAX || ev_y >= SCREENMAX)
-        return ret;
+        return event;
     
     // calculate height and width
     neobox_get_sizes_current(&height, &width, &fb_height, &fb_width,
@@ -1039,7 +1039,7 @@ struct neobox_return neobox_parse_event(struct iod_event event)
     // partner of last button
     partner_last = save_last->partner;
     
-    switch(event.event)
+    switch(iod_event.event)
     {
     case IOD_EVENT_MOVED:
         if( neobox.parser.pressed
@@ -1047,7 +1047,7 @@ struct neobox_return neobox_parse_event(struct iod_event event)
         {
             // move on same button
             if(neobox.parser.y == y && neobox.parser.x == x)
-move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
+move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
                     button_x, map, elem_last, save_last);
             else
             {
@@ -1061,16 +1061,16 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
                     }
                 
                 // move to other button
-                TYPEFUNC(elem_last, focus_out, ret=, neobox.parser.y,
+                TYPEFUNC(elem_last, focus_out, event=, neobox.parser.y,
                     neobox.parser.x, map, elem_last, save_last);
-                if(ret.type == NEOBOX_RETURN_NOP)
-                    TYPEFUNC(elem_curr, focus_in, ret=, y, x,
+                if(event.type == NEOBOX_EVENT_NOP)
+                    TYPEFUNC(elem_curr, focus_in, event=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
                 else
                 {
-                    TYPEFUNC(elem_curr, focus_in, ret2=, y, x,
+                    TYPEFUNC(elem_curr, focus_in, event2=, y, x,
                         button_y, button_x, map, elem_curr, save_curr);
-                    neobox_queue_event(EVENT_NEOBOX, &ret2);
+                    neobox_queue_event(STASH_NEOBOX, &event2);
                 }
             }
         }
@@ -1078,7 +1078,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
     case IOD_EVENT_RELEASED:
         if(neobox.parser.pressed)
         {
-            TYPEFUNC(elem_curr, release, ret=, y, x, button_y,
+            TYPEFUNC(elem_curr, release, event=, y, x, button_y,
                 button_x, map, elem_curr, save_curr);
             
             neobox.parser.pressed = 0;
@@ -1087,7 +1087,7 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
     case IOD_EVENT_PRESSED:
         if(!neobox.parser.pressed)
         {
-            TYPEFUNC(elem_curr, press, ret=, y, x, button_y, button_x,
+            TYPEFUNC(elem_curr, press, event=, y, x, button_y, button_x,
                 map, elem_curr, save_curr);
             
             neobox.parser.pressed = 1;
@@ -1103,10 +1103,10 @@ move:           TYPEFUNC(elem_last, move, ret=, y, x, button_y,
     // notify framebuffer for redraw
     SIMV(send(neobox.fb.sock, &sim_tmp, 1, 0));
     
-    return ret;
+    return event;
 }
 
-int neobox_handle_return(int ret, struct neobox_return tret, neobox_handler *handler, void *state)
+int neobox_handle_return(int ret, struct neobox_event event, neobox_handler *handler, void *state)
 {
     struct iod_cmd iod = { .cmd = IOD_CMD_REGISTER, .pid = 0 };
     
@@ -1116,31 +1116,31 @@ int neobox_handle_return(int ret, struct neobox_return tret, neobox_handler *han
     case NEOBOX_HANDLER_QUIT:
         break;
     case NEOBOX_HANDLER_DEFER:
-        switch(tret.type)
+        switch(event.type)
         {
-        case NEOBOX_RETURN_QUIT:
+        case NEOBOX_EVENT_QUIT:
             return NEOBOX_HANDLER_QUIT;
-        case NEOBOX_RETURN_SIGNAL:
-            if(tret.value.i == SIGINT)
+        case NEOBOX_EVENT_SIGNAL:
+            if(event.value.i == SIGINT)
             {
-                tret.type = NEOBOX_RETURN_QUIT;
-                return neobox_handle_return(handler(tret, state), tret, 0, 0);
+                event.type = NEOBOX_EVENT_QUIT;
+                return neobox_handle_return(handler(event, state), event, 0, 0);
             }
             return NEOBOX_HANDLER_SUCCESS;
-        case NEOBOX_RETURN_ACTIVATE:
+        case NEOBOX_EVENT_ACTIVATE:
             if(neobox.redraw)
                 neobox_init_screen();
             return NEOBOX_HANDLER_SUCCESS;
-        case NEOBOX_RETURN_DEACTIVATE:
+        case NEOBOX_EVENT_DEACTIVATE:
             neobox_iod_cmd(IOD_CMD_ACK, 0, IOD_EVENT_DEACTIVATED);
             return NEOBOX_HANDLER_SUCCESS;
-        case NEOBOX_RETURN_REMOVE:
+        case NEOBOX_EVENT_REMOVE:
             neobox_iod_cmd(IOD_CMD_ACK, 0, IOD_EVENT_REMOVED);
-            tret.type = NEOBOX_RETURN_QUIT;
-            return neobox_handle_return(handler(tret, state), tret, 0, 0);
-        case NEOBOX_RETURN_SYSTEM:
-            tret.type = NEOBOX_RETURN_NOP;
-            switch(tret.value.i)
+            event.type = NEOBOX_EVENT_QUIT;
+            return neobox_handle_return(handler(event, state), event, 0, 0);
+        case NEOBOX_EVENT_SYSTEM:
+            event.type = NEOBOX_EVENT_NOP;
+            switch(event.value.i)
             {
             case NEOBOX_SYSTEM_NEXT:
                 iod.cmd = IOD_CMD_SWITCH;
@@ -1151,7 +1151,7 @@ int neobox_handle_return(int ret, struct neobox_return tret, neobox_handler *han
                 iod.value = IOD_SWITCH_PREV;
                 break;
             case NEOBOX_SYSTEM_QUIT:
-                tret.type = NEOBOX_RETURN_QUIT;
+                event.type = NEOBOX_EVENT_QUIT;
                 break;
             case NEOBOX_SYSTEM_ACTIVATE:
                 break;
@@ -1160,8 +1160,8 @@ int neobox_handle_return(int ret, struct neobox_return tret, neobox_handler *han
                 iod.value = IOD_SWITCH_HIDDEN;
                 break;
             }
-            if(tret.type != NEOBOX_RETURN_NOP)
-                return neobox_handle_return(handler(tret, state), tret, 0, 0);
+            if(event.type != NEOBOX_EVENT_NOP)
+                return neobox_handle_return(handler(event, state), event, 0, 0);
             else if(iod.cmd != IOD_CMD_REGISTER)
                 if(neobox_iod_cmd(iod.cmd, 0, iod.value))
                     neobox_iod_reconnect(-1);
@@ -1184,40 +1184,40 @@ int neobox_handle_return(int ret, struct neobox_return tret, neobox_handler *han
 
 int neobox_handle_event(neobox_handler *handler, void *state)
 {
-    struct iod_event event;
-    struct neobox_return ret;
+    struct iod_event iod_event;
+    struct neobox_event event;
     
-    if(neobox_iod_recv(&event))
+    if(neobox_iod_recv(&iod_event))
         return NEOBOX_HANDLER_SUCCESS;
     
-    ret = neobox_parse_event(event);
+    event = neobox_parse_iod_event(iod_event);
     
-    if(ret.type != NEOBOX_RETURN_NOP)
-        return neobox_handle_return(handler(ret, state), ret, handler, state);
+    if(event.type != NEOBOX_EVENT_NOP)
+        return neobox_handle_return(handler(event, state), event, handler, state);
     else
         return NEOBOX_HANDLER_SUCCESS;
 }
 
 int neobox_handle_queue(neobox_handler *handler, void *state, sigset_t *oldset)
 {
+    struct neobox_stash stash;
     struct neobox_event event;
-    struct neobox_return tret;
     int ret;
     
-    while((event = neobox_get_event(oldset)).type != EVENT_NOP)
+    while((stash = neobox_get_event(oldset)).type != STASH_NOP)
     {
         if(oldset)
             sigprocmask(SIG_SETMASK, oldset, 0);
-        switch(event.type)
+        switch(stash.type)
         {
-        case EVENT_IOD:
-            tret = neobox_parse_event(event.event.iod);
+        case STASH_IOD:
+            event = neobox_parse_iod_event(stash.event.iod);
             break;
-        case EVENT_NEOBOX:
-            tret = event.event.neobox;
+        case STASH_NEOBOX:
+            event = stash.event.neobox;
             break;
         }
-        ret = neobox_handle_return(handler(tret, state), tret, handler, state);
+        ret = neobox_handle_return(handler(event, state), event, handler, state);
         if(ret == NEOBOX_HANDLER_SUCCESS)
             continue;
         else
@@ -1229,7 +1229,7 @@ int neobox_handle_queue(neobox_handler *handler, void *state, sigset_t *oldset)
 
 int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, int count)
 {
-    struct neobox_return tret;
+    struct neobox_event event;
     int ret, i;
     sigset_t set;
     
@@ -1283,27 +1283,27 @@ handle:     switch(ret)
         }
         else
         {
-            tret.type = NEOBOX_RETURN_NOP;
+            event.type = NEOBOX_EVENT_NOP;
             
             for(i=1; i<count; i++)
             {
-                tret.id = i;
-                tret.value.i = pfds[i].fd;
+                event.id = i;
+                event.value.i = pfds[i].fd;
                 
                 if(pfds[i].revents & POLLHUP || pfds[i].revents & POLLERR)
                 {
                     pfds[i].events = 0;
-                    tret.type = NEOBOX_RETURN_POLLHUPERR;
+                    event.type = NEOBOX_EVENT_POLLHUPERR;
                 }
                 else if(pfds[i].revents & POLLIN)
-                    tret.type = NEOBOX_RETURN_POLLIN;
+                    event.type = NEOBOX_EVENT_POLLIN;
                 else if(pfds[i].revents & POLLOUT)
-                    tret.type = NEOBOX_RETURN_POLLOUT;
+                    event.type = NEOBOX_EVENT_POLLOUT;
                 
-                if(tret.type != NEOBOX_RETURN_NOP)
+                if(event.type != NEOBOX_EVENT_NOP)
                 {
-                    ret = neobox_handle_return(handler(tret, state),
-                        tret, handler, state);
+                    ret = neobox_handle_return(handler(event, state),
+                        event, handler, state);
                     goto handle;
                 }
             }
@@ -1358,7 +1358,7 @@ int neobox_lock(int lock)
         
         if(event.event != IOD_EVENT_LOCK)
         {
-            neobox_queue_event(EVENT_IOD, &event);
+            neobox_queue_event(STASH_IOD, &event);
             continue;
         }
         
@@ -1412,7 +1412,7 @@ int neobox_grab(int button, int grab)
             (event.value.status & ~IOD_SUCCESS_MASK) !=
             (value & ~IOD_GRAB_MASK))
         {
-            neobox_queue_event(EVENT_IOD, &event);
+            neobox_queue_event(STASH_IOD, &event);
             continue;
         }
         

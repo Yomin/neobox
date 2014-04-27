@@ -163,15 +163,15 @@ void restore_brightness()
     close(fd);
 }
 
-int handler(struct neobox_return ret, void *state)
+int handler(struct neobox_event event, void *state)
 {
     char c;
     
-    switch(ret.type)
+    switch(event.type)
     {
-    case NEOBOX_RETURN_CHAR:
-        c = rand_tile[ret.id*2];
-        if(ret.id)
+    case NEOBOX_EVENT_CHAR:
+        c = rand_tile[event.id*2];
+        if(event.id)
         {
             passptr = c == *passptr ? passptr+1 : pass;
             if(!*passptr)
@@ -187,16 +187,16 @@ int handler(struct neobox_return ret, void *state)
         }
         draw_tile(c, 1);
         break;
-    case NEOBOX_RETURN_ACTIVATE:
+    case NEOBOX_EVENT_ACTIVATE:
         passptr = pass;
         srandom(time(0)+random());
         draw_tile(random()%26+'a', 0);
         return NEOBOX_HANDLER_DEFER;
-    case NEOBOX_RETURN_BUTTON:
-        switch(ret.id)
+    case NEOBOX_EVENT_BUTTON:
+        switch(event.id)
         {
         case NEOBOX_BUTTON_POWER:
-            if(!ret.value.i)
+            if(!event.value.i)
                 break;
 powersave:  if(!powersave)
             {
@@ -218,8 +218,8 @@ powersave:  if(!powersave)
             break;
         }
         return NEOBOX_HANDLER_SUCCESS;
-    case NEOBOX_RETURN_SIGNAL:
-        switch(ret.value.i)
+    case NEOBOX_EVENT_SIGNAL:
+        switch(event.value.i)
         {
         case SIGCHLD:
             wait(0);

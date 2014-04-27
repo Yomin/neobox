@@ -57,23 +57,23 @@
 #define NEOBOX_SET_SUCCESS           0
 #define NEOBOX_SET_FAILURE           1
 
-#define NEOBOX_RETURN_NOP            0
-#define NEOBOX_RETURN_CHAR           1
-#define NEOBOX_RETURN_INT            2
-#define NEOBOX_RETURN_QUIT           3
-#define NEOBOX_RETURN_ACTIVATE       4
-#define NEOBOX_RETURN_DEACTIVATE     5
-#define NEOBOX_RETURN_SIGNAL         6
-#define NEOBOX_RETURN_SYSTEM         7
-#define NEOBOX_RETURN_POLLIN         8
-#define NEOBOX_RETURN_POLLOUT        9
-#define NEOBOX_RETURN_POLLHUPERR     10
-#define NEOBOX_RETURN_TIMER          11
-#define NEOBOX_RETURN_REMOVE         12
-#define NEOBOX_RETURN_BUTTON         13
-#define NEOBOX_RETURN_LOCK           14
-#define NEOBOX_RETURN_GRAB           15
-#define NEOBOX_RETURN_POWERSAVE      16
+#define NEOBOX_EVENT_NOP            0
+#define NEOBOX_EVENT_CHAR           1
+#define NEOBOX_EVENT_INT            2
+#define NEOBOX_EVENT_QUIT           3
+#define NEOBOX_EVENT_ACTIVATE       4
+#define NEOBOX_EVENT_DEACTIVATE     5
+#define NEOBOX_EVENT_SIGNAL         6
+#define NEOBOX_EVENT_SYSTEM         7
+#define NEOBOX_EVENT_POLLIN         8
+#define NEOBOX_EVENT_POLLOUT        9
+#define NEOBOX_EVENT_POLLHUPERR     10
+#define NEOBOX_EVENT_TIMER          11
+#define NEOBOX_EVENT_REMOVE         12
+#define NEOBOX_EVENT_BUTTON         13
+#define NEOBOX_EVENT_LOCK           14
+#define NEOBOX_EVENT_GRAB           15
+#define NEOBOX_EVENT_POWERSAVE      16
 
 #define NEOBOX_HANDLER_SUCCESS       0
 #define NEOBOX_HANDLER_QUIT          1
@@ -89,7 +89,7 @@ struct neobox_config
     int verbose;
 };
 
-struct neobox_return
+struct neobox_event
 {
     unsigned char type, id;
     union neobox_elem value;
@@ -103,7 +103,7 @@ struct neobox_config neobox_config_default(int *argc, char *argv[]);
 
 void neobox_finish();
 
-typedef int neobox_handler(struct neobox_return ret, void *state);
+typedef int neobox_handler(struct neobox_event event, void *state);
 
 int neobox_run(neobox_handler *handler, void *state);
 int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, int count);

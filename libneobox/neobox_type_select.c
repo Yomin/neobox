@@ -28,7 +28,7 @@
 #include "neobox_type_button.h"
 #include "neobox_type_help.h"
 
-#define NOP (struct neobox_return) { .type = NEOBOX_RETURN_NOP }
+#define NOP (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 
 extern struct neobox_global neobox;
 extern int button_copy_size;
@@ -102,7 +102,7 @@ int neobox_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struc
     return neobox_type_button_broader(y, x, scr_y, scr_x, elem);
 }
 
-struct neobox_return neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     struct neobox_save_select *select;
     int size;
@@ -123,22 +123,22 @@ struct neobox_return neobox_type_select_press(int y, int x, int button_y, int bu
     return NOP;
 }
 
-struct neobox_return neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return NOP;
 }
 
-struct neobox_return neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     struct neobox_save_select *select;
-    struct neobox_return ret;
+    struct neobox_event ret;
     
     select = save->partner ? save->partner->data : save->data;
     
     if(!(select->status & NEOBOX_TYPE_SELECT_STATUS_LOCKED))
         select->status ^= NEOBOX_TYPE_SELECT_STATUS_ACTIVE;
     
-    ret.type = NEOBOX_RETURN_INT;
+    ret.type = NEOBOX_EVENT_INT;
     ret.id = elem->id;
     ret.value.i = select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE;
     
@@ -147,12 +147,12 @@ struct neobox_return neobox_type_select_release(int y, int x, int button_y, int 
     return ret;
 }
 
-struct neobox_return neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return neobox_type_select_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_return neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     struct neobox_save_select *select;
     int size;

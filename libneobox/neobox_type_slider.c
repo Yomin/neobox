@@ -33,7 +33,7 @@
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define LANDSCAPE  (neobox.format == NEOBOX_FORMAT_LANDSCAPE)
 #define HSLIDER(e) ((e)->type == NEOBOX_LAYOUT_TYPE_HSLIDER)
-#define NOP        (struct neobox_return) { .type = NEOBOX_RETURN_NOP }
+#define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 
 extern struct neobox_global neobox;
 
@@ -186,12 +186,12 @@ int neobox_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struc
     return 1;
 }
 
-struct neobox_return neobox_type_slider_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_slider_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_return neobox_type_slider_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_slider_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     int i, height, width, pos, partner_x, partner_y, hticks;
     float tick;
@@ -199,7 +199,7 @@ struct neobox_return neobox_type_slider_move(int y, int x, int button_y, int but
     struct vector *connect;
     struct neobox_point *p;
     struct neobox_save_slider *slider;
-    struct neobox_return ret;
+    struct neobox_event ret;
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
@@ -364,7 +364,7 @@ struct neobox_return neobox_type_slider_move(int y, int x, int button_y, int but
         }
     }
     
-    ret.type = NEOBOX_RETURN_INT;
+    ret.type = NEOBOX_EVENT_INT;
     ret.id = elem->id;
     
     if(slider->ticks)
@@ -392,7 +392,7 @@ struct neobox_return neobox_type_slider_move(int y, int x, int button_y, int but
     return ret;
 }
 
-struct neobox_return neobox_type_slider_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_slider_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     struct neobox_save_slider *slider;
     
@@ -405,12 +405,12 @@ struct neobox_return neobox_type_slider_release(int y, int x, int button_y, int 
     return NOP;
 }
 
-struct neobox_return neobox_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_return neobox_type_slider_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_slider_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     struct neobox_save_slider *slider;
     int height, width;

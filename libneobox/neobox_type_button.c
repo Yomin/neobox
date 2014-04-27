@@ -32,7 +32,7 @@
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define ALIGN(e)   ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_ALIGN)
-#define NOP        (struct neobox_return) { .type = NEOBOX_RETURN_NOP }
+#define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 
 extern struct neobox_global neobox;
 
@@ -103,7 +103,7 @@ int neobox_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struc
     return 1;
 }
 
-struct neobox_return neobox_type_button_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_button_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     int i, height, width;
     unsigned char *ptr = 0, color;
@@ -157,23 +157,23 @@ struct neobox_return neobox_type_button_press(int y, int x, int button_y, int bu
     return NOP;
 }
 
-struct neobox_return neobox_type_button_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_button_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return NOP;
 }
 
-struct neobox_return neobox_type_button_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_button_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    struct neobox_return ret;
+    struct neobox_event ret;
     int nmap = neobox.parser.map;
     
-    ret.type = NEOBOX_RETURN_NOP;
+    ret.type = NEOBOX_EVENT_NOP;
     ret.id = elem->id;
     
     switch(elem->type)
     {
     case NEOBOX_LAYOUT_TYPE_CHAR:
-        ret.type = NEOBOX_RETURN_CHAR;
+        ret.type = NEOBOX_EVENT_CHAR;
         if(neobox.layout.fun) // layout specific convert function
             ret.value = neobox.layout.fun(neobox.parser.map, elem->elem,
                 neobox.parser.toggle);
@@ -206,7 +206,7 @@ struct neobox_return neobox_type_button_release(int y, int x, int button_y, int 
             neobox.parser.toggle & elem->elem.i ? "on" : "off"));
         break;
     case NEOBOX_LAYOUT_TYPE_SYSTEM:
-        ret.type = NEOBOX_RETURN_SYSTEM;
+        ret.type = NEOBOX_EVENT_SYSTEM;
         ret.value.i = elem->elem.i;
         if(neobox.verbose)
             switch(elem->elem.i)
@@ -241,12 +241,12 @@ ret:
     return ret;
 }
 
-struct neobox_return neobox_type_button_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_button_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     return neobox_type_button_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_return neobox_type_button_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
     int i, height, width;
     unsigned char *ptr;

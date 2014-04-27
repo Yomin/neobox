@@ -103,15 +103,15 @@ void set_apps(int draw)
     }
 }
 
-int handler(struct neobox_return ret, void *state)
+int handler(struct neobox_event event, void *state)
 {
     pid_t pid;
     int i;
     
-    switch(ret.type)
+    switch(event.type)
     {
-    case NEOBOX_RETURN_CHAR:
-        switch(ret.value.c.c[0])
+    case NEOBOX_EVENT_CHAR:
+        switch(event.value.c.c[0])
         {
         case 'k':
             break;
@@ -131,30 +131,30 @@ int handler(struct neobox_return ret, void *state)
             break;
         }
         return NEOBOX_HANDLER_SUCCESS;
-    case NEOBOX_RETURN_INT:
-        if(!ret.value.i)
+    case NEOBOX_EVENT_INT:
+        if(!event.value.i)
             break;
-        if(!apps[apppos+ret.id].pid)
+        if(!apps[apppos+event.id].pid)
         {
-            if(exec(apppos+ret.id))
+            if(exec(apppos+event.id))
                 break;
-            neobox_select_set_locked(ret.id, 0, 1);
+            neobox_select_set_locked(event.id, 0, 1);
         }
         else
-            neobox_switch(apps[apppos+ret.id].pid);
+            neobox_switch(apps[apppos+event.id].pid);
         return NEOBOX_HANDLER_SUCCESS;
-    case NEOBOX_RETURN_SYSTEM:
-        if(ret.value.i == NEOBOX_SYSTEM_MENU)
+    case NEOBOX_EVENT_SYSTEM:
+        if(event.value.i == NEOBOX_SYSTEM_MENU)
             return NEOBOX_HANDLER_SUCCESS;
         break;
-    case NEOBOX_RETURN_DEACTIVATE:
+    case NEOBOX_EVENT_DEACTIVATE:
         active = 0;
         break;
-    case NEOBOX_RETURN_ACTIVATE:
+    case NEOBOX_EVENT_ACTIVATE:
         active = 1;
         break;
-    case NEOBOX_RETURN_SIGNAL:
-        switch(ret.value.i)
+    case NEOBOX_EVENT_SIGNAL:
+        switch(event.value.i)
         {
         case SIGCHLD:
             pid = wait(0);

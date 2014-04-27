@@ -55,24 +55,24 @@
 #define TIMER_SYSTEM 0
 #define TIMER_USER   1
 
-#define EVENT_NOP    0
-#define EVENT_IOD    1
-#define EVENT_NEOBOX 2
+#define STASH_NOP    0
+#define STASH_IOD    1
+#define STASH_NEOBOX 2
 
-struct neobox_event
+struct neobox_stash
 {
     char type;
     union
     {
         struct iod_event iod;
-        struct neobox_return neobox;
+        struct neobox_event neobox;
     } event;
 };
 
 struct neobox_chain_queue
 {
     CIRCLEQ_ENTRY(neobox_chain_queue) chain;
-    struct neobox_event event;
+    struct neobox_stash stash;
 };
 CIRCLEQ_HEAD(neobox_queue, neobox_chain_queue);
 

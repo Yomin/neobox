@@ -44,11 +44,11 @@ void neobox_type_select_draw(int y, int x, const struct neobox_map *map, const s
 
 int neobox_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem);
 
-struct neobox_return neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_return neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_return neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_return neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_return neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+struct neobox_event neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+struct neobox_event neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+struct neobox_event neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+struct neobox_event neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+struct neobox_event neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
 
 void neobox_type_select_set_name(const void *name, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
 void neobox_type_select_set_active(const void *active, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);

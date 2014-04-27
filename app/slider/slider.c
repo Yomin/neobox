@@ -36,14 +36,14 @@
 int fd, tick;
 char buf[100];
 
-int handler(struct neobox_return ret, void *state)
+int handler(struct neobox_event event, void *state)
 {
     int count, err;
     
-    switch(ret.type)
+    switch(event.type)
     {
-    case NEOBOX_RETURN_INT:
-        count = snprintf(buf, 100, "%i", ret.value.i*tick);
+    case NEOBOX_EVENT_INT:
+        count = snprintf(buf, 100, "%i", event.value.i*tick);
         if(write(fd, buf, count) == -1)
         {
             err = errno;

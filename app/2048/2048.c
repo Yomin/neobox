@@ -258,13 +258,13 @@ void rotate(int pos)
     }
 }
 
-int handler(struct neobox_return ret, void *state)
+int handler(struct neobox_event ret, void *state)
 {
     int change;
     
     switch(ret.type)
     {
-    case NEOBOX_RETURN_CHAR:
+    case NEOBOX_EVENT_CHAR:
         if(rotating)
             return NEOBOX_HANDLER_SUCCESS;
         
@@ -331,13 +331,13 @@ int handler(struct neobox_return ret, void *state)
                 break;
             }
         return NEOBOX_HANDLER_SUCCESS;
-    case NEOBOX_RETURN_TIMER:
+    case NEOBOX_EVENT_TIMER:
         rotate(ret.id);
         return NEOBOX_HANDLER_SUCCESS;
-    case NEOBOX_RETURN_ACTIVATE:
+    case NEOBOX_EVENT_ACTIVATE:
         visible = 1;
         return NEOBOX_HANDLER_DEFER;
-    case NEOBOX_RETURN_DEACTIVATE:
+    case NEOBOX_EVENT_DEACTIVATE:
         visible = 0;
         return NEOBOX_HANDLER_DEFER;
     default:

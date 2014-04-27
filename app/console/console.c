@@ -45,15 +45,15 @@ inline static int insert(int fd, char c)
     return 0;
 }
 
-int handler(struct neobox_return ret, void *state)
+int handler(struct neobox_event event, void *state)
 {
     int fd = *(int*) state;
-    char *ptr = ret.value.c.c;
+    char *ptr = event.value.c.c;
     int i = 0, err;
     
-    switch(ret.type)
+    switch(event.type)
     {
-    case NEOBOX_RETURN_CHAR:
+    case NEOBOX_EVENT_CHAR:
         break;
     default:
         return NEOBOX_HANDLER_DEFER;
