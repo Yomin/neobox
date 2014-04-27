@@ -29,7 +29,7 @@
 
 #include "neobox_layout.h"
 
-#define NEOBOX_ERROR_RPC_OPEN    -1
+#define NEOBOX_ERROR_IOD_OPEN    -1
 #define NEOBOX_ERROR_FB_OPEN     -2
 #define NEOBOX_ERROR_FB_VINFO    -3
 #define NEOBOX_ERROR_FB_FINFO    -4

@@ -58,33 +58,33 @@ struct chain_socket
 CIRCLEQ_HEAD(client_sockets, chain_socket);
 
 
-int screen_fd, aux_fd, power_fd, rpc_sock;
+int screen_fd, aux_fd, power_fd, sock;
 int client_count, pfds_cap;
 struct client_sockets client_list;
 char *pwd, *screen_dev, *aux_dev, *power_dev;
 struct pollfd *pfds;
 
 
-int open_rpc_socket(int *sock, struct sockaddr_un *addr)
+int open_socket(int *sock, struct sockaddr_un *addr)
 {
     addr->sun_family = AF_UNIX;
-    sprintf(addr->sun_path, "%s/%s", pwd, IOD_RPC);
+    sprintf(addr->sun_path, "%s/%s", pwd, IOD_SOCK);
     
     if((*sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
-        perror("Failed to open rpc socket");
+        perror("Failed to open socket");
         return 11;
     }
     
     if(unlink(addr->sun_path) == -1 && errno != ENOENT)
     {
-        perror("Failed to unlink rpc socket file");
+        perror("Failed to unlink socket file");
         return 12;
     }
     
     if(bind(*sock, (struct sockaddr*)addr, sizeof(struct sockaddr_un)) == -1)
     {
-        perror("Failed to bind rpc socket");
+        perror("Failed to bind socket");
         return 13;
     }
     
@@ -385,8 +385,8 @@ void cleanup()
         close(aux_fd);
     if(power_fd)
         close(power_fd);
-    if(rpc_sock)
-        close(rpc_sock);
+    if(sock)
+        close(sock);
     free(screen_dev);
     free(aux_dev);
     free(power_dev);
@@ -503,7 +503,7 @@ int main(int argc, char* argv[])
     int screen_status, aux_pressed, power_pressed, y, x;
     char *config;
     FILE *file;
-    struct sockaddr_un rpc_addr;
+    struct sockaddr_un addr;
     
     struct chain_socket *aux_grabber = 0, *power_grabber = 0;
     
@@ -634,7 +634,7 @@ int main(int argc, char* argv[])
     DEBUG(print_info(aux_fd));
     DEBUG(print_info(power_fd));
     
-    if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
+    if((ret = open_socket(&sock, &addr)))
         return ret;
     
     pfds_cap = 10;
@@ -645,7 +645,7 @@ int main(int argc, char* argv[])
     pfds[1].events = POLLIN;
     pfds[2].fd = power_fd;
     pfds[2].events = POLLIN;
-    pfds[3].fd = rpc_sock;
+    pfds[3].fd = sock;
     pfds[3].events = POLLIN;
     
     client_count = 0;
@@ -813,11 +813,11 @@ int main(int argc, char* argv[])
         }
         else if(pfds[3].revents & POLLHUP || pfds[3].revents & POLLERR)
         {
-            DEBUG(printf("pollhup/err on rpc socket\n"));
-            close(rpc_sock);
-            if((ret = open_rpc_socket(&rpc_sock, &rpc_addr)))
+            DEBUG(printf("pollhup/err on socket\n"));
+            close(sock);
+            if((ret = open_socket(&sock, &addr)))
             {
-                rpc_sock = 0;
+                sock = 0;
                 cleanup();
                 return ret;
             }
@@ -825,7 +825,7 @@ int main(int argc, char* argv[])
         else if(pfds[3].revents & POLLIN)
         {
             int client;
-            if((client = accept(rpc_sock, 0, 0)) == -1)
+            if((client = accept(sock, 0, 0)) == -1)
             {
                 DEBUG(perror("Failed to accept client"));
                 continue;

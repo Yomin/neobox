@@ -30,7 +30,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+#include <linux/un.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -339,10 +339,10 @@ int neobox_iod_connect(int tries)
     struct sockaddr_un addr;
     int reuse = 1;
     
-    VERBOSE(printf("[NEOBOX] Connecting to rpc socket\n"));
+    VERBOSE(printf("[NEOBOX] Connecting to iod socket\n"));
     
     addr.sun_family = AF_UNIX;
-    sprintf(addr.sun_path, "%s/%s", neobox.iod.dir, IOD_RPC);
+    strncpy(addr.sun_path, neobox.iod.usock, UNIX_PATH_MAX);
     
     while(1)
     {
@@ -351,7 +351,7 @@ int neobox_iod_connect(int tries)
         
         if((neobox.iod.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
         {
-            VERBOSE(perror("[NEOBOX] Failed to open rpc socket"));
+            VERBOSE(perror("[NEOBOX] Failed to open iod socket"));
             goto retry;
         }
         
@@ -365,7 +365,7 @@ int neobox_iod_connect(int tries)
         {
             if(errno == EINTR)
                 continue;
-            VERBOSE(perror("[NEOBOX] Failed to connect rpc socket"));
+            VERBOSE(perror("[NEOBOX] Failed to connect iod socket"));
             goto retry;
         }
         
@@ -373,11 +373,11 @@ int neobox_iod_connect(int tries)
         
 retry:  if(tries-- == 1)
         {
-            VERBOSE(perror("[NEOBOX] Unable to connect rpc socket"));
-            return NEOBOX_ERROR_RPC_OPEN;
+            VERBOSE(perror("[NEOBOX] Unable to connect iod socket"));
+            return NEOBOX_ERROR_IOD_OPEN;
         }
         
-        VERBOSE(printf("[NEOBOX] Retry connecting to rpc socket in 1 second\n"));
+        VERBOSE(printf("[NEOBOX] Retry connecting to iod socket in 1 second\n"));
         
         while(sleep(1));
     }
@@ -466,7 +466,7 @@ struct neobox_config neobox_args(int *argc, char *argv[], struct neobox_config c
     struct option fboption[] =
     {
         { "neobox-fb", 1, 0, 'f' },      // path to framebuffer
-        { "neobox-iod", 1, 0, 't' },     // path to iod directory
+        { "neobox-iod", 1, 0, 't' },     // path to iod socket
         { "neobox-verbose", 0, 0, 'v' }, // verbose messages
         { "neobox-format", 1, 0, 'r' },  // p: portrait, l: landscape
         {0, 0, 0, 0}
@@ -570,10 +570,10 @@ int neobox_init_custom(struct neobox_config config)
             & NEOBOX_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
     }
     
-    neobox.iod.dir = config.iod;
+    neobox.iod.usock = config.iod;
     neobox.iod.sock = 0;
     
-    // open rpc socket
+    // open iod socket
     if((ret = neobox_iod_connect(-1)))
         return ret;
     
@@ -1265,7 +1265,7 @@ int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, i
         
         if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
         {
-            VERBOSE(printf("[NEOBOX] Failed to poll rpc socket\n"));
+            VERBOSE(printf("[NEOBOX] Failed to poll iod socket\n"));
             neobox_iod_reconnect(-1);
         }
         else if(pfds[0].revents & POLLIN)

@@ -116,7 +116,7 @@ struct neobox_parser
 
 struct neobox_iod
 {
-    const char *dir;
+    const char *usock;
     int sock;
     int lock;       // app has screen locked
     int hide;       // app is hidden

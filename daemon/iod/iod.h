@@ -27,7 +27,7 @@
 
 #define IOD_NAME    "iod"
 #define IOD_PWD     "/var/" IOD_NAME
-#define IOD_RPC     "rpc"
+#define IOD_SOCK    "iod"
 
 #define IOD_CMD_REGISTER    1   // register pid
 #define IOD_CMD_REMOVE      2   // remove app
