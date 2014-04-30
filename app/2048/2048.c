@@ -347,13 +347,13 @@ int handler(struct neobox_event ret, void *state)
 
 int main(int argc, char* argv[])
 {
-    struct neobox_config config = neobox_config_default(&argc, argv);
+    struct neobox_options options = neobox_options_default(&argc, argv);
     int ret, y, x;
     
-    config.format = NEOBOX_FORMAT_PORTRAIT;
-    config.layout = app2048Layout;
+    options.format = NEOBOX_FORMAT_PORTRAIT;
+    options.layout = app2048Layout;
     
-    if((ret = neobox_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(options)) < 0)
         return ret;
     
     srandom(time(0));

@@ -138,6 +138,11 @@ struct neobox_save
     struct neobox_partner *partner;
 };
 
+struct neobox_config
+{
+    void *rj;
+};
+
 struct neobox_global
 {
     int format;         // portrait or landscape
@@ -154,6 +159,7 @@ struct neobox_global
     struct neobox_save **save; // button save array
     struct neobox_queue queue; // event queue
     struct neobox_timer timer; // timer queue
+    struct neobox_config config;
 };
 
 #endif

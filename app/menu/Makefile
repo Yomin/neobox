@@ -36,7 +36,7 @@ touch:
 	$(shell [ ! -f debug -a -n "$(debug)" ] && { touch $(NAME).c; touch debug; rm -f $(LIBNEOBOX); })
 
 exec: sim
-	./$(NAME) --neobox-fb $(SIMPATH)/fb.ipc --neobox-iod $(SIMPATH)/iod --neobox-verbose -v apps_sim
+	./$(NAME) --neobox-fb $(SIMPATH)/fb.ipc --neobox-iod $(SIMPATH)/iod --neobox-verbose --neobox-config config_sim -v
 
 sync:
 	@make -C .. sync

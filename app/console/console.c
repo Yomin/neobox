@@ -28,9 +28,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
-#include "neobox.h"
 
-#define NAME "neobox-console"
+#include <neobox.h>
+#include <neobox_config.h>
 
 inline static int insert(int fd, char c)
 {
@@ -82,7 +82,7 @@ int handler(struct neobox_event event, void *state)
 
 void usage(char *name)
 {
-    printf("Usage: %s [-s] <tty>\n", name);
+    printf("Usage: %s [-s]\n", name);
 }
 
 int main(int argc, char* argv[])
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     int show = 0;
     char *tty;
     
-    struct neobox_config config = neobox_config_default(&argc, argv);
+    struct neobox_options options = neobox_options_default(&argc, argv);
     
     while((opt = getopt(argc, argv, "s")) != -1)
     {
@@ -106,19 +106,18 @@ int main(int argc, char* argv[])
         }
     }
     
-    if(optind == argc)
-    {
-        usage(argv[0]);
-        return 0;
-    }
-    
-    tty = argv[optind];
-    
     if(!show)
-        config.options |= NEOBOX_OPTION_NO_INITIAL_PRINT;
+        options.options |= NEOBOX_OPTION_NO_INITIAL_PRINT;
     
-    if((ret = neobox_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(options)) < 0)
         return ret;
+    
+    if(!(tty = neobox_config("tty", 0)))
+    {
+        fprintf(stderr, "TTY not configured\n");
+        neobox_finish();
+        return 1;
+    }
     
     if((fd = open(tty, O_RDONLY)) < 0)
     {

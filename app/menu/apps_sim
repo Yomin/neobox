@@ -1,2 +1,0 @@
-brightness:../slider/slider 18930 10 /sys/class/backlight/intel_backlight/brightness --neobox-fb ../sim/fb.ipc --neobox-iod ../sim
-2048:../2048/2048 --neobox-fb ../sim/fb.ipc --neobox-iod ../sim

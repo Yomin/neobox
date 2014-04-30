@@ -41,6 +41,7 @@
 
 #include "neobox_def.h"
 #include "neobox_fb.h"
+#include "neobox_config.h"
 
 #include "neobox_layout_default.h"
 
@@ -461,7 +462,7 @@ void neobox_iod_reconnect()
     }
 }
 
-struct neobox_config neobox_args(int *argc, char *argv[], struct neobox_config config)
+struct neobox_options neobox_args(int *argc, char *argv[], struct neobox_options options)
 {
     struct option fboption[] =
     {
@@ -469,6 +470,7 @@ struct neobox_config neobox_args(int *argc, char *argv[], struct neobox_config c
         { "neobox-iod", 1, 0, 't' },     // path to iod socket
         { "neobox-verbose", 0, 0, 'v' }, // verbose messages
         { "neobox-format", 1, 0, 'r' },  // p: portrait, l: landscape
+        { "neobox-config", 1, 0, 'c' },  // config path
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -479,18 +481,21 @@ struct neobox_config neobox_args(int *argc, char *argv[], struct neobox_config c
         switch(opt)
         {
         case 'f':
-            config.fb = optarg;
+            options.fb = optarg;
             break;
         case 't':
-            config.iod = optarg;
+            options.iod = optarg;
             break;
         case 'v':
-            config.verbose = 1;
+            options.verbose = 1;
             break;
         case 'r':
-            config.format = NEOBOX_FORMAT_LANDSCAPE;
+            options.format = NEOBOX_FORMAT_LANDSCAPE;
             if(optarg[0] == 'p')
-                config.format = NEOBOX_FORMAT_PORTRAIT;
+                options.format = NEOBOX_FORMAT_PORTRAIT;
+            break;
+        case 'c':
+            options.config = optarg;
             break;
         default:
             continue;
@@ -503,7 +508,7 @@ struct neobox_config neobox_args(int *argc, char *argv[], struct neobox_config c
     }
     opterr = 1;
     optind = 1;
-    return config;
+    return options;
 }
 
 void neobox_init_screen()
@@ -550,27 +555,27 @@ void neobox_init_screen()
     SIMV(send(neobox.fb.sock, &sim_tmp, 1, 0));
 }
 
-int neobox_init_custom(struct neobox_config config)
+int neobox_init_custom(struct neobox_options options)
 {
     int ret;
     struct sigaction sa;
     SIMV(struct sockaddr_un addr);
     
-    neobox.verbose = config.verbose;
+    neobox.verbose = options.verbose;
     
-    if(config.verbose)
+    if(options.verbose)
     {
         printf("[NEOBOX] init\n");
-        printf("[NEOBOX] fb: %s\n", config.fb);
-        printf("[NEOBOX] iod: %s\n", config.iod);
-        printf("[NEOBOX] format: %s\n", config.format
+        printf("[NEOBOX] fb: %s\n", options.fb);
+        printf("[NEOBOX] iod: %s\n", options.iod);
+        printf("[NEOBOX] format: %s\n", options.format
             == NEOBOX_FORMAT_LANDSCAPE ? "landscape" : "portrait");
         printf("[NEOBOX] options:\n");
-        printf("[NEOBOX]   initial print: %s\n", config.options
+        printf("[NEOBOX]   initial print: %s\n", options.options
             & NEOBOX_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
     }
     
-    neobox.iod.usock = config.iod;
+    neobox.iod.usock = options.iod;
     neobox.iod.sock = 0;
     
     // open iod socket
@@ -584,7 +589,7 @@ int neobox_init_custom(struct neobox_config config)
     // open framebuffer
 #ifndef SIM
     VERBOSE(printf("[NEOBOX] Opening framebuffer\n"));
-    if((neobox.fb.fd = open(config.fb, O_RDWR)) == -1)
+    if((neobox.fb.fd = open(options.fb, O_RDWR)) == -1)
     {
         VERBOSE(perror("[NEOBOX] Failed to open framebuffer"));
         close(neobox.iod.sock);
@@ -614,7 +619,7 @@ int neobox_init_custom(struct neobox_config config)
     }
     
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, config.fb);
+    strcpy(addr.sun_path, options.fb);
     
     if(connect(neobox.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
     {
@@ -636,7 +641,7 @@ int neobox_init_custom(struct neobox_config config)
     neobox.fb.bpp = neobox.fb.vinfo.bits_per_pixel/8;
     neobox.fb.size = neobox.fb.vinfo.xres*neobox.fb.vinfo.yres*neobox.fb.bpp;
     
-    if(config.verbose)
+    if(options.verbose)
     {
         printf("[NEOBOX] framebuffer info:\n");
         printf("[NEOBOX]   size %i x %i\n", neobox.fb.vinfo.xres,neobox.fb.vinfo.yres);
@@ -666,22 +671,31 @@ int neobox_init_custom(struct neobox_config config)
                   + neobox.fb.vinfo.yoffset*neobox.fb.finfo.line_length;
     
     // save layout and format
-    neobox.layout = config.layout;
-    neobox.format = config.format;
+    neobox.layout = options.layout;
+    neobox.format = options.format;
     
     // calculate partner connects, init save data
     neobox_init_partner();
     neobox_init_save_data();
     
     // init parser
-    if(config.map == NEOBOX_MAP_DEFAULT)
-        neobox.parser.map = neobox.parser.map_main = config.layout.start;
+    if(options.map == NEOBOX_MAP_DEFAULT)
+        neobox.parser.map = neobox.parser.map_main = options.layout.start;
     else
-        neobox.parser.map = neobox.parser.map_main = config.map;
+        neobox.parser.map = neobox.parser.map_main = options.map;
     
     neobox.parser.toggle = 0;
     neobox.parser.hold = 0;
     neobox.parser.pressed = 0;
+    
+    // init config
+    neobox.config.rj = 0;
+    if((ret = neobox_config_open(options.config)) && ret != ENOENT)
+    {
+        fprintf(stderr, "Failed to open config: %s\n",
+            neobox_config_strerror(ret));
+        return NEOBOX_ERROR_CONFIG;
+    }
     
     // else
     neobox.pause = 0;
@@ -708,7 +722,7 @@ int neobox_init_custom(struct neobox_config config)
     }
     
     // print initial screen
-    if(!(config.options & NEOBOX_OPTION_NO_INITIAL_PRINT))
+    if(!(options.options & NEOBOX_OPTION_NO_INITIAL_PRINT))
         neobox.redraw = 1;
     
     VERBOSE(printf("[NEOBOX] init done\n"));
@@ -717,29 +731,30 @@ int neobox_init_custom(struct neobox_config config)
     return neobox.iod.sock;
 }
 
-struct neobox_config neobox_config_default(int *argc, char *argv[])
+struct neobox_options neobox_options_default(int *argc, char *argv[])
 {
-    struct neobox_config config;
-    config.fb = "/dev/fb0";
-    config.iod = IOD_PWD;
-    config.layout = tkbLayoutDefault;
-    config.format = NEOBOX_FORMAT_LANDSCAPE;
-    config.options = 0;
-    config.verbose = 0;
-    config.map = NEOBOX_MAP_DEFAULT;
-    return neobox_args(argc, argv, config);
+    struct neobox_options options;
+    options.fb = "/dev/fb0";
+    options.iod = IOD_PWD;
+    options.config = NEOBOX_CONFIG_DEFAULT;
+    options.layout = tkbLayoutDefault;
+    options.format = NEOBOX_FORMAT_LANDSCAPE;
+    options.options = 0;
+    options.verbose = 0;
+    options.map = NEOBOX_MAP_DEFAULT;
+    return neobox_args(argc, argv, options);
 }
 
 int neobox_init_default(int *argc, char *argv[])
 {
-    return neobox_init_custom(neobox_config_default(argc, argv));
+    return neobox_init_custom(neobox_options_default(argc, argv));
 }
 
 int neobox_init_layout(struct neobox_layout layout, int *argc, char *argv[])
 {
-    struct neobox_config config = neobox_config_default(argc, argv);
-    config.layout = layout;
-    return neobox_init_custom(config);
+    struct neobox_options options = neobox_options_default(argc, argv);
+    options.layout = layout;
+    return neobox_init_custom(options);
 }
 
 void neobox_finish()
@@ -788,6 +803,8 @@ void neobox_finish()
         free(neobox.save[i]);
     }
     free(neobox.save);
+    
+    neobox_config_close();
     
     sigfillset(&set);
     sigprocmask(SIG_BLOCK, &set, 0);

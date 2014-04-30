@@ -1,4 +1,6 @@
-/root/neobox/menu/menu /root/neobox/menu/apps
-/sys/class/backlight/pcf50633-backlight/brightness
-42
-test
+%%encoding: US-ASCII
+section: main
+cmd: "/root/neobox/menu/menu /root/neobox/menu/apps"
+brightness: /sys/class/backlight/pcf50633-backlight/brightness
+seed: 42
+password: test

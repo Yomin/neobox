@@ -39,6 +39,7 @@
 #define NEOBOX_ERROR_SIGNAL      -8
 #define NEOBOX_ERROR_POLL        -9
 #define NEOBOX_ERROR_REGISTER    -10
+#define NEOBOX_ERROR_CONFIG      -11
 
 #define NEOBOX_FORMAT_LANDSCAPE  0
 #define NEOBOX_FORMAT_PORTRAIT   1
@@ -46,6 +47,7 @@
 #define NEOBOX_OPTION_NO_INITIAL_PRINT   1
 
 #define NEOBOX_MAP_DEFAULT       -1
+#define NEOBOX_CONFIG_DEFAULT    0
 
 #define NEOBOX_SYSTEM_PREV           0
 #define NEOBOX_SYSTEM_NEXT           1
@@ -82,9 +84,9 @@
 #define NEOBOX_HANDLER_DEFER         2
 #define NEOBOX_HANDLER_ERROR         (1<<7)
 
-struct neobox_config
+struct neobox_options
 {
-    char *fb, *iod;
+    char *fb, *iod, *config;
     struct neobox_layout layout;
     int format;
     int options;
@@ -100,9 +102,9 @@ struct neobox_event
 
 int neobox_init_default(int *argc, char *argv[]);
 int neobox_init_layout(struct neobox_layout layout, int *argc, char *argv[]);
-int neobox_init_custom(struct neobox_config config);
+int neobox_init_custom(struct neobox_options options);
 
-struct neobox_config neobox_config_default(int *argc, char *argv[]);
+struct neobox_options neobox_options_default(int *argc, char *argv[]);
 
 void neobox_finish();
 

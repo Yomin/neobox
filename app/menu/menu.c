@@ -35,6 +35,7 @@
 #include <neobox.h>
 #include <neobox_util.h>
 #include <neobox_select.h>
+#include <neobox_config.h>
 
 #include "menu_layout.h"
 
@@ -179,18 +180,14 @@ int handler(struct neobox_event event, void *state)
     return NEOBOX_HANDLER_DEFER;
 }
 
-int init_apps(const char *file)
+int init_apps()
 {
-    FILE *f;
-    char *line = 0, *ptr;
-    int count, err;
-    size_t size;
+    char *key, *value;
     
-    if(!(f = fopen(file, "r")))
+    if(neobox_config_list("apps"))
     {
-        err = errno;
-        perror("Failed to open app file");
-        return err;
+        fprintf(stderr, "Missing 'apps' config section\n");
+        return 1;
     }
     
     appcount = 0;
@@ -198,13 +195,11 @@ int init_apps(const char *file)
     apppos = 0;
     apps = malloc(appcap*sizeof(struct app));
     
-    while((count = getline(&line, &size, f)) != -1)
+    while(1)
     {
-        if(line[0] == '\n')
-            continue;
-        
-        if(!(ptr = strchr(line, ':')))
-            continue;
+        neobox_config_next(&key, &value);
+        if(!key)
+            break;
         
         if(appcount == appcap)
         {
@@ -212,61 +207,32 @@ int init_apps(const char *file)
             apps = realloc(apps, appcap*sizeof(struct app));
         }
         
-        if(line[count-1] == '\n')
-            line[count-1] = 0;
-        
-        *ptr = 0;
-        apps[appcount].name = line;
-        apps[appcount].cmd = ptr+1;
-        apps[appcount].argv = neobox_util_parse_cmd(ptr+1);
-        apps[appcount].argv[0] = line;
+        apps[appcount].name = key;
+        apps[appcount].cmd = value;
+        apps[appcount].argv = neobox_util_parse_cmd(value);
+        apps[appcount].argv[0] = key;
+        apps[appcount].pid = 0;
         appcount++;
-        line = 0;
     }
-    
-    if(line)
-        free(line);
-    
-    if(ferror(f))
-    {
-        fprintf(stderr, "Failed to read app file\n");
-        fclose(f);
-        return 1;
-    }
-    
-    fclose(f);
     
     return 0;
 }
 
-void free_apps()
-{
-    int i;
-    
-    for(i=0; i<appcount; i++)
-    {
-        free(apps[i].argv);
-        free(apps[i].name);
-    }
-    
-    free(apps);
-}
-
 int usage(const char *name)
 {
-    printf("Usage: %s [-v] <file>\n", name);
+    printf("Usage: %s [-v]\n", name);
     return 0;
 }
 
 int main(int argc, char* argv[])
 {
-    struct neobox_config config = neobox_config_default(&argc, argv);
-    int err, opt, ret;
+    struct neobox_options options = neobox_options_default(&argc, argv);
+    int opt, ret;
     
-    config.format = NEOBOX_FORMAT_PORTRAIT;
-    config.layout = menuLayout;
+    options.format = NEOBOX_FORMAT_PORTRAIT;
+    options.layout = menuLayout;
     
-    if((ret = neobox_init_custom(config)) < 0)
+    if((ret = neobox_init_custom(options)) < 0)
         return ret;
     
     active = 1;
@@ -284,13 +250,10 @@ int main(int argc, char* argv[])
         }
     }
     
-    if(optind == argc)
-        return usage(argv[0]);
-    
-    if((err = init_apps(argv[optind])))
+    if((ret = init_apps()))
     {
         neobox_finish();
-        return err;
+        return ret;
     }
     
     set_apps(0);
@@ -302,7 +265,7 @@ int main(int argc, char* argv[])
     
     neobox_finish();
     
-    free_apps();
+    free(apps);
     
     return ret;
 }

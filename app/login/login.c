@@ -35,6 +35,7 @@
 #include <neobox.h>
 #include <neobox_util.h>
 #include <neobox_button.h>
+#include <neobox_config.h>
 
 #include "login_layout.h"
 
@@ -237,86 +238,67 @@ powersave:  if(!powersave)
 
 int main(int argc, char* argv[])
 {
-    struct neobox_config config = neobox_config_default(&argc, argv);
-    int ret, i, count;
+    struct neobox_options options = neobox_options_default(&argc, argv);
+    int ret, i;
     unsigned int seed;
-    FILE *file = 0;
-    size_t size;
-    char *line = 0;
+    char *config_cmd, *config_seed;
+    
+    options.format = NEOBOX_FORMAT_PORTRAIT;
+    options.layout = loginLayout;
+    
+    if((ret = neobox_init_custom(options)) < 0)
+        return ret;
     
     cmd_pid = -1;
     cmd = 0;
     powersave = 0;
     brightness_dev = 0;
     
-    if(argc != 2)
+    if(!(config_cmd = neobox_config("cmd", 0)))
     {
-        printf("Usage %s <file>\n", argv[0]);
-        return 0;
-    }
-    
-    if(!(file = fopen(argv[1], "r")))
-    {
-        perror("Failed to open config");
+        fprintf(stderr, "Cmd not configured\n");
+        neobox_finish();
         return 1;
     }
     
-    if(getline(&line, &size, file) == -1)
+    if(!(brightness_dev = neobox_config("brightness", 0)))
     {
-        printf("Failed to read cmd\n");
-        ret = 2;
-        goto cleanup;
+        fprintf(stderr, "Brightness device not configured\n");
+        neobox_finish();
+        return 2;
     }
     
-    cmd = neobox_util_parse_cmd(line);
-    line = 0;
-    
-    if((count = getline(&brightness_dev, &size, file)) == -1)
-    {
-        printf("Failed to read brightness device\n");
-        ret = 3;
-        goto cleanup;
-    }
-    
-    brightness_dev[count-1] = 0;
     if((ret = open(brightness_dev, O_RDWR)) == -1)
     {
         perror("Failed to open brightness device");
-        ret = 4;
-        goto cleanup;
+        neobox_finish();
+        return 3;
     }
     
     close(ret);
     
-    if(getline(&line, &size, file) == -1)
+    if(!(config_seed = neobox_config("seed", 0)))
     {
-        printf("Failed to read seed\n");
-        ret = 5;
-        goto cleanup;
+        fprintf(stderr, "Seed not configured\n");
+        neobox_finish();
+        return 4;
     }
     
-    if(strspn(line, "1234567890\n") != strlen(line))
+    if(strspn(config_seed, "1234567890\n") != strlen(config_seed))
     {
-        printf("Seed not numeric\n");
-        ret = 6;
-        goto cleanup;
+        fprintf(stderr, "Seed not numeric\n");
+        neobox_finish();
+        return 5;
     }
     
-    seed = atoi(line);
+    seed = atoi(config_seed);
     
-    if((count = getline(&pass, &size, file)) == -1)
+    if(!(pass = neobox_config("password", 0)))
     {
-        printf("Failed to read passphrase\n");
-        ret = 7;
-        goto cleanup;
+        fprintf(stderr, "Password not configured\n");
+        neobox_finish();
+        return 6;
     }
-    
-    pass[count-1] = 0;
-    
-    fclose(file);
-    free(line);
-    file = 0;
-    line = 0;
     
     for(i=0; i<26; i++)
     {
@@ -324,15 +306,12 @@ int main(int argc, char* argv[])
         if(!(seed = gen_tile(i+'a')))
         {
             printf("Passphrase not usable\n");
-            ret = 8;
-            goto cleanup;
+            neobox_finish();
+            return 7;
         }
     }
     
-    config.format = NEOBOX_FORMAT_PORTRAIT;
-    config.layout = loginLayout;
-    if((ret = neobox_init_custom(config)) < 0)
-        goto cleanup;
+    cmd = neobox_util_parse_cmd(config_cmd);
     
     srandom(time(0));
     
@@ -343,20 +322,9 @@ int main(int argc, char* argv[])
     
     ret = neobox_run(handler, 0);
     
-    neobox_finish();
+    free(cmd);
     
-cleanup:
-    if(file)
-        fclose(file);
-    if(line)
-        free(line);
-    if(cmd)
-    {
-        free(cmd[0]);
-        free(cmd);
-    }
-    if(brightness_dev)
-        free(brightness_dev);
+    neobox_finish();
     
     return ret;
 }

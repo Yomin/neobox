@@ -1,5 +1,6 @@
-../menu/menu -v ../menu/apps_sim --neobox-fb ../sim/fb.ipc --neobox-iod ../sim
-/sys/class/backlight/intel_backlight/brightness
-18930
-42
-test
+%%encoding: US-ASCII
+section: main
+cmd: ../menu/menu -v ../menu/apps_sim --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod
+brightness: /sys/class/backlight/intel_backlight/brightness
+seed: 42
+password: test
