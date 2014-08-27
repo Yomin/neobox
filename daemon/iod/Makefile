@@ -1,5 +1,5 @@
 
-.PHONY: all, debug, clean, touch, exec
+.PHONY: all, debug, sim, clean, touch, exec
 
 NAME = iod
 CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
@@ -11,6 +11,8 @@ all: touch $(NAME)
 debug: DEBUG = yes
 debug: CFLAGS := $(CFLAGS) -ggdb
 debug: touch $(NAME)
+
+sim: debug
 
 clean:
 	find . ! -type d \( -perm -111 -or -name "*\.o" \) -exec rm {} \;

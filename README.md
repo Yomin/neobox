@@ -19,3 +19,9 @@ Simple application utilizing a slider to set a device value.
 
 ## menu
 Application for starting other applications.
+
+## 2048
+The killer application. Comes with numberwang mode.
+
+## login
+Login application for locking screen.

@@ -1,4 +1,4 @@
 %%encoding: US-ASCII
 section: apps
-brightness: /root/neobox/slider/slider 63 10 /sys/class/backlight/pcf50633-backlight/brightness
-2048: /root/neobox/2048/2048
+brightness: /root/neobox/app/slider/slider 63 10 /sys/class/backlight/pcf50633-backlight/brightness
+2048: /root/neobox/app/2048/2048

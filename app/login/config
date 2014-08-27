@@ -1,6 +1,6 @@
 %%encoding: US-ASCII
 section: main
-cmd: "/root/neobox/menu/menu /root/neobox/menu/apps"
+cmd: /root/neobox/app/menu/menu
 brightness: /sys/class/backlight/pcf50633-backlight/brightness
 seed: 42
 password: test

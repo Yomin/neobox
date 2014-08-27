@@ -82,14 +82,14 @@ int handler(struct neobox_event event, void *state)
 
 void usage(char *name)
 {
-    printf("Usage: %s [-s]\n", name);
+    printf("Usage: %s [-s] [tty]\n", name);
 }
 
 int main(int argc, char* argv[])
 {
     int opt, fd, err, ret;
     int show = 0;
-    char *tty;
+    char *tty = 0;
     
     struct neobox_options options = neobox_options_default(&argc, argv);
     
@@ -106,13 +106,16 @@ int main(int argc, char* argv[])
         }
     }
     
+    if(optind < argc)
+        tty = argv[optind];
+    
     if(!show)
         options.options |= NEOBOX_OPTION_NO_INITIAL_PRINT;
     
     if((ret = neobox_init_custom(options)) < 0)
         return ret;
     
-    if(!(tty = neobox_config("tty", 0)))
+    if(!tty && !(tty = neobox_config("tty", 0)))
     {
         fprintf(stderr, "TTY not configured\n");
         neobox_finish();
