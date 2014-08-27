@@ -690,7 +690,7 @@ int neobox_init_custom(struct neobox_options options)
     
     // init config
     neobox.config.rj = 0;
-    if((ret = neobox_config_open(options.config)) && ret != ENOENT)
+    if((ret = neobox_config_open(options.config)) && (options.config || ret != ENOENT))
     {
         fprintf(stderr, "Failed to open config: %s\n",
             neobox_config_strerror(ret));

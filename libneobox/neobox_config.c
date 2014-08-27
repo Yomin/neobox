@@ -103,30 +103,38 @@ const char* neobox_config_strerror(int error)
 
 char* neobox_config(const char *key, const char *def)
 {
-    return rj_config_get("main", key, def, *config);
+    return *config ? rj_config_get("main", key, def, *config) : (char*) def;
 }
 
 char* neobox_config_section(const char *section, const char *key, const char *def)
 {
-    return rj_config_get(section, key, def, *config);
+    return *config ? rj_config_get(section, key, def, *config) : (char*) def;
 }
 
 int neobox_config_list(const char *section)
 {
-    return rj_config_list(section, *config);
+    return *config ? rj_config_list(section, *config) : 1;
 }
 
 void neobox_config_next(char **key, char **value)
 {
+    if(!*config)
+    {
+        *key = 0;
+        *value = 0;
+        return;
+    }
     rj_config_next(key, value, *config);
 }
 
 void neobox_config_set(const char *key, const char *value)
 {
+    if(*config)
         rj_config_set("main", key, value, *config);
 }
 
 void neobox_config_set_section(const char *section, const char *key, const char *value)
 {
+    if(*config)
         rj_config_set(section, key, value, *config);
 }
