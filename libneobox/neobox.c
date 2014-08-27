@@ -591,20 +591,20 @@ int neobox_init_custom(struct neobox_options options)
     VERBOSE(printf("[NEOBOX] Opening framebuffer\n"));
     if((neobox.fb.fd = open(options.fb, O_RDWR)) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to open framebuffer"));
+        perror("[NEOBOX] Failed to open framebuffer");
         close(neobox.iod.sock);
         return NEOBOX_ERROR_FB_OPEN;
     }
     if(ioctl(neobox.fb.fd, FBIOGET_VSCREENINFO, &(neobox.fb.vinfo)) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to get variable screeninfo"));
+        perror("[NEOBOX] Failed to get variable screeninfo");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_VINFO;
     }
     if(ioctl(neobox.fb.fd, FBIOGET_FSCREENINFO, &(neobox.fb.finfo)) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to get fixed screeninfo"));
+        perror("[NEOBOX] Failed to get fixed screeninfo");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_FINFO;
@@ -614,7 +614,7 @@ int neobox_init_custom(struct neobox_options options)
     neobox.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if(neobox.fb.sock == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to open framebuffer socket"));
+        perror("[NEOBOX] Failed to open framebuffer socket");
         return NEOBOX_ERROR_FB_OPEN;
     }
     
@@ -623,7 +623,7 @@ int neobox_init_custom(struct neobox_options options)
     
     if(connect(neobox.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to connect framebuffer socket"));
+        perror("[NEOBOX] Failed to connect framebuffer socket");
         return NEOBOX_ERROR_FB_OPEN;
     }
     
@@ -633,7 +633,7 @@ int neobox_init_custom(struct neobox_options options)
     
     if((neobox.fb.fd = shm_open(neobox.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to open shared memory"));
+        perror("[NEOBOX] Failed to open shared memory");
         return NEOBOX_ERROR_FB_OPEN;
     }
 #endif
@@ -653,7 +653,7 @@ int neobox_init_custom(struct neobox_options options)
 #ifdef SIM
     if(ftruncate(neobox.fb.fd, neobox.fb.size) == -1)
     {
-        VERBOSE(perror("[NEOBOX] Failed to truncate shared memory"));
+        perror("[NEOBOX] Failed to truncate shared memory");
         return NEOBOX_ERROR_FB_OPEN;
     }
 #endif
@@ -661,7 +661,7 @@ int neobox_init_custom(struct neobox_options options)
     if((neobox.fb.ptr = (unsigned char*) mmap(0, neobox.fb.size,
         PROT_READ|PROT_WRITE, MAP_SHARED, neobox.fb.fd, 0)) == MAP_FAILED)
     {
-        VERBOSE(perror("[NEOBOX] Failed to mmap framebuffer"));
+        perror("[NEOBOX] Failed to mmap framebuffer");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_MMAP;
