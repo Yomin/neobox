@@ -735,7 +735,7 @@ struct neobox_options neobox_options_default(int *argc, char *argv[])
 {
     struct neobox_options options;
     options.fb = "/dev/fb0";
-    options.iod = IOD_PWD;
+    options.iod = IOD_PWD "/" IOD_SOCK;
     options.config = NEOBOX_CONFIG_DEFAULT;
     options.layout = tkbLayoutDefault;
     options.format = NEOBOX_FORMAT_LANDSCAPE;
