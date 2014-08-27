@@ -20,7 +20,10 @@
  * THE SOFTWARE.
  */
 
-#include "neobox_def.h"
+#ifdef NEOBOX
+#   include "neobox_def.h"
+#endif
+
 #include "neobox_config.h"
 
 #include <rj_config.h>
@@ -34,7 +37,13 @@
 
 #define PATH_MAX 256
 
+static struct recordjar **config;
+
+#ifdef NEOBOX
 extern struct neobox_global neobox;
+#else
+static struct recordjar *cfg;
+#endif
 
 int neobox_config_open(const char *file)
 {
@@ -43,11 +52,17 @@ int neobox_config_open(const char *file)
     ssize_t len;
     struct recordjar rj;
     
-    if(neobox.config.rj)
+#ifdef NEOBOX
+    config = (struct recordjar**)&neobox.config.rj;
+#else
+    config = &cfg;
+#endif
+    
+    if(*config)
     {
-        rj_free(neobox.config.rj);
-        free(neobox.config.rj);
-        neobox.config.rj = 0;
+        rj_free(*config);
+        free(*config);
+        *config = 0;
     }
     
     if(!file || file[0] != '/')
@@ -65,20 +80,20 @@ int neobox_config_open(const char *file)
     else if((ret = rj_load(file, &rj)))
         return ret;
     
-    neobox.config.rj = malloc(sizeof(struct recordjar));
-    memcpy(neobox.config.rj, &rj, sizeof(struct recordjar));
+    *config = malloc(sizeof(struct recordjar));
+    memcpy(*config, &rj, sizeof(struct recordjar));
     
     return 0;
 }
 
 void neobox_config_close()
 {
-    if(!neobox.config.rj)
+    if(!*config)
         return;
     
-    rj_free(neobox.config.rj);
-    free(neobox.config.rj);
-    neobox.config.rj = 0;
+    rj_free(*config);
+    free(*config);
+    *config = 0;
 }
 
 const char* neobox_config_strerror(int error)
@@ -88,30 +103,30 @@ const char* neobox_config_strerror(int error)
 
 char* neobox_config(const char *key, const char *def)
 {
-    return rj_config_get("main", key, def, neobox.config.rj);
+    return rj_config_get("main", key, def, *config);
 }
 
 char* neobox_config_section(const char *section, const char *key, const char *def)
 {
-    return rj_config_get(section, key, def, neobox.config.rj);
+    return rj_config_get(section, key, def, *config);
 }
 
 int neobox_config_list(const char *section)
 {
-    return rj_config_list(section, neobox.config.rj);
+    return rj_config_list(section, *config);
 }
 
 void neobox_config_next(char **key, char **value)
 {
-    rj_config_next(key, value, neobox.config.rj);
+    rj_config_next(key, value, *config);
 }
 
 void neobox_config_set(const char *key, const char *value)
 {
-    rj_config_set("main", key, value, neobox.config.rj);
+        rj_config_set("main", key, value, *config);
 }
 
 void neobox_config_set_section(const char *section, const char *key, const char *value)
 {
-    rj_config_set(section, key, value, neobox.config.rj);
+        rj_config_set(section, key, value, *config);
 }

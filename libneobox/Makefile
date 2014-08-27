@@ -11,7 +11,7 @@ NAME = neobox
 SOURCES = $(shell find . -name "*.c")
 OBJECTS = $(SOURCES:%.c=%.o)
 INCLUDES = -I$(LIBALGPATH) -I$(LIBRJPATH) -I$(IOD)
-CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99
+CFLAGS := $(CFLAGS) -Wall -pedantic -std=gnu99 -D NEOBOX
 
 all: DEBUG =
 all: FULLDEBUG =
