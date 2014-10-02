@@ -149,7 +149,7 @@ struct neobox_global
     int pause;          // pause for debouncer
     int verbose;        // verbose messages
     int redraw;         // redraw screen on activate
-    char flagstat;      // last partner flag
+    char *flagstat;     // last partner flag per map
     int sleep;          // sleep status
     
     struct neobox_fb fb;

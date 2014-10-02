@@ -76,7 +76,8 @@ struct neobox_map
     int height, width;
     const struct neobox_mapelem *map;
     const unsigned char (*colors)[4];
-    unsigned char offset; // map offset for goto
+    unsigned char invisible; // dont draw map
+    unsigned char offset;    // map offset for goto
 };
 
 struct neobox_layout

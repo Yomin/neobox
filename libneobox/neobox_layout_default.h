@@ -44,7 +44,7 @@
 #define ADMIN_COLOR_ACTIVATE  3
 #define ADMIN_COLOR_MENU      4
 
-#define NEOBOX_MAP(N, O)      {5, 6, neobox_map_ ## N, neobox_colors, O}
+#define NEOBOX_MAP(N, O)      {5, 6, neobox_map_ ## N, neobox_colors, 1, O}
 #define NEOBOX_MAP_PRIMARY(O) NEOBOX_MAP(primary, O)
 #define NEOBOX_MAP_SHIFT(O)   NEOBOX_MAP(shift, O)
 #define NEOBOX_MAP_NUM(O)     NEOBOX_MAP(num, O)
@@ -52,7 +52,7 @@
 #define NEOBOX_MAP_META(O)    NEOBOX_MAP(meta, O)
 #define NEOBOX_MAP_GER(O)     NEOBOX_MAP(ger, O)
 #define NEOBOX_MAP_FK(O)      NEOBOX_MAP(fk, O)
-#define ADMIN_MAP(O)         {3, 3, admin_map, admin_colors, O}
+#define ADMIN_MAP(O)          {3, 3, admin_map, admin_colors, 0, O}
 
 #define NEOBOX_MAPS(O) \
     NEOBOX_MAP_PRIMARY(O), NEOBOX_MAP_SHIFT(O), NEOBOX_MAP_NUM(O), \

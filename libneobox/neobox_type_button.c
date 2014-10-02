@@ -231,7 +231,7 @@ struct neobox_event neobox_type_button_release(int y, int x, int button_y, int b
     }
     
     if(!neobox.parser.hold) // reset map to default if not on hold
-        nmap = neobox.layout.start;
+        nmap = neobox.parser.map_main;
     
 ret:
     neobox_type_button_focus_out(y, x, map, elem, save);

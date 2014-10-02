@@ -519,6 +519,7 @@ void neobox_init_screen()
     int y, x, height, width, pos;
     SIMV(char sim_tmp = 'x');
     unsigned char color[4] = {0};
+    char flagstat = neobox.flagstat[neobox.parser.map];
     
     neobox_get_sizes_current(&height, &width, 0, 0, 0, 0);
     
@@ -531,8 +532,8 @@ void neobox_init_screen()
             
             if(save->partner)
             {
-                if(save->partner->flag == neobox.flagstat)
-                    save->partner->flag = !neobox.flagstat;
+                if(save->partner->flag == flagstat)
+                    save->partner->flag = !flagstat;
                 else
                     continue;
             }
@@ -549,7 +550,7 @@ void neobox_init_screen()
         neobox_draw_rect(height, 0, neobox.fb.vinfo.yres-height,
             neobox.fb.vinfo.xres, color, DENSITY, 0);
     
-    neobox.flagstat = !neobox.flagstat;
+    neobox.flagstat[neobox.parser.map] = !flagstat;
     
     // notify framebuffer for redraw
     SIMV(send(neobox.fb.sock, &sim_tmp, 1, 0));
@@ -699,7 +700,7 @@ int neobox_init_custom(struct neobox_options options)
     
     // else
     neobox.pause = 0;
-    neobox.flagstat = 0;
+    neobox.flagstat = calloc(sizeof(char), neobox.layout.size);
     CIRCLEQ_INIT(&neobox.queue);
     CIRCLEQ_INIT(&neobox.timer);
     
@@ -803,6 +804,7 @@ void neobox_finish()
         free(neobox.save[i]);
     }
     free(neobox.save);
+    free(neobox.flagstat);
     
     neobox_config_close();
     
@@ -962,7 +964,7 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     struct neobox_partner *partner_last;
     struct neobox_point *p;
     
-    int y, x, button_y, button_x, i, ev_y, ev_x;
+    int y, x, button_y, button_x, i, ev_y, ev_x, map_prev;
     int width, height, fb_height, fb_width, scr_height, scr_width;
     SIMV(char sim_tmp = 'x');
     
@@ -1100,11 +1102,16 @@ move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
     case IOD_EVENT_RELEASED:
         if(neobox.parser.pressed)
         {
+            map_prev = neobox.parser.map;
+            
             TYPEFUNC(elem_curr, release, event=, y, x, button_y,
                 button_x, map, elem_curr, save_curr);
             
             if(elem_curr->options & NEOBOX_LAYOUT_OPTION_SET_MAP)
                 neobox.parser.map_main = neobox.parser.map;
+            
+            if(map_prev != neobox.parser.map && neobox.redraw && !neobox.layout.maps[neobox.parser.map].invisible)
+                neobox_init_screen();
             
             neobox.parser.pressed = 0;
         }
@@ -1153,7 +1160,7 @@ int neobox_handle_return(int ret, struct neobox_event event, neobox_handler *han
             }
             return NEOBOX_HANDLER_SUCCESS;
         case NEOBOX_EVENT_ACTIVATE:
-            if(neobox.redraw)
+            if(neobox.redraw && !neobox.layout.maps[neobox.parser.map].invisible)
                 neobox_init_screen();
             return NEOBOX_HANDLER_SUCCESS;
         case NEOBOX_EVENT_DEACTIVATE:
