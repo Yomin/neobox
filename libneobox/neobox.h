@@ -44,7 +44,10 @@
 #define NEOBOX_FORMAT_LANDSCAPE  0
 #define NEOBOX_FORMAT_PORTRAIT   1
 
-#define NEOBOX_OPTION_NO_INITIAL_PRINT   1
+#define NEOBOX_OPTION_NO_PRINT      0 // nothing visible
+#define NEOBOX_OPTION_NORM_PRINT    1 // visibility derived from layout
+#define NEOBOX_OPTION_FORCE_PRINT   2 // everything visible
+#define NEOBOX_OPTION_PRINT_MASK    3
 
 #define NEOBOX_MAP_DEFAULT       -1
 #define NEOBOX_CONFIG_DEFAULT    0

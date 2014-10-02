@@ -109,8 +109,9 @@ int main(int argc, char* argv[])
     if(optind < argc)
         tty = argv[optind];
     
-    if(!show)
-        options.options |= NEOBOX_OPTION_NO_INITIAL_PRINT;
+    options.options &= ~NEOBOX_OPTION_PRINT_MASK;
+    options.options |= show ? NEOBOX_OPTION_FORCE_PRINT :
+        NEOBOX_OPTION_NO_PRINT;
     
     if((ret = neobox_init_custom(options)) < 0)
         return ret;

@@ -471,6 +471,7 @@ struct neobox_options neobox_args(int *argc, char *argv[], struct neobox_options
         { "neobox-verbose", 0, 0, 'v' }, // verbose messages
         { "neobox-format", 1, 0, 'r' },  // p: portrait, l: landscape
         { "neobox-config", 1, 0, 'c' },  // config path
+        { "neobox-print", 1, 0, 'p'},    // n: no print, f: force print
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -496,6 +497,18 @@ struct neobox_options neobox_args(int *argc, char *argv[], struct neobox_options
             break;
         case 'c':
             options.config = optarg;
+            break;
+        case 'p':
+            options.options &= ~NEOBOX_OPTION_PRINT_MASK;
+            switch(optarg[0])
+            {
+            case 'n': // [n]o
+                options.options |= NEOBOX_OPTION_NO_PRINT;
+                break;
+            case 'f': // [f]orce
+                options.options |= NEOBOX_OPTION_FORCE_PRINT;
+                break;
+            }
             break;
         default:
             continue;
@@ -572,8 +585,10 @@ int neobox_init_custom(struct neobox_options options)
         printf("[NEOBOX] format: %s\n", options.format
             == NEOBOX_FORMAT_LANDSCAPE ? "landscape" : "portrait");
         printf("[NEOBOX] options:\n");
-        printf("[NEOBOX]   initial print: %s\n", options.options
-            & NEOBOX_OPTION_NO_INITIAL_PRINT ? "no" : "yes");
+        printf("[NEOBOX]   print: %s\n",
+            options.options & NEOBOX_OPTION_FORCE_PRINT ? "forced" :
+            options.options & NEOBOX_OPTION_NO_PRINT ? "invisible" :
+            "normal");
     }
     
     neobox.iod.usock = options.iod;
@@ -723,9 +738,8 @@ int neobox_init_custom(struct neobox_options options)
         return NEOBOX_ERROR_SIGNAL;
     }
     
-    // print initial screen
-    if(!(options.options & NEOBOX_OPTION_NO_INITIAL_PRINT))
-        neobox.redraw = 1;
+    // print options
+    neobox.redraw = options.options & NEOBOX_OPTION_PRINT_MASK;
     
     VERBOSE(printf("[NEOBOX] init done\n"));
     
@@ -741,7 +755,7 @@ struct neobox_options neobox_options_default(int *argc, char *argv[])
     options.config = NEOBOX_CONFIG_DEFAULT;
     options.layout = tkbLayoutDefault;
     options.format = NEOBOX_FORMAT_LANDSCAPE;
-    options.options = 0;
+    options.options = NEOBOX_OPTION_NORM_PRINT;
     options.verbose = 0;
     options.map = NEOBOX_MAP_DEFAULT;
     return neobox_args(argc, argv, options);
@@ -1111,8 +1125,12 @@ move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
             if(elem_curr->options & NEOBOX_LAYOUT_OPTION_SET_MAP)
                 neobox.parser.map_main = neobox.parser.map;
             
-            if(map_prev != neobox.parser.map && neobox.redraw && !neobox.layout.maps[neobox.parser.map].invisible)
+            if(neobox.redraw && map_prev != neobox.parser.map &&
+                (neobox.redraw&NEOBOX_OPTION_FORCE_PRINT ||
+                !neobox.layout.maps[neobox.parser.map].invisible))
+            {
                 neobox_init_screen();
+            }
             
             neobox.parser.pressed = 0;
         }
@@ -1165,8 +1183,12 @@ int neobox_handle_return(int ret, struct neobox_event event, neobox_handler *han
             }
             return NEOBOX_HANDLER_SUCCESS;
         case NEOBOX_EVENT_ACTIVATE:
-            if(neobox.redraw && !neobox.layout.maps[neobox.parser.map].invisible)
+            if(neobox.redraw &&
+                (neobox.redraw&NEOBOX_OPTION_FORCE_PRINT ||
+                !neobox.layout.maps[neobox.parser.map].invisible))
+            {
                 neobox_init_screen();
+            }
             return NEOBOX_HANDLER_SUCCESS;
         case NEOBOX_EVENT_DEACTIVATE:
             neobox_iod_cmd(IOD_CMD_ACK, 0, IOD_EVENT_DEACTIVATED);
