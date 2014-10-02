@@ -53,7 +53,7 @@ static void alloc_copy(int height, int width, struct neobox_save *save)
         slider->copy = malloc(size);
 }
 
-void neobox_type_slider_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_INIT(slider)
 {
     struct neobox_save_slider *slider;
     struct neobox_point *p;
@@ -122,7 +122,7 @@ void neobox_type_slider_init(int y, int x, const struct neobox_map *map, const s
     forceprint = 0;
 }
 
-void neobox_type_slider_finish(struct neobox_save *save)
+TYPE_FUNC_FINISH(slider)
 {
     struct neobox_save_slider *slider;
     
@@ -143,14 +143,14 @@ void neobox_type_slider_finish(struct neobox_save *save)
     }
 }
 
-void neobox_type_slider_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_DRAW(slider)
 {
     forceprint = 1;
     neobox_type_slider_focus_out(y, x, map, elem, save);
     forceprint = 0;
 }
 
-int neobox_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
+TYPE_FUNC_BROADER(slider)
 {
     int scr_height, scr_width, fb_y, fb_x;
     
@@ -185,12 +185,12 @@ int neobox_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struc
     return 1;
 }
 
-struct neobox_event neobox_type_slider_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_PRESS(slider)
 {
     return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_event neobox_type_slider_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_MOVE(slider)
 {
     int i, height, width, pos, partner_x, partner_y, hticks;
     float tick;
@@ -391,7 +391,7 @@ struct neobox_event neobox_type_slider_move(int y, int x, int button_y, int butt
     return ret;
 }
 
-struct neobox_event neobox_type_slider_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_RELEASE(slider)
 {
     struct neobox_save_slider *slider;
     
@@ -404,12 +404,12 @@ struct neobox_event neobox_type_slider_release(int y, int x, int button_y, int b
     return NOP;
 }
 
-struct neobox_event neobox_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_IN(slider)
 {
     return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_event neobox_type_slider_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_OUT(slider)
 {
     struct neobox_save_slider *slider;
     int height, width;
@@ -421,10 +421,10 @@ struct neobox_event neobox_type_slider_focus_out(int y, int x, const struct neob
         slider->y%height, slider->x%width, map, elem, save);
 }
 
-void neobox_type_slider_set_ticks(const void *vticks, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(slider, set_ticks)
 {
     struct neobox_save_slider *slider;
-    int ticks = *(int*)vticks;
+    int ticks = *(int*)data;
     
     if(ticks < 0)
         return;
@@ -441,10 +441,10 @@ void neobox_type_slider_set_ticks(const void *vticks, int y, int x, const struct
         neobox_type_slider_focus_out(y, x, map, elem, save);
 }
 
-void neobox_type_slider_set_pos(const void *vpos, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(slider, set_pos)
 {
     struct neobox_save_slider *slider;
-    int pos = *(int*)vpos;
+    int pos = *(int*)data;
     
     slider = save->partner ? save->partner->data : save->data;
     

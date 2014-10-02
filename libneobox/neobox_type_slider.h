@@ -23,8 +23,7 @@
 #ifndef __NEOBOX_TYPE_SLIDER_H__
 #define __NEOBOX_TYPE_SLIDER_H__
 
-#include "neobox_def.h"
-#include "neobox_layout.h"
+#include "neobox_type_macros.h"
 
 struct neobox_save_slider
 {
@@ -36,20 +35,9 @@ struct neobox_save_slider
     unsigned char *copy; // copy save buffer
 };
 
-void neobox_type_slider_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_slider_finish(struct neobox_save *save);
+TYPE_FUNCTIONS(slider);
 
-void neobox_type_slider_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-
-int neobox_type_slider_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem);
-
-struct neobox_event neobox_type_slider_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_slider_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_slider_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_slider_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_slider_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-
-void neobox_type_slider_set_ticks(const void *ticks, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_slider_set_pos(const void *pos, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+TYPE_FUNC_ACTION(slider, set_ticks);
+TYPE_FUNC_ACTION(slider, set_pos);
 
 #endif

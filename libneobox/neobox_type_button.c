@@ -35,9 +35,11 @@
 
 extern struct neobox_global neobox;
 
-static int docopy;
-int button_copy_size;
-unsigned char *button_copy;
+static int docopy; // deactivate copy on eg initial draw
+
+// button copy is limited on one click therefore one save space is sufficient
+int button_copy_size, button_copy_size_backup;
+unsigned char *button_copy, *button_copy_backup;
 
 static void alloc_copy(int height, int width, struct neobox_partner *partner)
 {
@@ -58,13 +60,13 @@ static void alloc_copy(int height, int width, struct neobox_partner *partner)
     }
 }
 
-void neobox_type_button_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_INIT(button)
 {
     button_copy_size = 0;
     docopy = 1;
 }
 
-void neobox_type_button_finish(struct neobox_save *save)
+TYPE_FUNC_FINISH(button)
 {
     if(button_copy_size)
     {
@@ -73,14 +75,14 @@ void neobox_type_button_finish(struct neobox_save *save)
     }
 }
 
-void neobox_type_button_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_DRAW(button)
 {
-    docopy = 0;
+    docopy = 0; // disable copy on initial draw
     neobox_type_button_focus_out(y, x, map, elem, save);
     docopy = 1;
 }
 
-int neobox_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
+TYPE_FUNC_BROADER(button)
 {
     int scr_height, scr_width, fb_y, fb_x;
     
@@ -102,7 +104,7 @@ int neobox_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struc
     return 1;
 }
 
-struct neobox_event neobox_type_button_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_PRESS(button)
 {
     int i, height, width;
     unsigned char *ptr = 0, color;
@@ -156,12 +158,12 @@ struct neobox_event neobox_type_button_press(int y, int x, int button_y, int but
     return NOP;
 }
 
-struct neobox_event neobox_type_button_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_MOVE(button)
 {
     return NOP;
 }
 
-struct neobox_event neobox_type_button_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_RELEASE(button)
 {
     struct neobox_event ret;
     int nmap = neobox.parser.map;
@@ -240,12 +242,12 @@ ret:
     return ret;
 }
 
-struct neobox_event neobox_type_button_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_IN(button)
 {
     return neobox_type_button_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_OUT(button)
 {
     int i, height, width;
     unsigned char *ptr;
@@ -255,7 +257,7 @@ struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neob
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!neobox.redraw && docopy)
+    if(!neobox.redraw && docopy) // only copy if invisible map and not initial draw
     {
         ptr = button_copy;
         if(!save->partner)
@@ -322,12 +324,12 @@ struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neob
     return NOP;
 }
 
-void neobox_type_button_set_name(const void *name, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(button, set_name)
 {
     if(!save->partner)
-        save->data = (void*)name;
+        save->data = (void*)data;
     else
-        save->partner->data = (void*)name;
+        save->partner->data = (void*)data;
     
     if(map)
         neobox_type_button_draw(y, x, map, elem, save);
@@ -338,4 +340,30 @@ void neobox_button_set_name(int id , int mappos, const char *name, int redraw)
     neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_CHAR,
         NEOBOX_LAYOUT_TYPE_SYSTEM, id, mappos, name, redraw,
         neobox_type_button_set_name);
+}
+
+void neobox_type_button_copy_set(int size, unsigned char *copy, const char *name, struct neobox_save *save)
+{
+    button_copy_size_backup = button_copy_size;
+    button_copy_backup = button_copy;
+    button_copy_size = size;
+    button_copy = copy;
+    
+    if(save->partner)
+        save->partner->data = (void*)name;
+    else
+        save->data = (void*)name;
+}
+
+void neobox_type_button_copy_restore(int *size, unsigned char **copy, void *data, struct neobox_save *save)
+{
+    *size = button_copy_size;
+    *copy = button_copy;
+    button_copy_size = button_copy_size_backup;
+    button_copy = button_copy_backup;
+    
+    if(save->partner)
+        save->partner->data = data;
+    else
+        save->data = data;
 }

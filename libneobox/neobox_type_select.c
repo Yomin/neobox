@@ -31,38 +31,10 @@
 #define NOP (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 
 extern struct neobox_global neobox;
-extern int button_copy_size;
-extern unsigned char *button_copy;
 
-static int forceprint;
+static int forceprint; // force redraw regardless of locked status
 
-inline static void set_data(int *size, unsigned char **copy, struct neobox_save_select *select, struct neobox_save *save)
-{
-    *size = button_copy_size;
-    *copy = button_copy;
-    button_copy_size = select->size;
-    button_copy = select->copy;
-    
-    if(save->partner)
-        save->partner->data = (void*)select->name;
-    else
-        save->data = (void*)select->name;
-}
-
-inline static void restore_data(int size, unsigned char *copy, struct neobox_save_select *select, struct neobox_save *save)
-{
-    select->size = button_copy_size;
-    select->copy = button_copy;
-    button_copy_size = size;
-    button_copy = copy;
-    
-    if(save->partner)
-        save->partner->data = select;
-    else
-        save->data = select;
-}
-
-void neobox_type_select_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_INIT(select)
 {
     
     if(save->partner)
@@ -76,7 +48,7 @@ void neobox_type_select_init(int y, int x, const struct neobox_map *map, const s
     forceprint = 0;
 }
 
-void neobox_type_select_finish(struct neobox_save *save)
+TYPE_FUNC_FINISH(select)
 {
     struct neobox_save_select *select;
     
@@ -90,45 +62,43 @@ void neobox_type_select_finish(struct neobox_save *save)
     }
 }
 
-void neobox_type_select_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_DRAW(select)
 {
-    forceprint = 1;
+    forceprint = 1; // initial draw regardless of locked status
     neobox_type_select_focus_out(y, x, map, elem, save);
     forceprint = 0;
 }
 
-int neobox_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
+TYPE_FUNC_BROADER(select)
 {
     return neobox_type_button_broader(y, x, scr_y, scr_x, elem);
 }
 
-struct neobox_event neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_PRESS(select)
 {
     struct neobox_save_select *select;
-    int size;
-    unsigned char *copy;
     
     select = save->partner ? save->partner->data : save->data;
     
     if(select->status & NEOBOX_TYPE_SELECT_STATUS_LOCKED)
         return NOP;
     
-    set_data(&size, &copy, select, save);
+    neobox_type_button_copy_set(select->size, select->copy, select->name, save);
     if(select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE)
         neobox_type_button_focus_out(y, x, map, elem, save);
     else
         neobox_type_button_press(y, x, button_y, button_x, map, elem, save);
-    restore_data(size, copy, select, save);
+    neobox_type_button_copy_restore(&select->size, &select->copy, select, save);
     
     return NOP;
 }
 
-struct neobox_event neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_MOVE(select)
 {
     return NOP;
 }
 
-struct neobox_event neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_RELEASE(select)
 {
     struct neobox_save_select *select;
     struct neobox_event ret;
@@ -147,72 +117,71 @@ struct neobox_event neobox_type_select_release(int y, int x, int button_y, int b
     return ret;
 }
 
-struct neobox_event neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_IN(select)
 {
     return neobox_type_select_press(y, x, button_y, button_x, map, elem, save);
 }
 
-struct neobox_event neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_FOCUS_OUT(select)
 {
     struct neobox_save_select *select;
-    int size;
-    unsigned char *copy;
     
     select = save->partner ? save->partner->data : save->data;
     
+    // if locked and no eg initial draw skip redraw
     if(!forceprint && select->status & NEOBOX_TYPE_SELECT_STATUS_LOCKED)
         return NOP;
     
-    set_data(&size, &copy, select, save);
+    neobox_type_button_copy_set(select->size, select->copy, select->name, save);
     if(select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE)
         neobox_type_button_press(y, x, 0, 0, map, elem, save);
     else
         neobox_type_button_focus_out(y, x, map, elem, save);
-    restore_data(size, copy, select, save);
+    neobox_type_button_copy_restore(&select->size, &select->copy, select, save);
     
     return NOP;
 }
 
-void neobox_type_select_set_name(const void *name, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(select, set_name)
 {
     struct neobox_save_select *select;
     
     select = save->partner ? save->partner->data : save->data;
     
-    select->name = name;
+    select->name = data;
     
     if(map)
     {
-        forceprint = 1;
+        forceprint = 1; // redraw regardless of locked status
         neobox_type_select_focus_out(y, x, map, elem, save);
         forceprint = 0;
     }
 }
 
-void neobox_type_select_set_active(const void *active, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(select, set_active)
 {
     struct neobox_save_select *select;
     
     select = save->partner ? save->partner->data : save->data;
-    if(*(int*)active)
+    if(*(int*)data)
         select->status |= NEOBOX_TYPE_SELECT_STATUS_ACTIVE;
     else
         select->status &= ~NEOBOX_TYPE_SELECT_STATUS_ACTIVE;
     
     if(map)
     {
-        forceprint = 1;
+        forceprint = 1; // redraw regardless of locked status
         neobox_type_select_focus_out(y, x, map, elem, save);
         forceprint = 0;
     }
 }
 
-void neobox_type_select_set_locked(const void *locked, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+TYPE_FUNC_ACTION(select, set_locked)
 {
     struct neobox_save_select *select;
     
     select = save->partner ? save->partner->data : save->data;
-    if(*(int*)locked)
+    if(*(int*)data)
         select->status |= NEOBOX_TYPE_SELECT_STATUS_LOCKED;
     else
         select->status &= ~NEOBOX_TYPE_SELECT_STATUS_LOCKED;

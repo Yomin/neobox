@@ -23,22 +23,14 @@
 #ifndef __NEOBOX_TYPE_BUTTON_H__
 #define __NEOBOX_TYPE_BUTTON_H__
 
-#include "neobox_def.h"
-#include "neobox_layout.h"
+#include "neobox_type_macros.h"
 
-void neobox_type_button_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_button_finish(struct neobox_save *save);
+TYPE_FUNCTIONS(button);
 
-void neobox_type_button_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+TYPE_FUNC_ACTION(button, set_name);
 
-int neobox_type_button_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem);
-
-struct neobox_event neobox_type_button_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_button_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_button_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_button_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-
-void neobox_type_button_set_name(const void *name, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+// set button copy save for reuse of button functions
+void neobox_type_button_copy_set(int size, unsigned char *copy, const char *name, struct neobox_save *save);
+void neobox_type_button_copy_restore(int *size, unsigned char **copy, void *data, struct neobox_save *save);
 
 #endif

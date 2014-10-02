@@ -23,8 +23,7 @@
 #ifndef __NEOBOX_TYPE_SELECT_H__
 #define __NEOBOX_TYPE_SELECT_H__
 
-#include "neobox_def.h"
-#include "neobox_layout.h"
+#include "neobox_type_macros.h"
 
 #define NEOBOX_TYPE_SELECT_STATUS_ACTIVE 1
 #define NEOBOX_TYPE_SELECT_STATUS_LOCKED 2
@@ -37,21 +36,10 @@ struct neobox_save_select
     unsigned char *copy;
 };
 
-void neobox_type_select_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_select_finish(struct neobox_save *save);
+TYPE_FUNCTIONS(select);
 
-void neobox_type_select_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-
-int neobox_type_select_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem);
-
-struct neobox_event neobox_type_select_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_select_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_select_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_select_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-struct neobox_event neobox_type_select_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-
-void neobox_type_select_set_name(const void *name, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_select_set_active(const void *active, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
-void neobox_type_select_set_locked(const void *locked, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
+TYPE_FUNC_ACTION(select, set_name);
+TYPE_FUNC_ACTION(select, set_active);
+TYPE_FUNC_ACTION(select, set_locked);
 
 #endif
