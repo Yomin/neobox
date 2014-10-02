@@ -59,6 +59,8 @@
 #define STASH_IOD    1
 #define STASH_NEOBOX 2
 
+typedef struct neobox_event neobox_filter(struct neobox_event event);
+
 struct neobox_stash
 {
     char type;
@@ -151,6 +153,8 @@ struct neobox_global
     int redraw;         // redraw screen on activate
     char *flagstat;     // last partner flag per map
     int sleep;          // sleep status
+    
+    neobox_filter *filter; // event filter for
     
     struct neobox_fb fb;
     struct neobox_iod iod;

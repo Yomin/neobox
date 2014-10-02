@@ -700,6 +700,7 @@ int neobox_init_custom(struct neobox_options options)
     
     // else
     neobox.pause = 0;
+    neobox.filter = 0;
     neobox.flagstat = calloc(sizeof(char), neobox.layout.size);
     CIRCLEQ_INIT(&neobox.queue);
     CIRCLEQ_INIT(&neobox.timer);
@@ -1134,6 +1135,10 @@ move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
     
     // notify framebuffer for redraw
     SIMV(send(neobox.fb.sock, &sim_tmp, 1, 0));
+    
+    // filter events
+    if(neobox.filter)
+        event = neobox.filter(event);
     
     return event;
 }
