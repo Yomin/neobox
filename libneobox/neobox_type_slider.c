@@ -28,7 +28,6 @@
 #include "neobox_type_slider.h"
 #include "neobox_type_help.h"
 
-#define COPY(e)    ((e)->options & NEOBOX_LAYOUT_OPTION_COPY)
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define LANDSCAPE  (neobox.format == NEOBOX_FORMAT_LANDSCAPE)
@@ -203,7 +202,7 @@ struct neobox_event neobox_type_slider_move(int y, int x, int button_y, int butt
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(COPY(elem))
+    if(!neobox.redraw)
         alloc_copy(height, width, save);
     
     if(!save->partner)

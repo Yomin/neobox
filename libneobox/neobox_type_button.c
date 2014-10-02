@@ -28,7 +28,6 @@
 #include "neobox_type_button.h"
 #include "neobox_type_help.h"
 
-#define COPY(e)    ((e)->options & NEOBOX_LAYOUT_OPTION_COPY)
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define ALIGN(e)   ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_ALIGN)
@@ -113,7 +112,7 @@ struct neobox_event neobox_type_button_press(int y, int x, int button_y, int but
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(COPY(elem))
+    if(!neobox.redraw)
     {
         alloc_copy(height, width, save->partner);
         ptr = button_copy;
@@ -256,7 +255,7 @@ struct neobox_event neobox_type_button_focus_out(int y, int x, const struct neob
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(COPY(elem) && docopy)
+    if(!neobox.redraw && docopy)
     {
         ptr = button_copy;
         if(!save->partner)
