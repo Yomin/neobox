@@ -589,6 +589,8 @@ int neobox_init_custom(struct neobox_options options)
             options.options & NEOBOX_OPTION_FORCE_PRINT ? "forced" :
             options.options & NEOBOX_OPTION_NO_PRINT ? "invisible" :
             "normal");
+        printf("[NEOBOX]   adminmap: %s\n",
+            options.options & NEOBOX_OPTION_ADMINMAP ? "enabled" : "disabled");
     }
     
     neobox.iod.usock = options.iod;
@@ -686,9 +688,10 @@ int neobox_init_custom(struct neobox_options options)
     neobox.fb.ptr += neobox.fb.vinfo.xoffset*neobox.fb.bpp
                   + neobox.fb.vinfo.yoffset*neobox.fb.finfo.line_length;
     
-    // save layout and format
+    // save layout, format, options
     neobox.layout = options.layout;
     neobox.format = options.format;
+    neobox.options = options.options;
     
     // calculate partner connects, init save data
     neobox_init_partner();
@@ -737,9 +740,6 @@ int neobox_init_custom(struct neobox_options options)
         perror("Failed to catch SIGINT");
         return NEOBOX_ERROR_SIGNAL;
     }
-    
-    // print options
-    neobox.redraw = options.options & NEOBOX_OPTION_PRINT_MASK;
     
     VERBOSE(printf("[NEOBOX] init done\n"));
     
@@ -1125,8 +1125,9 @@ move:           TYPEFUNC(elem_last, move, event=, y, x, button_y,
             if(elem_curr->options & NEOBOX_LAYOUT_OPTION_SET_MAP)
                 neobox.parser.map_main = neobox.parser.map;
             
-            if(neobox.redraw && map_prev != neobox.parser.map &&
-                (neobox.redraw&NEOBOX_OPTION_FORCE_PRINT ||
+            if(neobox.options & NEOBOX_OPTION_PRINT_MASK &&
+                map_prev != neobox.parser.map &&
+                (neobox.options & NEOBOX_OPTION_FORCE_PRINT ||
                 !neobox.layout.maps[neobox.parser.map].invisible))
             {
                 neobox_init_screen();
@@ -1183,8 +1184,8 @@ int neobox_handle_return(int ret, struct neobox_event event, neobox_handler *han
             }
             return NEOBOX_HANDLER_SUCCESS;
         case NEOBOX_EVENT_ACTIVATE:
-            if(neobox.redraw &&
-                (neobox.redraw&NEOBOX_OPTION_FORCE_PRINT ||
+            if(neobox.options & NEOBOX_OPTION_PRINT_MASK &&
+                (neobox.options & NEOBOX_OPTION_FORCE_PRINT ||
                 !neobox.layout.maps[neobox.parser.map].invisible))
             {
                 neobox_init_screen();

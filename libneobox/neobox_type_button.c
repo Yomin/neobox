@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include "neobox_fb.h"
@@ -32,6 +33,7 @@
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define ALIGN(e)   ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_ALIGN)
 #define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
+#define REDRAW     (neobox.options & NEOBOX_OPTION_PRINT_MASK)
 
 extern struct neobox_global neobox;
 
@@ -114,7 +116,7 @@ TYPE_FUNC_PRESS(button)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!neobox.redraw)
+    if(!REDRAW)
     {
         alloc_copy(height, width, save->partner);
         ptr = button_copy;
@@ -192,6 +194,11 @@ TYPE_FUNC_RELEASE(button)
         }
         break;
     case NEOBOX_LAYOUT_TYPE_GOTO:
+        if(!strcmp("Admn", elem->name) && !(neobox.options & NEOBOX_OPTION_ADMINMAP))
+        {
+            VERBOSE(printf("[NEOBOX] adminmap disabled\n"));
+            goto ret;
+        }
         nmap = elem->elem.i + map->offset;
         neobox.parser.hold = 0;
         VERBOSE(printf("[NEOBOX] goto %s\n", elem->name));
@@ -257,7 +264,7 @@ TYPE_FUNC_FOCUS_OUT(button)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!neobox.redraw && docopy) // only copy if invisible map and not initial draw
+    if(!REDRAW && docopy) // only copy if invisible map and not initial draw
     {
         ptr = button_copy;
         if(!save->partner)

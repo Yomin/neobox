@@ -202,7 +202,7 @@ TYPE_FUNC_MOVE(slider)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!neobox.redraw)
+    if(!(neobox.options & NEOBOX_OPTION_PRINT_MASK))
         alloc_copy(height, width, save);
     
     if(!save->partner)

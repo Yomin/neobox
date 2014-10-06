@@ -48,6 +48,7 @@
 #define NEOBOX_OPTION_NORM_PRINT    1 // visibility derived from layout
 #define NEOBOX_OPTION_FORCE_PRINT   2 // everything visible
 #define NEOBOX_OPTION_PRINT_MASK    3
+#define NEOBOX_OPTION_ADMINMAP      4 // enable admin goto in meta map
 
 #define NEOBOX_MAP_DEFAULT       -1
 #define NEOBOX_CONFIG_DEFAULT    0
