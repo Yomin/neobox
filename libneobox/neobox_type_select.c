@@ -71,7 +71,7 @@ TYPE_FUNC_DRAW(select)
 
 TYPE_FUNC_BROADER(select)
 {
-    return neobox_type_button_broader(y, x, scr_y, scr_x, elem);
+    return neobox_type_button_broader(y, x, scr_y, scr_x, map, elem);
 }
 
 TYPE_FUNC_PRESS(select)

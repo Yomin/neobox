@@ -39,7 +39,7 @@ void neobox_type_nop_draw(int y, int x, const struct neobox_map *map, const stru
     neobox_type_button_draw(y, x, map, elem, save);
 }
 
-void neobox_type_nop_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
+void neobox_type_nop_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_map *map, const struct neobox_mapelem *elem)
 {
     
 }

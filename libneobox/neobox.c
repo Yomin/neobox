@@ -534,7 +534,7 @@ void neobox_init_screen()
     unsigned char color[4] = {0};
     char flagstat = neobox.flagstat[neobox.parser.map];
     
-    neobox_get_sizes_current(&height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
     for(y=0; y<map->height; y++)
         for(x=0; x<map->width; x++)
@@ -1040,17 +1040,18 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     if(ev_x >= SCREENMAX || ev_y >= SCREENMAX)
         return event;
     
+    // current map
+    map = &neobox.layout.maps[neobox.parser.map];
+    
     // calculate height and width
-    neobox_get_sizes_current(&height, &width, &fb_height, &fb_width,
-        &scr_height, &scr_width);
+    neobox_get_sizes(&height, &width, &fb_height, &fb_width,
+        &scr_height, &scr_width, map);
     
     // screen coordinates to button coordinates
     button_y = fb_height*(((SCREENMAX-ev_y)%scr_height)/(scr_height*1.0));
     button_x = fb_width*((ev_x%scr_width)/(scr_width*1.0));
     neobox_fb_to_layout_pos_width(&button_y, &button_x, fb_width);
     
-    // current map
-    map = &neobox.layout.maps[neobox.parser.map];
     // last mapelem
     elem_last = &map->map[neobox.parser.y*map->width+neobox.parser.x];
     
@@ -1059,12 +1060,12 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     // if a type broader doesnt hit calculate position of new button
     i = 1;
     if(neobox.parser.pressed)
-        TYPEFUNC(elem_last, broader, i=, &y, &x, ev_y, ev_x, elem_last);
+        TYPEFUNC(elem_last, broader, i=, &y, &x, ev_y, ev_x, map, elem_last);
     if(!neobox.parser.pressed || i)
     {
         x = ev_x / scr_width;
         y = (SCREENMAX - ev_y) / scr_height;
-        neobox_fb_to_layout_cords(&y, &x);
+        neobox_fb_to_layout_cords(&y, &x, map);
     }
     
     // current mapelem

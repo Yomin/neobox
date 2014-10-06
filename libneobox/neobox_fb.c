@@ -31,10 +31,9 @@
 extern struct neobox_global neobox;
 static unsigned char colorbuf[4];
 
-unsigned char* neobox_color(unsigned char dst[4], int color)
+unsigned char* neobox_color(unsigned char dst[4], int color, const struct neobox_map *map)
 {
-    const unsigned char *src =
-        neobox.layout.maps[neobox.parser.map].colors[color];
+    const unsigned char *src = map->colors[color];
     
     if(!dst)
         dst = colorbuf;
@@ -50,7 +49,7 @@ unsigned char* neobox_color(unsigned char dst[4], int color)
     return dst;
 }
 
-void neobox_get_sizes(const struct neobox_map *map, int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width)
+void neobox_get_sizes(int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width, const struct neobox_map *map)
 {
     if(neobox.format == NEOBOX_FORMAT_LANDSCAPE)
     {
@@ -70,12 +69,6 @@ void neobox_get_sizes(const struct neobox_map *map, int *height, int *width, int
         if(screen_height) *screen_height = SCREENMAX/(map->height);
         if(screen_width)  *screen_width  = SCREENMAX/(map->width);
     }
-}
-
-void neobox_get_sizes_current(int *height, int *width, int *fb_height, int *fb_width, int *screen_height, int *screen_width)
-{
-    neobox_get_sizes(&neobox.layout.maps[neobox.parser.map],
-        height, width, fb_height, fb_width, screen_height, screen_width);
 }
 
 void neobox_layout_to_fb_sizes(int *height, int *width)
@@ -102,7 +95,7 @@ void neobox_fb_to_layout_sizes(int *height, int *width)
     }
 }
 
-void neobox_layout_to_fb_cords(int *cord_y, int *cord_x)
+void neobox_layout_to_fb_cords(int *cord_y, int *cord_x, const struct neobox_map *map)
 {
     int tmp;
     
@@ -110,18 +103,18 @@ void neobox_layout_to_fb_cords(int *cord_y, int *cord_x)
     {
         tmp = *cord_y;
         *cord_y  = *cord_x;
-        *cord_x  = neobox.layout.maps[neobox.parser.map].height-tmp-1;
+        *cord_x  = map->height-tmp-1;
     }
 }
 
-void neobox_fb_to_layout_cords(int *cord_y, int *cord_x)
+void neobox_fb_to_layout_cords(int *cord_y, int *cord_x, const struct neobox_map *map)
 {
     int tmp;
     
     if(neobox.format == NEOBOX_FORMAT_LANDSCAPE)
     {
         tmp = *cord_y;
-        *cord_y  = neobox.layout.maps[neobox.parser.map].height-*cord_x-1;
+        *cord_y  = map->height-*cord_x-1;
         *cord_x  = tmp;
     }
 }
@@ -178,16 +171,15 @@ void neobox_fb_to_layout_pos_rel(int *pos_y, int *pos_x, int width)
     }
 }
 
-unsigned char neobox_layout_connect_to_borders(int cord_y, int cord_x, unsigned char connect)
+unsigned char neobox_layout_connect_to_borders(int cord_y, int cord_x, unsigned char connect, const struct neobox_map *map)
 {
-    neobox_layout_to_fb_cords(&cord_y, &cord_x);
-    return neobox_fb_connect_to_borders(cord_y, cord_x, connect);
+    neobox_layout_to_fb_cords(&cord_y, &cord_x, map);
+    return neobox_fb_connect_to_borders(cord_y, cord_x, connect, map);
 }
 
-unsigned char neobox_fb_connect_to_borders(int cord_y, int cord_x, unsigned char connect)
+unsigned char neobox_fb_connect_to_borders(int cord_y, int cord_x, unsigned char connect, const struct neobox_map *map)
 {
     unsigned char borders = NEOBOX_BORDER_ALL;
-    const struct neobox_map *map = &neobox.layout.maps[neobox.parser.map];
     
     if(neobox.format == NEOBOX_FORMAT_LANDSCAPE)
     {
@@ -231,11 +223,11 @@ unsigned char neobox_fb_connect_to_borders(int cord_y, int cord_x, unsigned char
     return borders;
 }
 
-void neobox_layout_draw_rect(int pos_y, int pos_x, int height, int width, int color, int density, unsigned char **copy)
+void neobox_layout_draw_rect(int pos_y, int pos_x, int height, int width, int color, int density, const struct neobox_map *map, unsigned char **copy)
 {
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    neobox_draw_rect(pos_y, pos_x, height, width, neobox_color(0, color), density, copy);
+    neobox_draw_rect(pos_y, pos_x, height, width, neobox_color(0, color, map), density, copy);
 }
 
 void neobox_draw_rect(int pos_y, int pos_x, int height, int width, unsigned char color[4], int density, unsigned char **copy)
@@ -262,28 +254,28 @@ void neobox_draw_rect(int pos_y, int pos_x, int height, int width, unsigned char
         *copy = cpy;
 }
 
-void neobox_layout_draw_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, unsigned char **copy)
+void neobox_layout_draw_border(int pos_y, int pos_x, int height, int width, int color, unsigned char borders, int density, const struct neobox_map *map, unsigned char **copy)
 {
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    neobox_draw_border(pos_y, pos_x, height, width, neobox_color(0, color), borders, density, copy);
+    neobox_draw_border(pos_y, pos_x, height, width, neobox_color(0, color, map), borders, density, copy);
 }
 
-void neobox_layout_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, unsigned char **copy)
+void neobox_layout_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color, unsigned char connect, int density, const struct neobox_map *map, unsigned char **copy)
 {
     unsigned char borders;
     
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect);
-    neobox_draw_border(pos_y, pos_x, height, width, neobox_color(0, color), borders, density, copy);
+    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect, map);
+    neobox_draw_border(pos_y, pos_x, height, width, neobox_color(0, color, map), borders, density, copy);
 }
 
-void neobox_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color[4], unsigned char connect, int density, unsigned char **copy)
+void neobox_draw_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color[4], unsigned char connect, int density, const struct neobox_map *map, unsigned char **copy)
 {
     unsigned char borders;
     
-    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect);
+    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect, map);
     neobox_draw_border(pos_y, pos_x, height, width, color, borders, density, copy);
 }
 
@@ -334,29 +326,29 @@ void neobox_draw_border(int pos_y, int pos_x, int height, int width, unsigned ch
         *copy = cpy;
 }
 
-void neobox_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, unsigned char **copy)
+void neobox_layout_draw_rect_border(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, unsigned char borders, int density, const struct neobox_map *map, unsigned char **copy)
 {
     unsigned char fg[4];
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    neobox_draw_rect_border(pos_y, pos_x, height, width, neobox_color(fg, color_fg), neobox_color(0, color_bg), borders, density, copy);
+    neobox_draw_rect_border(pos_y, pos_x, height, width, neobox_color(fg, color_fg, map), neobox_color(0, color_bg, map), borders, density, copy);
 }
 
-void neobox_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, unsigned char **copy)
+void neobox_layout_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, int color_fg, int color_bg, unsigned char connect, int density, const struct neobox_map *map, unsigned char **copy)
 {
     unsigned char borders, fg[4];
     
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect);
-    neobox_draw_rect_border(pos_y, pos_x, height, width, neobox_color(fg, color_fg), neobox_color(0, color_bg), borders, density, copy);
+    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect, map);
+    neobox_draw_rect_border(pos_y, pos_x, height, width, neobox_color(fg, color_fg, map), neobox_color(0, color_bg, map), borders, density, copy);
 }
 
-void neobox_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char connect, int density, unsigned char **copy)
+void neobox_draw_rect_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char color_fg[4], unsigned char color_bg[4], unsigned char connect, int density, const struct neobox_map *map, unsigned char **copy)
 {
     unsigned char borders;
     
-    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect);
+    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect, map);
     neobox_draw_rect_border(pos_y, pos_x, height, width, color_fg, color_bg, borders, density, copy);
 }
 
@@ -440,21 +432,21 @@ void neobox_layout_fill_border(int pos_y, int pos_x, int height, int width, unsi
     neobox_fill_border(pos_y, pos_x, height, width, borders, density, fill);
 }
 
-void neobox_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, unsigned char **fill)
+void neobox_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, const struct neobox_map *map, unsigned char **fill)
 {
     unsigned char borders;
     
     neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
     neobox_layout_to_fb_sizes(&height, &width);
-    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect);
+    borders = neobox_layout_connect_to_borders(cord_y, cord_x, connect, map);
     neobox_fill_border(pos_y, pos_x, height, width, borders, density, fill);
 }
 
-void neobox_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, unsigned char **fill)
+void neobox_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, const struct neobox_map *map, unsigned char **fill)
 {
     unsigned char borders;
     
-    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect);
+    borders = neobox_fb_connect_to_borders(cord_y, cord_x, connect, map);
     neobox_fill_border(pos_y, pos_x, height, width, borders, density, fill);
 }
 
@@ -502,10 +494,10 @@ void neobox_fill_border(int pos_y, int pos_x, int height, int width, unsigned ch
     *fill = fll;
 }
 
-void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str)
+void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str, const struct neobox_map *map)
 {
     if(neobox.format == NEOBOX_FORMAT_PORTRAIT)
-        neobox_draw_string(pos_y, pos_x, height, width, neobox_color(0, color), align, str);
+        neobox_draw_string(pos_y, pos_x, height, width, neobox_color(0, color, map), align, str);
     else
     {
         neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
@@ -517,7 +509,7 @@ void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int 
             else
                 align--;
         }
-        neobox_draw_string_rotate(pos_y, pos_x, height, width, neobox_color(0, color), align, str);
+        neobox_draw_string_rotate(pos_y, pos_x, height, width, neobox_color(0, color, map), align, str);
     }
 }
 

@@ -61,7 +61,7 @@ TYPE_FUNC_INIT(slider)
     struct vector *connect;
     int i, height, width, h_y, v_y, h_x, v_x, h_max, v_max;
     
-    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
     if(!save->partner)
     {
@@ -155,11 +155,11 @@ TYPE_FUNC_BROADER(slider)
 {
     int scr_height, scr_width, fb_y, fb_x;
     
-    neobox_get_sizes_current(0, 0, 0, 0, &scr_height, &scr_width);
+    neobox_get_sizes(0, 0, 0, 0, &scr_height, &scr_width, map);
     
     fb_y = neobox.parser.y;
     fb_x = neobox.parser.x;
-    neobox_layout_to_fb_cords(&fb_y, &fb_x);
+    neobox_layout_to_fb_cords(&fb_y, &fb_x, map);
     
     if((LANDSCAPE && !HSLIDER(elem)) || (!LANDSCAPE && HSLIDER(elem)))
     {
@@ -168,7 +168,7 @@ TYPE_FUNC_BROADER(slider)
         {
             *x = scr_x / scr_width;
             *y = fb_y;
-            neobox_fb_to_layout_cords(y, x);
+            neobox_fb_to_layout_cords(y, x, map);
             return 0;
         }
     }
@@ -179,7 +179,7 @@ TYPE_FUNC_BROADER(slider)
         {
             *x = fb_x;
             *y = (SCREENMAX - scr_y) / scr_height;
-            neobox_fb_to_layout_cords(y, x);
+            neobox_fb_to_layout_cords(y, x, map);
             return 0;
         }
     }
@@ -201,7 +201,7 @@ TYPE_FUNC_MOVE(slider)
     struct neobox_save_slider *slider;
     struct neobox_event ret;
     
-    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
     if(COPY)
         alloc_copy(height, width, save);
@@ -226,16 +226,16 @@ TYPE_FUNC_MOVE(slider)
             }
             
             neobox_layout_draw_rect(y*height, x*width, height, button_x,
-                elem->color_fg, DENSITY, &ptr);
+                elem->color_fg, DENSITY, map, &ptr);
             if(BORDER(elem))
                 neobox_layout_draw_rect_connect(y*height,
                     x*width+button_x, y, x, height, width-button_x,
                     elem->color_fg, elem->color_bg,
-                    CONNECT(elem), DENSITY, &ptr);
+                    CONNECT(elem), DENSITY, map, &ptr);
             else
                 neobox_layout_draw_rect(y*height, x*width+button_x,
                     height, width-button_x, elem->color_bg,
-                    DENSITY, &ptr);
+                    DENSITY, map, &ptr);
         }
         else
         {
@@ -252,14 +252,14 @@ TYPE_FUNC_MOVE(slider)
             }
             
             neobox_layout_draw_rect(y*height+button_y, x*width,
-                height-button_y, width, elem->color_fg, DENSITY, &ptr);
+                height-button_y, width, elem->color_fg, DENSITY, map, &ptr);
             if(BORDER(elem))
                 neobox_layout_draw_rect_connect(y*height, x*width,
                     y, x, button_y, width, elem->color_fg,
-                    elem->color_bg, CONNECT(elem), DENSITY, &ptr);
+                    elem->color_bg, CONNECT(elem), DENSITY, map, &ptr);
             else
                 neobox_layout_draw_rect(y*height, x*width, button_y,
-                    width, elem->color_bg, DENSITY, &ptr);
+                    width, elem->color_bg, DENSITY, map, &ptr);
         }
         slider->y_tmp = y*height+button_y;
         slider->x_tmp = x*width+button_x;
@@ -316,38 +316,38 @@ TYPE_FUNC_MOVE(slider)
             {
                 neobox_layout_draw_rect(partner_y, partner_x,
                     height, width, p->elem->color_fg,
-                    DENSITY, &ptr);
+                    DENSITY, map, &ptr);
             }
             else if(HSLIDER(elem) && partner_x < pos)
             {
                 neobox_layout_draw_rect(partner_y, partner_x,
                     height, pos-partner_x, p->elem->color_fg,
-                    DENSITY, &ptr);
+                    DENSITY, map, &ptr);
                 if(BORDER(elem))
                     neobox_layout_draw_rect_connect(partner_y,
                         pos, p->y, p->x, height,
                         width-(pos-partner_x), p->elem->color_fg,
                         p->elem->color_bg, CONNECT(p->elem),
-                        DENSITY, &ptr);
+                        DENSITY, map, &ptr);
                 else
                     neobox_layout_draw_rect(partner_y,
                         pos, height, width-(pos-partner_x),
-                        p->elem->color_bg, DENSITY, &ptr);
+                        p->elem->color_bg, DENSITY, map, &ptr);
             }
             else if(!HSLIDER(p->elem) && partner_y+height > pos)
             {
                 neobox_layout_draw_rect(pos, partner_x,
                     height-(pos-partner_y), width,
-                    p->elem->color_fg, DENSITY, &ptr);
+                    p->elem->color_fg, DENSITY, map, &ptr);
                 if(BORDER(elem))
                     neobox_layout_draw_rect_connect(partner_y,
                         partner_x, p->y, p->x, pos-partner_y,
                         width, p->elem->color_fg, p->elem->color_bg,
-                        CONNECT(p->elem), DENSITY, &ptr);
+                        CONNECT(p->elem), DENSITY, map, &ptr);
                 else
                     neobox_layout_draw_rect(partner_y, partner_x,
                         pos-partner_y, width, p->elem->color_bg,
-                        DENSITY, &ptr);
+                        DENSITY, map, &ptr);
             }
             else
             {
@@ -355,11 +355,11 @@ TYPE_FUNC_MOVE(slider)
                     neobox_layout_draw_rect_connect(partner_y, partner_x,
                         p->y, p->x, height, width, p->elem->color_fg,
                         p->elem->color_bg, CONNECT(p->elem),
-                        DENSITY, &ptr);
+                        DENSITY, map, &ptr);
                 else
                     neobox_layout_draw_rect(partner_y, partner_x,
                         height, width, p->elem->color_bg,
-                        DENSITY, &ptr);
+                        DENSITY, map, &ptr);
             }
         }
     }
@@ -415,7 +415,7 @@ TYPE_FUNC_FOCUS_OUT(slider)
     struct neobox_save_slider *slider;
     int height, width;
     
-    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     slider = save->partner ? save->partner->data : save->data;
     
     return neobox_type_slider_move(slider->y/height, slider->x/width,

@@ -34,7 +34,7 @@
 #define TYPE_FUNC_DRAW(NAME) \
     void neobox_type_##NAME##_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 #define TYPE_FUNC_BROADER(NAME) \
-    int neobox_type_##NAME##_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_mapelem *elem)
+    int neobox_type_##NAME##_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_map *map, const struct neobox_mapelem *elem)
 
 #define TYPE_FUNC_PRESS(NAME) \
     struct neobox_event neobox_type_##NAME##_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)

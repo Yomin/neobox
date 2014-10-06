@@ -88,11 +88,11 @@ TYPE_FUNC_BROADER(button)
 {
     int scr_height, scr_width, fb_y, fb_x;
     
-    neobox_get_sizes_current(0, 0, 0, 0, &scr_height, &scr_width);
+    neobox_get_sizes(0, 0, 0, 0, &scr_height, &scr_width, map);
     
     fb_y = neobox.parser.y;
     fb_x = neobox.parser.x;
-    neobox_layout_to_fb_cords(&fb_y, &fb_x);
+    neobox_layout_to_fb_cords(&fb_y, &fb_x, map);
     
     if(    scr_x >= scr_width*fb_x - scr_width*(INCREASE/100.0)
         && scr_x <= scr_width*(fb_x+1) + scr_width*(INCREASE/100.0)
@@ -114,7 +114,7 @@ TYPE_FUNC_PRESS(button)
     struct vector *connect;
     struct neobox_point *p, *p2;
     
-    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
     if(COPY)
     {
@@ -132,11 +132,11 @@ TYPE_FUNC_PRESS(button)
     if(!save->partner)
     {
         neobox_layout_draw_rect(y*height, x*width, height, width,
-            elem->color_fg, DENSITY, &ptr);
+            elem->color_fg, DENSITY, map, &ptr);
         
         if(text)
             neobox_layout_draw_string(y*height, x*width, height,
-                width, color, ALIGN(elem), text);
+                width, color, ALIGN(elem), text, map);
     }
     else
     {
@@ -145,7 +145,7 @@ TYPE_FUNC_PRESS(button)
         {
             p = vector_at(i, connect);
             neobox_layout_draw_rect(p->y*height, p->x*width,
-                height, width, p->elem->color_fg, DENSITY, &ptr);
+                height, width, p->elem->color_fg, DENSITY, map, &ptr);
         }
         
         if(text)
@@ -153,7 +153,7 @@ TYPE_FUNC_PRESS(button)
             p2 = vector_at(0, connect);
             neobox_layout_draw_string(p2->y*height, p2->x*width,
                 (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                color, ALIGN(elem), text);
+                color, ALIGN(elem), text, map);
         }
     }
     
@@ -262,7 +262,7 @@ TYPE_FUNC_FOCUS_OUT(button)
     struct vector *connect;
     struct neobox_point *p, *p2;
     
-    neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
+    neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
     if(COPY && docopy) // only copy if invisible map and not initial draw
     {
@@ -293,14 +293,14 @@ TYPE_FUNC_FOCUS_OUT(button)
             if(BORDER(elem))
                 neobox_layout_draw_rect_connect(y*height, x*width,
                     y, x, height, width, elem->color_fg, elem->color_bg,
-                    CONNECT(elem), DENSITY, 0);
+                    CONNECT(elem), DENSITY, map, 0);
             else
                 neobox_layout_draw_rect(y*height, x*width,
-                    height, width, elem->color_bg, DENSITY, 0);
+                    height, width, elem->color_bg, DENSITY, map, 0);
             
             if(text)
                 neobox_layout_draw_string(y*height, x*width, height,
-                    width, elem->color_text, ALIGN(elem), text);
+                    width, elem->color_text, ALIGN(elem), text, map);
         }
         else
         {
@@ -312,10 +312,10 @@ TYPE_FUNC_FOCUS_OUT(button)
                     neobox_layout_draw_rect_connect(p->y*height,
                         p->x*width, p->y, p->x, height, width,
                         p->elem->color_fg, p->elem->color_bg,
-                        CONNECT(p->elem), DENSITY, 0);
+                        CONNECT(p->elem), DENSITY, map, 0);
                 else
                     neobox_layout_draw_rect(p->y*height, p->x*width,
-                        height, width, p->elem->color_bg, DENSITY, 0);
+                        height, width, p->elem->color_bg, DENSITY, map, 0);
             }
             
             if(text)
@@ -323,7 +323,7 @@ TYPE_FUNC_FOCUS_OUT(button)
                 p2 = vector_at(0, connect);
                 neobox_layout_draw_string(p2->y*height, p2->x*width,
                     (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                    p->elem->color_text, ALIGN(elem), text);
+                    p->elem->color_text, ALIGN(elem), text, map);
             }
         }
     }
