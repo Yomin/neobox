@@ -33,7 +33,7 @@
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define ALIGN(e)   ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_ALIGN)
 #define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
-#define REDRAW     (neobox.options & NEOBOX_OPTION_PRINT_MASK)
+#define COPY       (!(neobox.options & NEOBOX_OPTION_PRINT_MASK) || map->invisible)
 
 extern struct neobox_global neobox;
 
@@ -116,7 +116,7 @@ TYPE_FUNC_PRESS(button)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!REDRAW)
+    if(COPY)
     {
         alloc_copy(height, width, save->partner);
         ptr = button_copy;
@@ -264,7 +264,7 @@ TYPE_FUNC_FOCUS_OUT(button)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!REDRAW && docopy) // only copy if invisible map and not initial draw
+    if(COPY && docopy) // only copy if invisible map and not initial draw
     {
         ptr = button_copy;
         if(!save->partner)

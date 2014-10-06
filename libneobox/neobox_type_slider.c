@@ -33,6 +33,7 @@
 #define LANDSCAPE  (neobox.format == NEOBOX_FORMAT_LANDSCAPE)
 #define HSLIDER(e) ((e)->type == NEOBOX_LAYOUT_TYPE_HSLIDER)
 #define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
+#define COPY       (!(neobox.options & NEOBOX_OPTION_PRINT_MASK) || map->invisible)
 
 extern struct neobox_global neobox;
 
@@ -202,7 +203,7 @@ TYPE_FUNC_MOVE(slider)
     
     neobox_get_sizes(map, &height, &width, 0, 0, 0, 0);
     
-    if(!(neobox.options & NEOBOX_OPTION_PRINT_MASK))
+    if(COPY)
         alloc_copy(height, width, save);
     
     if(!save->partner)
