@@ -59,7 +59,7 @@
 #define STASH_IOD    1
 #define STASH_NEOBOX 2
 
-typedef struct neobox_event neobox_filter(struct neobox_event event);
+typedef struct neobox_event neobox_filter(struct neobox_event event, void *state);
 
 struct neobox_stash
 {
@@ -154,7 +154,8 @@ struct neobox_global
     char *flagstat;     // last partner flag per map
     int sleep;          // sleep status
     
-    neobox_filter *filter; // event filter for
+    neobox_filter *filter_fun;  // filter events
+    void *filter_state;         // filter_fun state
     
     struct neobox_fb fb;
     struct neobox_iod iod;
