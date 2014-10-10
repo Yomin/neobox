@@ -82,6 +82,7 @@
 #define NEOBOX_EVENT_LOCK           14
 #define NEOBOX_EVENT_GRAB           15
 #define NEOBOX_EVENT_POWERSAVE      16
+#define NEOBOX_EVENT_TEXT           17
 
 #define NEOBOX_HANDLER_SUCCESS       0
 #define NEOBOX_HANDLER_QUIT          1

@@ -49,6 +49,7 @@
 #include "neobox_type_button.h"
 #include "neobox_type_slider.h"
 #include "neobox_type_select.h"
+#include "neobox_type_text.h"
 
 #define TYPEFUNC(e, m, r, ...) \
     do { \
@@ -70,6 +71,9 @@
             break; \
         case NEOBOX_LAYOUT_TYPE_SELECT: \
             r neobox_type_select_ ## m (__VA_ARGS__); \
+            break; \
+        case NEOBOX_LAYOUT_TYPE_TEXT: \
+            r neobox_type_text_ ## m (__VA_ARGS__); \
             break; \
         } \
     } \
