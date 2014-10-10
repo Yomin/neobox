@@ -109,7 +109,7 @@ TYPE_FUNC_BROADER(button)
 TYPE_FUNC_PRESS(button)
 {
     int i, height, width;
-    unsigned char *ptr = 0, color;
+    unsigned char *ptr = 0, color_text;
     const char *text;
     struct vector *connect;
     struct neobox_point *p, *p2;
@@ -126,7 +126,8 @@ TYPE_FUNC_PRESS(button)
         (!save->partner && save->data ? save->data :
         (elem->name ? elem->name :
         (elem->elem.i ? elem->elem.c.c : 0)));
-    color = elem->color_text == elem->color_fg ?
+    
+    color_text = elem->color_text == elem->color_fg ?
         elem->color_bg : elem->color_text;
     
     if(!save->partner)
@@ -136,7 +137,8 @@ TYPE_FUNC_PRESS(button)
         
         if(text)
             neobox_layout_draw_string(y*height, x*width, height,
-                width, color, ALIGN(elem), text, map);
+                width, elem->color_fg, elem->color_bg, color_text,
+                ALIGN(elem), text, map);
     }
     else
     {
@@ -153,7 +155,8 @@ TYPE_FUNC_PRESS(button)
             p2 = vector_at(0, connect);
             neobox_layout_draw_string(p2->y*height, p2->x*width,
                 (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                color, ALIGN(elem), text, map);
+                elem->color_fg, elem->color_bg, color_text,
+                ALIGN(elem), text, map);
         }
     }
     
@@ -300,7 +303,8 @@ TYPE_FUNC_FOCUS_OUT(button)
             
             if(text)
                 neobox_layout_draw_string(y*height, x*width, height,
-                    width, elem->color_text, ALIGN(elem), text, map);
+                    width, elem->color_fg, elem->color_bg, elem->color_text,
+                    ALIGN(elem), text, map);
         }
         else
         {
@@ -323,7 +327,8 @@ TYPE_FUNC_FOCUS_OUT(button)
                 p2 = vector_at(0, connect);
                 neobox_layout_draw_string(p2->y*height, p2->x*width,
                     (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
-                    p->elem->color_text, ALIGN(elem), text, map);
+                    p->elem->color_fg, p->elem->color_bg, p->elem->color_text,
+                    ALIGN(elem), text, map);
             }
         }
     }

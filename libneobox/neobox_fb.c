@@ -28,6 +28,16 @@
 
 #include "iso_font.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+struct text_control
+{
+    int control, len, left, right, cursor;
+    const char *text;
+};
+
+typedef void draw_string_func(char c, unsigned char **base, unsigned char color_fg[4], unsigned char color_bg[4], int bg);
+
 extern struct neobox_global neobox;
 static unsigned char colorbuf[4];
 
@@ -169,6 +179,11 @@ void neobox_fb_to_layout_pos_rel(int *pos_y, int *pos_x, int width)
         neobox_fb_to_layout_pos(pos_y, pos_x);
         *pos_y -= width;
     }
+}
+
+int neobox_string_size(int width)
+{
+    return width/(ISO_CHAR_WIDTH*FONTMULT)-2;
 }
 
 unsigned char neobox_layout_connect_to_borders(int cord_y, int cord_x, unsigned char connect, const struct neobox_map *map)
@@ -494,25 +509,6 @@ void neobox_fill_border(int pos_y, int pos_x, int height, int width, unsigned ch
     *fill = fll;
 }
 
-void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color, int align, const char *str, const struct neobox_map *map)
-{
-    if(neobox.format == NEOBOX_FORMAT_PORTRAIT)
-        neobox_draw_string(pos_y, pos_x, height, width, neobox_color(0, color, map), align, str);
-    else
-    {
-        neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
-        neobox_layout_to_fb_sizes(&height, &width);
-        if(align)
-        {
-            if(align == NEOBOX_LAYOUT_OPTION_ALIGN_TOP)
-                align = NEOBOX_LAYOUT_OPTION_ALIGN_RIGHT;
-            else
-                align--;
-        }
-        neobox_draw_string_rotate(pos_y, pos_x, height, width, neobox_color(0, color, map), align, str);
-    }
-}
-
 static unsigned char* align_base(int align, int height, int width, int text_height, int text_width, int char_height, int char_width, int offset, unsigned char *base)
 {
     switch(align)
@@ -547,65 +543,179 @@ static unsigned char* align_base(int align, int height, int width, int text_heig
     return base;
 }
 
-void neobox_draw_string(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str)
+static void draw_string_horz(char c, unsigned char **base, unsigned char color_fg[4], unsigned char color_bg[4], int bg)
 {
-    unsigned char *base = neobox.fb.ptr + pos_y*neobox.fb.finfo.line_length + pos_x*neobox.fb.bpp;
-    unsigned char *ptr, *base2;
-    int pos, h, w, k;
+    int w, h, k, pos = c*ISO_CHAR_HEIGHT;
+    unsigned char *ptr = *base, *base2 = *base;
     
-    ptr = base2 = base = align_base(align, height, width,
-        ISO_CHAR_HEIGHT*FONTMULT, strlen(str)*ISO_CHAR_WIDTH*FONTMULT,
-        ISO_CHAR_HEIGHT*FONTMULT, ISO_CHAR_WIDTH*FONTMULT,
-        ISO_CHAR_WIDTH*FONTMULT, base);
-    
-    while(*str)
+    for(h=0; h<ISO_CHAR_HEIGHT*FONTMULT; h++)
     {
-        pos = str[0]*ISO_CHAR_HEIGHT;
-        
-        for(h=0; h<ISO_CHAR_HEIGHT*FONTMULT; h++)
+        for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
         {
-            for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
-            {
-                if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
-                    for(k=neobox.fb.bpp-1; k>=0; k--)
-                        *(ptr++) = color[k];
-                else
-                    ptr += neobox.fb.bpp;
-            }
-            ptr = base2 += neobox.fb.finfo.line_length;
+            if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
+                for(k=neobox.fb.bpp-1; k>=0; k--)
+                    *(ptr++) = color_fg[k];
+            else if(bg)
+                for(k=neobox.fb.bpp-1; k>=0; k--)
+                    *(ptr++) = color_bg[k];
+            else
+                ptr += neobox.fb.bpp;
         }
-        str++;
-        ptr = base2 = base += ISO_CHAR_WIDTH*FONTMULT*neobox.fb.bpp;
+        ptr = base2 += neobox.fb.finfo.line_length;
+    }
+    
+    *base += ISO_CHAR_WIDTH*FONTMULT*neobox.fb.bpp;
+}
+
+static void draw_string_vert(char c, unsigned char **base, unsigned char color_fg[4], unsigned char color_bg[4], int bg)
+{
+    int w, h, k, pos = c*ISO_CHAR_HEIGHT;
+    unsigned char *ptr = *base;
+    
+    for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
+    {
+        for(h=ISO_CHAR_HEIGHT*FONTMULT-1; h>=0; h--)
+        {
+            if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
+                for(k=neobox.fb.bpp-1; k>=0; k--)
+                    *(ptr++) = color_fg[k];
+            else if(bg)
+                for(k=neobox.fb.bpp-1; k>=0; k--)
+                    *(ptr++) = color_bg[k];
+            else
+                ptr += neobox.fb.bpp;
+        }
+        ptr = *base += neobox.fb.finfo.line_length;
     }
 }
 
-void neobox_draw_string_rotate(int pos_y, int pos_x, int height, int width, unsigned char color[4], int align, const char *str)
+static struct text_control prepare_control(const char *str, int max)
+{
+    struct neobox_text_control *control = (void*)str;
+    struct text_control ctrl;
+    
+    if(control->soh != 1)
+    {
+        ctrl.control = 0;
+        ctrl.text = str;
+        ctrl.len = strlen(str);
+        return ctrl;
+    }
+    
+    ctrl.control = 1;
+    ctrl.left = control->left?1:0;
+    ctrl.cursor = control->cursor-ctrl.left;
+    ctrl.text = control->text+ctrl.left;
+    ctrl.len = strlen(ctrl.text)+ctrl.left;
+    
+    if(ctrl.len > max)
+    {
+        ctrl.right = 1;
+        ctrl.len = max;
+    }
+    else
+        ctrl.right = 0;
+    
+    if(ctrl.len == ctrl.cursor+ctrl.left)
+        ctrl.len++;
+    
+    return ctrl;
+}
+
+static void draw_string(unsigned char *base, int height, int width, unsigned char color[3][4], struct text_control *control, draw_string_func draw)
+{
+    unsigned char *color_text_fg = color[2];
+    unsigned char *color_text_bg = color[1];
+    unsigned char *color_cursor_fg = color[1];
+    unsigned char *color_cursor_bg = color[2];
+//    unsigned char *color_mark_fg = color[0];
+//    unsigned char *color_mark_bg = color[2];
+    unsigned char *color_tx_fg = color[0];
+    unsigned char *color_tx_bg = color[1];
+    
+    if(!control->control)
+    {
+        for(; *control->text; control->text++)
+            draw(*control->text, &base, color_text_fg, color_text_bg, 0);
+        return;
+    }
+    
+    if(control->left)
+    {
+        draw('<', &base, color_tx_fg, color_tx_bg, 1);
+        control->len--;
+    }
+    
+    for(; control->len > control->right && control->cursor; control->text++, control->len--, control->cursor--)
+        draw(*control->text, &base, color_text_fg, color_text_bg, 0);
+    
+    if(!control->cursor)
+    {
+        if(!*control->text)
+        {
+            draw(' ', &base, color_cursor_fg, color_cursor_bg, 1);
+            return;
+        }
+        
+        draw(*control->text, &base, color_cursor_fg, color_cursor_bg, 1);
+        control->text++;
+        control->len--;
+    }
+    
+    for(; control->len > control->right; control->text++, control->len--)
+        draw(*control->text, &base, color_text_fg, color_text_bg, 0);
+    
+    if(control->right)
+        draw('>', &base, color_tx_fg, color_tx_bg, 1);
+}
+
+void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, int color_txt, int align, const char *str, const struct neobox_map *map)
+{
+    unsigned char color[3][4];
+    
+    neobox_color(color[0], color_fg, map);
+    neobox_color(color[1], color_bg, map);
+    neobox_color(color[2], color_txt, map);
+    
+    if(neobox.format == NEOBOX_FORMAT_PORTRAIT)
+        neobox_draw_string_horz(pos_y, pos_x, height, width, color, align, str);
+    else
+    {
+        neobox_layout_to_fb_pos_rel(&pos_y, &pos_x, height);
+        neobox_layout_to_fb_sizes(&height, &width);
+        if(align)
+        {
+            if(align == NEOBOX_LAYOUT_OPTION_ALIGN_TOP)
+                align = NEOBOX_LAYOUT_OPTION_ALIGN_RIGHT;
+            else
+                align--;
+        }
+        neobox_draw_string_vert(pos_y, pos_x, height, width, color, align, str);
+    }
+}
+
+void neobox_draw_string_horz(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, const char *str)
 {
     unsigned char *base = neobox.fb.ptr + pos_y*neobox.fb.finfo.line_length + pos_x*neobox.fb.bpp;
-    unsigned char *ptr;
-    int pos, h, w, k;
+    struct text_control control = prepare_control(str, width/(ISO_CHAR_WIDTH*FONTMULT)-2);
     
-    ptr = base = align_base(align, height, width,
-        strlen(str)*ISO_CHAR_WIDTH*FONTMULT, ISO_CHAR_HEIGHT*FONTMULT,
+    base = align_base(align, height, width,
+        ISO_CHAR_HEIGHT*FONTMULT, control.len*ISO_CHAR_WIDTH*FONTMULT,
+        ISO_CHAR_HEIGHT*FONTMULT, ISO_CHAR_WIDTH*FONTMULT,
+        ISO_CHAR_WIDTH*FONTMULT, base);
+    
+    draw_string(base, height, width, color, &control, draw_string_horz);
+}
+
+void neobox_draw_string_vert(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, const char *str)
+{
+    unsigned char *base = neobox.fb.ptr + pos_y*neobox.fb.finfo.line_length + pos_x*neobox.fb.bpp;
+    struct text_control control = prepare_control(str, height/(ISO_CHAR_WIDTH*FONTMULT)-2);
+    
+    base = align_base(align, height, width,
+        control.len*ISO_CHAR_WIDTH*FONTMULT, ISO_CHAR_HEIGHT*FONTMULT,
         ISO_CHAR_WIDTH*FONTMULT, ISO_CHAR_HEIGHT*FONTMULT,
         ISO_CHAR_WIDTH*FONTMULT, base);
     
-    while(*str)
-    {
-        pos = str[0]*ISO_CHAR_HEIGHT;
-        
-        for(w=0; w<ISO_CHAR_WIDTH*FONTMULT; w++)
-        {
-            for(h=ISO_CHAR_HEIGHT*FONTMULT-1; h>=0; h--)
-            {
-                if(iso_font[pos+(h/FONTMULT)] & (1<<(w/FONTMULT)))
-                    for(k=neobox.fb.bpp-1; k>=0; k--)
-                        *(ptr++) = color[k];
-                else
-                    ptr += neobox.fb.bpp;
-            }
-            ptr = base += neobox.fb.finfo.line_length;
-        }
-        str++;
-    }
+    draw_string(base, height, width, color, &control, draw_string_vert);
 }
