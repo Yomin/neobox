@@ -25,3 +25,6 @@ The killer application. Comes with numberwang mode.
 
 ## login
 Login application for locking screen.
+
+## totp
+Time based One Time Password application.

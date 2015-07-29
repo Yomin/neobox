@@ -2,3 +2,4 @@
 section: apps
 brightness: /root/neobox/app/slider/slider 63 10 /sys/class/backlight/pcf50633-backlight/brightness
 2048: /root/neobox/app/2048/2048
+totp: /root/neobox/app/totp/totp

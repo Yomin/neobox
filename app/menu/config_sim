@@ -2,3 +2,4 @@
 section: apps
 brightness: ../slider/slider 4828935 10 /sys/class/backlight/intel_backlight/brightness --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod
 2048: ../2048/2048 --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod
+totp: ../totp/totp --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod
