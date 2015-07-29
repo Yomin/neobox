@@ -45,6 +45,7 @@ struct neobox_save_text
 TYPE_FUNCTIONS(text);
 
 TYPE_FUNC_ACTION(text, set);
+TYPE_FUNC_ACTION(text, get);
 TYPE_FUNC_ACTION(text, reset);
 
 #endif

@@ -26,4 +26,6 @@
 void neobox_text_set(int id, int map, char *text, int redraw);
 void neobox_text_reset(int id, int map, int redraw);
 
+char* neobox_text_get(int id, int map);
+
 #endif

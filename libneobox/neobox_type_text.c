@@ -412,3 +412,18 @@ void neobox_text_reset(int id, int mappos, int redraw)
     neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
         0, redraw, neobox_type_text_reset);
 }
+
+TYPE_FUNC_ACTION(text, get)
+{
+    struct neobox_save_text *text;
+    
+    text = save->partner ? save->partner->data : save->data;
+    
+    return text->text;
+}
+
+char* neobox_text_get(int id, int mappos)
+{
+    return neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
+        0, 0, neobox_type_text_get);
+}
