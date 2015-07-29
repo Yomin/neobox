@@ -147,7 +147,7 @@ TYPE_FUNC_FINISH(slider)
 TYPE_FUNC_DRAW(slider)
 {
     forceprint = 1;
-    neobox_type_slider_focus_out(y, x, map, elem, save);
+    TYPE_FUNC_FOCUS_OUT_CALL(slider);
     forceprint = 0;
 }
 
@@ -188,7 +188,7 @@ TYPE_FUNC_BROADER(slider)
 
 TYPE_FUNC_PRESS(slider)
 {
-    return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return TYPE_FUNC_MOVE_CALL(slider);
 }
 
 TYPE_FUNC_MOVE(slider)
@@ -407,7 +407,7 @@ TYPE_FUNC_RELEASE(slider)
 
 TYPE_FUNC_FOCUS_IN(slider)
 {
-    return neobox_type_slider_move(y, x, button_y, button_x, map, elem, save);
+    return TYPE_FUNC_MOVE_CALL(slider);
 }
 
 TYPE_FUNC_FOCUS_OUT(slider)
@@ -439,7 +439,7 @@ TYPE_FUNC_ACTION(slider, set_ticks)
         slider->y = slider->start;
     
     if(map)
-        neobox_type_slider_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(slider);
     
     return 0;
 }
@@ -472,7 +472,7 @@ TYPE_FUNC_ACTION(slider, set_pos)
     }
     
     if(map)
-        neobox_type_slider_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(slider);
     
     return 0;
 }

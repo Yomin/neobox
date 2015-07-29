@@ -65,13 +65,13 @@ TYPE_FUNC_FINISH(select)
 TYPE_FUNC_DRAW(select)
 {
     forceprint = 1; // initial draw regardless of locked status
-    neobox_type_select_focus_out(y, x, map, elem, save);
+    TYPE_FUNC_FOCUS_OUT_CALL(select);
     forceprint = 0;
 }
 
 TYPE_FUNC_BROADER(select)
 {
-    return neobox_type_button_broader(y, x, scr_y, scr_x, map, elem);
+    return TYPE_FUNC_BROADER_CALL(button);
 }
 
 TYPE_FUNC_PRESS(select)
@@ -85,9 +85,9 @@ TYPE_FUNC_PRESS(select)
     
     neobox_type_button_copy_set(select->size, select->copy, select->name, save);
     if(select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE)
-        neobox_type_button_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(button);
     else
-        neobox_type_button_press(y, x, button_y, button_x, map, elem, save);
+        TYPE_FUNC_PRESS_CALL(button);
     neobox_type_button_copy_restore(&select->size, &select->copy, select, save);
     
     return NOP;
@@ -119,7 +119,7 @@ TYPE_FUNC_RELEASE(select)
 
 TYPE_FUNC_FOCUS_IN(select)
 {
-    return neobox_type_select_press(y, x, button_y, button_x, map, elem, save);
+    return TYPE_FUNC_PRESS_CALL(select);
 }
 
 TYPE_FUNC_FOCUS_OUT(select)
@@ -134,9 +134,9 @@ TYPE_FUNC_FOCUS_OUT(select)
     
     neobox_type_button_copy_set(select->size, select->copy, select->name, save);
     if(select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE)
-        neobox_type_button_press(y, x, 0, 0, map, elem, save);
+        TYPE_FUNC_PRESS_YX0_CALL(button);
     else
-        neobox_type_button_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(button);
     neobox_type_button_copy_restore(&select->size, &select->copy, select, save);
     
     return NOP;
@@ -153,7 +153,7 @@ TYPE_FUNC_ACTION(select, set_name)
     if(map)
     {
         forceprint = 1; // redraw regardless of locked status
-        neobox_type_select_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(select);
         forceprint = 0;
     }
     
@@ -173,7 +173,7 @@ TYPE_FUNC_ACTION(select, set_active)
     if(map)
     {
         forceprint = 1; // redraw regardless of locked status
-        neobox_type_select_focus_out(y, x, map, elem, save);
+        TYPE_FUNC_FOCUS_OUT_CALL(select);
         forceprint = 0;
     }
     

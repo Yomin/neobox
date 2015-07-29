@@ -80,7 +80,7 @@ TYPE_FUNC_FINISH(button)
 TYPE_FUNC_DRAW(button)
 {
     docopy = 0; // disable copy on initial draw
-    neobox_type_button_focus_out(y, x, map, elem, save);
+    TYPE_FUNC_FOCUS_OUT_CALL(button);
     docopy = 1;
 }
 
@@ -245,7 +245,7 @@ TYPE_FUNC_RELEASE(button)
         nmap = neobox.parser.map_main;
     
 ret:
-    neobox_type_button_focus_out(y, x, map, elem, save);
+    TYPE_FUNC_FOCUS_OUT_CALL(button);
     
     neobox.parser.map = nmap;
     
@@ -254,7 +254,7 @@ ret:
 
 TYPE_FUNC_FOCUS_IN(button)
 {
-    return neobox_type_button_press(y, x, button_y, button_x, map, elem, save);
+    return TYPE_FUNC_PRESS_CALL(button);
 }
 
 TYPE_FUNC_FOCUS_OUT(button)
@@ -344,7 +344,7 @@ TYPE_FUNC_ACTION(button, set_name)
         save->partner->data = (void*)data;
     
     if(map)
-        neobox_type_button_draw(y, x, map, elem, save);
+        TYPE_FUNC_DRAW_CALL(button);
     
     return 0;
 }
