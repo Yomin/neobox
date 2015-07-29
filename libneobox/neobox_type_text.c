@@ -356,8 +356,12 @@ TYPE_FUNC_FOCUS_OUT(text)
 TYPE_FUNC_ACTION(text, set)
 {
     struct neobox_save_text *text;
-    int len = strlen(data);
+    int len;
     
+    if(!data)
+        return TYPE_FUNC_ACTION_CALL(text, reset);
+    
+    len = strlen(data);
     text = save->partner ? save->partner->data : save->data;
     
     if(len >= text->size)
@@ -395,6 +399,7 @@ TYPE_FUNC_ACTION(text, reset)
     text->window = 0;
     text->cursor = 0;
     text->fill = 0;
+    text->text[0] = 0;
     
     if(map)
         TYPE_FUNC_FOCUS_OUT_CALL(text);
