@@ -33,22 +33,51 @@
 
 #define TYPE_FUNC_DRAW(NAME) \
     void neobox_type_##NAME##_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_DRAW_CALL(NAME) \
+    neobox_type_##NAME##_draw(y, x, map, elem, save)
+
 #define TYPE_FUNC_BROADER(NAME) \
     int neobox_type_##NAME##_broader(int *y, int *x, int scr_y, int scr_x, const struct neobox_map *map, const struct neobox_mapelem *elem)
+#define TYPE_FUNC_BROADER_CALL(NAME) \
+    neobox_type_##NAME##_broader(y, x, scr_y, scr_x, map, elem)
 
 #define TYPE_FUNC_PRESS(NAME) \
     struct neobox_event neobox_type_##NAME##_press(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_PRESS_CALL(NAME) \
+    neobox_type_##NAME##_press(y, x, button_y, button_x, map, elem, save)
+#define TYPE_FUNC_PRESS_YX0_CALL(NAME) \
+    neobox_type_##NAME##_press(y, x, 0, 0, map, elem, save)
+
 #define TYPE_FUNC_MOVE(NAME) \
     struct neobox_event neobox_type_##NAME##_move(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_MOVE_CALL(NAME) \
+    neobox_type_##NAME##_move(y, x, button_y, button_x, map, elem, save)
+#define TYPE_FUNC_MOVE_YX0_CALL(NAME) \
+    neobox_type_##NAME##_move(y, x, 0, 0, map, elem, save)
+
 #define TYPE_FUNC_RELEASE(NAME) \
     struct neobox_event neobox_type_##NAME##_release(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_RELEASE_CALL(NAME) \
+    neobox_type_##NAME##_release(y, x, button_y, button_x, map, elem, save)
+#define TYPE_FUNC_RELEASE_YX0_CALL(NAME) \
+    neobox_type_##NAME##_release(y, x, 0, 0, map, elem, save)
+
 #define TYPE_FUNC_FOCUS_IN(NAME) \
     struct neobox_event neobox_type_##NAME##_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_FOCUS_IN_CALL(NAME) \
+    neobox_type_##NAME##_focus_in(y, x, button_y, button_x, map, elem, save)
+#define TYPE_FUNC_FOCUS_IN_YX0_CALL(NAME) \
+    neobox_type_##NAME##_focus_in(y, x, 0, 0, map, elem, save)
+
 #define TYPE_FUNC_FOCUS_OUT(NAME) \
     struct neobox_event neobox_type_##NAME##_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_FOCUS_OUT_CALL(NAME) \
+    neobox_type_##NAME##_focus_out(y, x, map, elem, save)
 
 #define TYPE_FUNC_ACTION(NAME, ACTION) \
     void neobox_type_##NAME##_##ACTION(const void *data, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+#define TYPE_FUNC_ACTION_CALL(NAME, ACTION) \
+    neobox_type_##NAME##_##ACTION(data, y, x, map, elem, save)
 
 #define TYPE_FUNCTIONS(NAME) \
     TYPE_FUNC_INIT(NAME); \
