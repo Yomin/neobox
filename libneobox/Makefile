@@ -1,5 +1,5 @@
 
-.PHONY: all, debug, fulldebug, sim, clean, touch, libs, sync
+.PHONY: all, debug, fulldebug, sim, simfulldebug, clean, touch, libs, sync
 
 LIBALGPATH = lib/libalg
 LIBALG = $(LIBALGPATH)/libalg.a
@@ -32,6 +32,11 @@ sim: DEBUG = debug
 sim: FULLDEBUG =
 sim: CFLAGS := $(CFLAGS) -ggdb -D SIM
 sim: touch $(LIBALG) $(LIBRJ) lib$(NAME).a
+
+simfulldebug: DEBUG = debug
+simfulldebug: FULLDEBUG = debug
+simfulldebug: CFLAGS := $(CFLAGS) -ggdb -D SIM
+simfulldebug: touch $(LIBALG) $(LIBRJ) lib$(NAME).a
 
 clean:
 	find . ! -type d ! -type l \( -perm -111 -or -name "*\.a" -or -name "*\.o" \) -exec rm {} \;
