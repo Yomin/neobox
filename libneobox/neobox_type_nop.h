@@ -39,5 +39,7 @@ void neobox_type_nop_release(int y, int x, int button_y, int button_x, const str
 void neobox_type_nop_focus_in(int y, int x, int button_y, int button_x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
 void neobox_type_nop_focus_out(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save);
 
+void neobox_nop_set_name(int id, int mappos, char *name, int redraw);
+
 #endif
 

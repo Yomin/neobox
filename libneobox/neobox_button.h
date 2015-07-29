@@ -23,6 +23,12 @@
 #ifndef __NEOBOX_BUTTON_H__
 #define __NEOBOX_BUTTON_H__
 
+#define NEOBOX_BUTTON_CHECK_SUCCESS 0
+#define NEOBOX_BUTTON_CHECK_FAIL    1
+
+typedef int neobox_checkfun(int id);
+
 void neobox_button_set_name(int id, int map, char *name, int redraw);
+void neobox_button_set_check(int id, int map, neobox_checkfun *check, int redraw);
 
 #endif

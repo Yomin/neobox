@@ -42,6 +42,7 @@ static int docopy; // deactivate copy on eg initial draw
 // button copy is limited on one click therefore one save space is sufficient
 int button_copy_size, button_copy_size_backup;
 unsigned char *button_copy, *button_copy_backup;
+struct neobox_save_button button_copy_save;
 
 static void alloc_copy(int height, int width, struct neobox_partner *partner)
 {
@@ -66,6 +67,14 @@ TYPE_FUNC_INIT(button)
 {
     button_copy_size = 0;
     docopy = 1;
+    
+    if(save->partner)
+    {
+        if(!save->partner->data)
+            save->partner->data = calloc(1, sizeof(struct neobox_save_button));
+    }
+    else
+        save->data = calloc(1, sizeof(struct neobox_save_button));
 }
 
 TYPE_FUNC_FINISH(button)
@@ -75,6 +84,11 @@ TYPE_FUNC_FINISH(button)
         free(button_copy);
         button_copy_size = 0;
     }
+    
+    if(save->partner)
+        free(save->partner->data);
+    else
+        free(save->data);
 }
 
 TYPE_FUNC_DRAW(button)
@@ -113,6 +127,7 @@ TYPE_FUNC_PRESS(button)
     const char *text;
     struct vector *connect;
     struct neobox_point *p, *p2;
+    struct neobox_save_button *button;
     
     neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
@@ -122,10 +137,11 @@ TYPE_FUNC_PRESS(button)
         ptr = button_copy;
     }
     
-    text = save->partner && save->partner->data ? save->partner->data :
-        (!save->partner && save->data ? save->data :
-        (elem->name ? elem->name :
-        (elem->elem.i ? elem->elem.c.c : 0)));
+    button = save->partner ? save->partner->data : save->data;
+    
+    text = button->name ? button->name :
+           elem->name ? elem->name :
+           elem->elem.i ? elem->elem.c.c : 0;
     
     color_text = elem->color_text == elem->color_fg ?
         elem->color_bg : elem->color_text;
@@ -171,7 +187,10 @@ TYPE_FUNC_MOVE(button)
 TYPE_FUNC_RELEASE(button)
 {
     struct neobox_event ret;
+    struct neobox_save_button *button;
     int nmap = neobox.parser.map;
+    
+    button = save->partner ? save->partner->data : save->data;
     
     ret.type = NEOBOX_EVENT_NOP;
     ret.id = elem->id;
@@ -179,6 +198,8 @@ TYPE_FUNC_RELEASE(button)
     switch(elem->type)
     {
     case NEOBOX_LAYOUT_TYPE_CHAR:
+        if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
+            goto ret;
         ret.type = NEOBOX_EVENT_CHAR;
         if(neobox.layout.fun) // layout specific convert function
             ret.value = neobox.layout.fun(neobox.parser.map, elem->elem,
@@ -197,6 +218,8 @@ TYPE_FUNC_RELEASE(button)
         }
         break;
     case NEOBOX_LAYOUT_TYPE_GOTO:
+        if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
+            goto ret;
         if(!strcmp("Admn", elem->name) && !(neobox.options & NEOBOX_OPTION_ADMINMAP))
         {
             VERBOSE(printf("[NEOBOX] adminmap disabled\n"));
@@ -207,11 +230,15 @@ TYPE_FUNC_RELEASE(button)
         VERBOSE(printf("[NEOBOX] goto %s\n", elem->name));
         goto ret;
     case NEOBOX_LAYOUT_TYPE_HOLD:
+        if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
+            goto ret;
         neobox.parser.hold = !neobox.parser.hold;
         VERBOSE(printf("[NEOBOX] hold %s\n",
             neobox.parser.hold ? "on" : "off"));
         break;
     case NEOBOX_LAYOUT_TYPE_TOGGLE:
+        if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
+            goto ret;
         neobox.parser.toggle ^= elem->elem.i;
         VERBOSE(printf("[NEOBOX] %s %s\n", elem->name,
             neobox.parser.toggle & elem->elem.i ? "on" : "off"));
@@ -264,6 +291,7 @@ TYPE_FUNC_FOCUS_OUT(button)
     const char *text;
     struct vector *connect;
     struct neobox_point *p, *p2;
+    struct neobox_save_button *button;
     
     neobox_get_sizes(&height, &width, 0, 0, 0, 0, map);
     
@@ -286,10 +314,11 @@ TYPE_FUNC_FOCUS_OUT(button)
     }
     else
     {
-        text = save->partner && save->partner->data ? save->partner->data :
-            (!save->partner && save->data ? save->data :
-            (elem->name ? elem->name :
-            (elem->elem.i ? elem->elem.c.c : 0)));
+        button = save->partner ? save->partner->data : save->data;
+        
+        text = button->name ? button->name :
+               elem->name ? elem->name :
+               elem->elem.i ? elem->elem.c.c : 0;
         
         if(!save->partner)
         {
@@ -338,10 +367,25 @@ TYPE_FUNC_FOCUS_OUT(button)
 
 TYPE_FUNC_ACTION(button, set_name)
 {
-    if(!save->partner)
-        save->data = (void*)data;
-    else
-        save->partner->data = (void*)data;
+    struct neobox_save_button *button;
+    
+    button = save->partner ? save->partner->data : save->data;
+    
+    button->name = data;
+    
+    if(map)
+        TYPE_FUNC_DRAW_CALL(button);
+    
+    return 0;
+}
+
+TYPE_FUNC_ACTION(button, set_check)
+{
+    struct neobox_save_button *button, *sdata = data;
+    
+    button = save->partner ? save->partner->data : save->data;
+    
+    button->check = sdata->check;
     
     if(map)
         TYPE_FUNC_DRAW_CALL(button);
@@ -356,17 +400,29 @@ void neobox_button_set_name(int id, int mappos, char *name, int redraw)
         neobox_type_button_set_name);
 }
 
+void neobox_button_set_check(int id, int mappos, neobox_checkfun *check, int redraw)
+{
+    struct neobox_save_button save;
+    
+    save.check = check;
+    
+    neobox_type_help_action_range(NEOBOX_LAYOUT_TYPE_CHAR,
+        NEOBOX_LAYOUT_TYPE_SYSTEM, id, mappos, &save, redraw,
+        neobox_type_button_set_check);
+}
+
 void neobox_type_button_copy_set(int size, unsigned char *copy, char *name, struct neobox_save *save)
 {
     button_copy_size_backup = button_copy_size;
     button_copy_backup = button_copy;
     button_copy_size = size;
     button_copy = copy;
+    button_copy_save.name = name;
     
     if(save->partner)
-        save->partner->data = (void*)name;
+        save->partner->data = &button_copy_save;
     else
-        save->data = (void*)name;
+        save->data = &button_copy_save;
 }
 
 void neobox_type_button_copy_restore(int *size, unsigned char **copy, void *data, struct neobox_save *save)

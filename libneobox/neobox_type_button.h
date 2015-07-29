@@ -23,11 +23,19 @@
 #ifndef __NEOBOX_TYPE_BUTTON_H__
 #define __NEOBOX_TYPE_BUTTON_H__
 
+#include "neobox_button.h"
 #include "neobox_type_macros.h"
+
+struct neobox_save_button
+{
+    char *name;
+    neobox_checkfun *check;
+};
 
 TYPE_FUNCTIONS(button);
 
 TYPE_FUNC_ACTION(button, set_name);
+TYPE_FUNC_ACTION(button, set_check);
 
 // set button copy save for reuse of button functions
 void neobox_type_button_copy_set(int size, unsigned char *copy, char *name, struct neobox_save *save);

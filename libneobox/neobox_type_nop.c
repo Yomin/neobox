@@ -24,14 +24,25 @@
 #include "neobox_type_button.h"
 #include "neobox_type_help.h"
 
+#include <stdlib.h>
+
 void neobox_type_nop_init(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 {
-    
+    if(save->partner)
+    {
+        if(!save->partner->data)
+            save->partner->data = calloc(1, sizeof(struct neobox_save_button));
+    }
+    else
+        save->data = calloc(1, sizeof(struct neobox_save_button));
 }
 
 void neobox_type_nop_finish(struct neobox_save *save)
 {
-    
+    if(save->partner)
+        free(save->partner->data);
+    else
+        free(save->data);
 }
 
 void neobox_type_nop_draw(int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
