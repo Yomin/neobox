@@ -192,6 +192,11 @@ gboolean on_key_press(GtkWidget *widget, GdkEvent *event, gpointer data)
             send_event(power, EV_SYN, SYN_REPORT, 0);
         }
         break;
+    case GDK_KEY_r:
+        printf("refresh\n");
+        cairo_surface_mark_dirty(surface);
+        gtk_widget_queue_draw(window);
+        break;
     }
     
     return FALSE;
