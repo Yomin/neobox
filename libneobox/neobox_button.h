@@ -23,6 +23,6 @@
 #ifndef __NEOBOX_BUTTON_H__
 #define __NEOBOX_BUTTON_H__
 
-void neobox_button_set_name(int id, int map, const char *name, int redraw);
+void neobox_button_set_name(int id, int map, char *name, int redraw);
 
 #endif

@@ -44,15 +44,16 @@ int neobox_type_help_find_type(int type_from, int type_to, int id, int mappos)
     return -1;
 }
 
-void neobox_type_help_set_pos_value(int pos, int mappos, const void *value, int redraw, neobox_type_help_set_func f)
+void* neobox_type_help_action_pos(int pos, int mappos, void *value, int redraw, neobox_type_help_action_func f)
 {
     const struct neobox_map *map = &neobox.layout.maps[mappos];
     const struct neobox_mapelem *elem;
     struct neobox_save *save;
     SIMV(unsigned char sim_tmp = 'x');
+    void *ret;
     
     if(pos < 0)
-        return;
+        return 0;
     
     elem = &map->map[pos];
     save = &neobox.save[mappos][pos];
@@ -60,22 +61,23 @@ void neobox_type_help_set_pos_value(int pos, int mappos, const void *value, int 
     // only redraw if map is active
     if(redraw && neobox.parser.map == mappos)
     {
-        f(value, pos/map->width, pos%map->width, map, elem, save);
+        ret = f(value, pos/map->width, pos%map->width, map, elem, save);
         // notify framebuffer for redraw
         SIMV(send(neobox.fb.sock, &sim_tmp, 1, 0));
+        return ret;
     }
     else
-        f(value, pos/map->width, pos%map->width, 0, elem, save);
+        return f(value, pos/map->width, pos%map->width, 0, elem, save);
 }
 
-void neobox_type_help_set_range_value(int type_from, int type_to, int id, int mappos, const void *value, int redraw, neobox_type_help_set_func f)
+void* neobox_type_help_action_range(int type_from, int type_to, int id, int mappos, void *value, int redraw, neobox_type_help_action_func f)
 {
     int pos = neobox_type_help_find_type(type_from, type_to, id, mappos);
-    neobox_type_help_set_pos_value(pos, mappos, value, redraw, f);
+    return neobox_type_help_action_pos(pos, mappos, value, redraw, f);
 }
 
-void neobox_type_help_set_value(int type, int id, int mappos, const void *value, int redraw, neobox_type_help_set_func f)
+void* neobox_type_help_action(int type, int id, int mappos, void *value, int redraw, neobox_type_help_action_func f)
 {
     int pos = neobox_type_help_find_type(type, type, id, mappos);
-    neobox_type_help_set_pos_value(pos, mappos, value, redraw, f);
+    return neobox_type_help_action_pos(pos, mappos, value, redraw, f);
 }

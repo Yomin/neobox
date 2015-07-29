@@ -23,6 +23,6 @@
 #ifndef __NEOBOX_NOP_H__
 #define __NEOBOX_NOP_H__
 
-void neobox_nop_set_name(int id, int map, const char *name, int redraw);
+void neobox_nop_set_name(int id, int map, char *name, int redraw);
 
 #endif

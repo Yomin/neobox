@@ -30,7 +30,7 @@
 
 struct neobox_save_select
 {
-    const char *name;
+    char *name;
     int status;
     int size;
     unsigned char *copy;

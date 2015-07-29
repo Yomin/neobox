@@ -345,16 +345,18 @@ TYPE_FUNC_ACTION(button, set_name)
     
     if(map)
         neobox_type_button_draw(y, x, map, elem, save);
+    
+    return 0;
 }
 
-void neobox_button_set_name(int id , int mappos, const char *name, int redraw)
+void neobox_button_set_name(int id, int mappos, char *name, int redraw)
 {
-    neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_CHAR,
+    neobox_type_help_action_range(NEOBOX_LAYOUT_TYPE_CHAR,
         NEOBOX_LAYOUT_TYPE_SYSTEM, id, mappos, name, redraw,
         neobox_type_button_set_name);
 }
 
-void neobox_type_button_copy_set(int size, unsigned char *copy, const char *name, struct neobox_save *save)
+void neobox_type_button_copy_set(int size, unsigned char *copy, char *name, struct neobox_save *save)
 {
     button_copy_size_backup = button_copy_size;
     button_copy_backup = button_copy;

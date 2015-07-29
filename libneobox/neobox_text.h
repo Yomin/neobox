@@ -23,7 +23,7 @@
 #ifndef __NEOBOX_TEXT_H__
 #define __NEOBOX_TEXT_H__
 
-void neobox_text_set(int id, int map, const char *text, int redraw);
+void neobox_text_set(int id, int map, char *text, int redraw);
 void neobox_text_reset(int id, int map, int redraw);
 
 #endif

@@ -23,7 +23,7 @@
 #ifndef __NEOBOX_SELECT_H__
 #define __NEOBOX_SELECT_H__
 
-void neobox_select_set_name(int id, int map, const char *name, int redraw);
+void neobox_select_set_name(int id, int map, char *name, int redraw);
 void neobox_select_set_active(int id, int map, int active, int redraw);
 void neobox_select_set_locked(int id, int map, int locked);
 

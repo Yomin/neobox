@@ -156,6 +156,8 @@ TYPE_FUNC_ACTION(select, set_name)
         neobox_type_select_focus_out(y, x, map, elem, save);
         forceprint = 0;
     }
+    
+    return 0;
 }
 
 TYPE_FUNC_ACTION(select, set_active)
@@ -174,6 +176,8 @@ TYPE_FUNC_ACTION(select, set_active)
         neobox_type_select_focus_out(y, x, map, elem, save);
         forceprint = 0;
     }
+    
+    return 0;
 }
 
 TYPE_FUNC_ACTION(select, set_locked)
@@ -185,22 +189,24 @@ TYPE_FUNC_ACTION(select, set_locked)
         select->status |= NEOBOX_TYPE_SELECT_STATUS_LOCKED;
     else
         select->status &= ~NEOBOX_TYPE_SELECT_STATUS_LOCKED;
+    
+    return 0;
 }
 
-void neobox_select_set_name(int id, int mappos, const char *name, int redraw)
+void neobox_select_set_name(int id, int mappos, char *name, int redraw)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
         name, redraw, neobox_type_select_set_name);
 }
 
 void neobox_select_set_active(int id, int mappos, int active, int redraw)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
         &active, redraw, neobox_type_select_set_active);
 }
 
 void neobox_select_set_locked(int id, int mappos, int locked)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_SELECT, id, mappos,
         &locked, 0, neobox_type_select_set_locked);
 }

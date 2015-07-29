@@ -69,8 +69,8 @@ void neobox_type_nop_focus_out(int y, int x, const struct neobox_map *map, const
     
 }
 
-void neobox_nop_set_name(int id , int mappos, const char *name, int redraw)
+void neobox_nop_set_name(int id, int mappos, char *name, int redraw)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_NOP, id, mappos,
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_NOP, id, mappos,
         name, redraw, neobox_type_button_set_name);
 }

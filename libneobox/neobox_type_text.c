@@ -374,12 +374,14 @@ TYPE_FUNC_ACTION(text, set)
     
     if(map)
         neobox_type_text_focus_out(y, x, map, elem, save);
+    
+    return 0;
 }
 
-void neobox_text_set(int id, int mappos, const char *text, int redraw)
+void neobox_text_set(int id, int mappos, char *text, int redraw)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
-        text, redraw, neobox_type_text_set);
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
+        (void*)text, redraw, neobox_type_text_set);
 }
 
 TYPE_FUNC_ACTION(text, reset)
@@ -396,10 +398,12 @@ TYPE_FUNC_ACTION(text, reset)
     
     if(map)
         neobox_type_text_focus_out(y, x, map, elem, save);
+    
+    return 0;
 }
 
 void neobox_text_reset(int id, int mappos, int redraw)
 {
-    neobox_type_help_set_value(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
         0, redraw, neobox_type_text_reset);
 }

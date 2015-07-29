@@ -30,7 +30,7 @@ TYPE_FUNCTIONS(button);
 TYPE_FUNC_ACTION(button, set_name);
 
 // set button copy save for reuse of button functions
-void neobox_type_button_copy_set(int size, unsigned char *copy, const char *name, struct neobox_save *save);
+void neobox_type_button_copy_set(int size, unsigned char *copy, char *name, struct neobox_save *save);
 void neobox_type_button_copy_restore(int *size, unsigned char **copy, void *data, struct neobox_save *save);
 
 #endif

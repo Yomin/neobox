@@ -428,7 +428,7 @@ TYPE_FUNC_ACTION(slider, set_ticks)
     int ticks = *(int*)data;
     
     if(ticks < 0)
-        return;
+        return 0;
     
     slider = save->partner ? save->partner->data : save->data;
     slider->ticks = ticks;
@@ -440,6 +440,8 @@ TYPE_FUNC_ACTION(slider, set_ticks)
     
     if(map)
         neobox_type_slider_focus_out(y, x, map, elem, save);
+    
+    return 0;
 }
 
 TYPE_FUNC_ACTION(slider, set_pos)
@@ -451,7 +453,7 @@ TYPE_FUNC_ACTION(slider, set_pos)
     
     if( ( slider->ticks && (pos < 0 || pos > slider->ticks)) ||
         (!slider->ticks && (pos < 0 || pos > 100)))
-        return;
+        return 0;
     
     if(slider->ticks)
     {
@@ -471,18 +473,20 @@ TYPE_FUNC_ACTION(slider, set_pos)
     
     if(map)
         neobox_type_slider_focus_out(y, x, map, elem, save);
+    
+    return 0;
 }
 
 void neobox_slider_set_ticks(int id, int mappos, int ticks, int redraw)
 {
-    neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_HSLIDER,
+    neobox_type_help_action_range(NEOBOX_LAYOUT_TYPE_HSLIDER,
         NEOBOX_LAYOUT_TYPE_VSLIDER, id, mappos, &ticks, redraw,
         neobox_type_slider_set_ticks);
 }
 
 void neobox_slider_set_pos(int id, int mappos, int pos, int redraw)
 {
-    neobox_type_help_set_range_value(NEOBOX_LAYOUT_TYPE_HSLIDER,
+    neobox_type_help_action_range(NEOBOX_LAYOUT_TYPE_HSLIDER,
         NEOBOX_LAYOUT_TYPE_VSLIDER, id, mappos, &pos, redraw,
         neobox_type_slider_set_ticks);
 }
@@ -493,8 +497,8 @@ void neobox_slider_set_ticks_pos(int id, int mappos, int ticks, int pos, int red
         NEOBOX_LAYOUT_TYPE_HSLIDER, NEOBOX_LAYOUT_TYPE_VSLIDER,
         id, mappos);
     
-    neobox_type_help_set_pos_value(tpos, mappos, &ticks, 0,
+    neobox_type_help_action_pos(tpos, mappos, &ticks, 0,
         neobox_type_slider_set_ticks);
-    neobox_type_help_set_pos_value(tpos, mappos, &pos, redraw,
+    neobox_type_help_action_pos(tpos, mappos, &pos, redraw,
         neobox_type_slider_set_pos);
 }

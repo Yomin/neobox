@@ -75,7 +75,7 @@
     neobox_type_##NAME##_focus_out(y, x, map, elem, save)
 
 #define TYPE_FUNC_ACTION(NAME, ACTION) \
-    void neobox_type_##NAME##_##ACTION(const void *data, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
+    void* neobox_type_##NAME##_##ACTION(void *data, int y, int x, const struct neobox_map *map, const struct neobox_mapelem *elem, struct neobox_save *save)
 #define TYPE_FUNC_ACTION_CALL(NAME, ACTION) \
     neobox_type_##NAME##_##ACTION(data, y, x, map, elem, save)
 
