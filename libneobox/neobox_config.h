@@ -26,6 +26,7 @@
 #define NEOBOX_CONFIG_FILE "config"
 
 int  neobox_config_open(const char *file);
+int  neobox_config_save();
 void neobox_config_close();
 
 const char* neobox_config_strerror(int error);

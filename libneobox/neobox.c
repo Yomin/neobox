@@ -719,6 +719,12 @@ int neobox_init_custom(struct neobox_options options)
             neobox_config_strerror(ret));
         return NEOBOX_ERROR_CONFIG;
     }
+    if(options.verbose)
+    {
+        printf("[NEOBOX] config:\n");
+        printf("[NEOBOX]   file: %s\n", neobox.config.file);
+        printf("[NEOBOX]   exists: %s\n", ret ? "no" : "yes");
+    }
     
     // else
     neobox.pause = 0;

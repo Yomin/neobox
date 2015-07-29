@@ -37,59 +37,96 @@
 
 #define PATH_MAX 256
 
+#define FLAG_MALLOCED 1
+#define FLAG_MODIFIED 2
+
+static char **path;
+static char *flags;
 static struct recordjar **config;
 
 #ifdef NEOBOX
 extern struct neobox_global neobox;
 #else
-static struct recordjar *cfg;
+char *config_path, config_flags;
+static struct recordjar *config_rj;
 #endif
 
 int neobox_config_open(const char *file)
 {
-    char path_self[PATH_MAX], path_config[PATH_MAX];
+    char self[PATH_MAX];
     int ret;
-    ssize_t len;
+    ssize_t len, path_len;
     struct recordjar rj;
     
 #ifdef NEOBOX
+    path = &neobox.config.file;
+    flags = &neobox.config.flags;
     config = (struct recordjar**)&neobox.config.rj;
 #else
-    config = &cfg;
+    path = &config_file;
+    flags = &config_flags;
+    config = &config_rj;
 #endif
     
     if(*config)
     {
+        if(*flags&FLAG_MALLOCED)
+            free(*path);
         rj_free(*config);
         free(*config);
         *config = 0;
     }
     
+    *path = (char*)file;
+    
+    *config = malloc(sizeof(struct recordjar));
+    rj_init(*config); // init in case of fail to load
+    
     if(!file || file[0] != '/')
     {
-        if((len = readlink("/proc/self/exe", path_self, PATH_MAX-1)) == -1)
+        if((len = readlink("/proc/self/exe", self, PATH_MAX-1)) == -1)
             return errno;
-        path_self[len] = 0;
+        path[len] = 0;
         if(!file)
             file = NEOBOX_CONFIG_FILE;
-        snprintf(path_config, PATH_MAX, "%s/%s",
-            dirname(path_self), file);
-        if((ret = rj_load(path_config, &rj)))
+        path_len = snprintf(0, 0, "%s/%s", dirname(self), file);
+        *path = malloc(path_len+1);
+        *flags |= FLAG_MALLOCED;
+        snprintf(*path, PATH_MAX, "%s/%s",
+            strlen(self) == len ? dirname(self) : self, file);
+        if((ret = rj_load(*path, &rj)))
             return ret;
     }
     else if((ret = rj_load(file, &rj)))
         return ret;
     
-    *config = malloc(sizeof(struct recordjar));
     memcpy(*config, &rj, sizeof(struct recordjar));
     
     return 0;
+}
+
+int neobox_config_save()
+{
+    if(!*config)
+        return 0;
+    
+#ifdef NEOBOX
+    VERBOSE(printf("[NEOBOX] config saved\n"));
+#endif
+    
+    return rj_save(*path, *config);
 }
 
 void neobox_config_close()
 {
     if(!*config)
         return;
+    
+    if(*flags&FLAG_MODIFIED)
+        neobox_config_save();
+    
+    if(*flags&FLAG_MALLOCED)
+        free(*path);
     
     rj_free(*config);
     free(*config);
@@ -130,11 +167,17 @@ void neobox_config_next(char **key, char **value)
 void neobox_config_set(const char *key, const char *value)
 {
     if(*config)
+    {
         rj_config_set("main", key, value, *config);
+        *flags |= FLAG_MODIFIED;
+    }
 }
 
 void neobox_config_set_section(const char *section, const char *key, const char *value)
 {
     if(*config)
+    {
         rj_config_set(section, key, value, *config);
+        *flags |= FLAG_MODIFIED;
+    }
 }

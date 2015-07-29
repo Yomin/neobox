@@ -142,6 +142,7 @@ struct neobox_save
 
 struct neobox_config
 {
+    char *file, flags;
     void *rj;
 };
 
