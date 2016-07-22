@@ -31,10 +31,15 @@
 #define NEOBOX_BORDER_BOTTOM 8
 #define NEOBOX_BORDER_ALL    15
 
+#define NEOBOX_PASSWORD_LAYOUT      0 // take from layout
+#define NEOBOX_PASSWORD_OFF         1 // ignore layout, mode off
+#define NEOBOX_PASSWORD_ON          2 // ignore layout, mode on
+#define NEOBOX_PASSWORD_ALLBUTONE   3 // ignore layout, all characters but last *
+
 struct neobox_text_control
 {
     char soh;
-    short int left, cursor;
+    short int left, cursor, password;
     const char *text;
 };
 
@@ -79,8 +84,8 @@ void neobox_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int heigh
 void neobox_layout_fill_border(int pos_y, int pos_x, int height, int width, unsigned char borders, int density, unsigned char **fill);
 void neobox_layout_fill_connect(int pos_y, int pos_x, int cord_y, int cord_x, int height, int width, unsigned char connect, int density, const struct neobox_map *map, unsigned char **fill);
 
-void neobox_draw_string_horz(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, const char *str);
-void neobox_draw_string_vert(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, const char *str);
-void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, int color_txt, int align, const char *str, const struct neobox_map *map);
+void neobox_draw_string_horz(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, int pw, const char *str);
+void neobox_draw_string_vert(int pos_y, int pos_x, int height, int width, unsigned char color[3][4], int align, int pw, const char *str);
+void neobox_layout_draw_string(int pos_y, int pos_x, int height, int width, int color_fg, int color_bg, int color_txt, int align, int pw, const char *str, const struct neobox_map *map);
 
 #endif

@@ -32,6 +32,7 @@
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
 #define ALIGN(e)   ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_ALIGN)
+#define PASSWORD(e)((e)->options & NEOBOX_LAYOUT_OPTION_PASSWORD)
 #define NOP        (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 #define COPY       (!(neobox.options & NEOBOX_OPTION_PRINT_MASK) || map->invisible)
 
@@ -154,7 +155,7 @@ TYPE_FUNC_PRESS(button)
         if(text)
             neobox_layout_draw_string(y*height, x*width, height,
                 width, elem->color_fg, elem->color_bg, color_text,
-                ALIGN(elem), text, map);
+                ALIGN(elem), PASSWORD(elem), text, map);
     }
     else
     {
@@ -172,7 +173,7 @@ TYPE_FUNC_PRESS(button)
             neobox_layout_draw_string(p2->y*height, p2->x*width,
                 (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
                 elem->color_fg, elem->color_bg, color_text,
-                ALIGN(elem), text, map);
+                ALIGN(elem), PASSWORD(elem), text, map);
         }
     }
     
@@ -333,7 +334,7 @@ TYPE_FUNC_FOCUS_OUT(button)
             if(text)
                 neobox_layout_draw_string(y*height, x*width, height,
                     width, elem->color_fg, elem->color_bg, elem->color_text,
-                    ALIGN(elem), text, map);
+                    ALIGN(elem), PASSWORD(elem), text, map);
         }
         else
         {
@@ -357,7 +358,7 @@ TYPE_FUNC_FOCUS_OUT(button)
                 neobox_layout_draw_string(p2->y*height, p2->x*width,
                     (p->y-p2->y+1)*height, (p->x-p2->x+1)*width,
                     p->elem->color_fg, p->elem->color_bg, p->elem->color_text,
-                    ALIGN(elem), text, map);
+                    ALIGN(elem), PASSWORD(elem), text, map);
             }
         }
     }

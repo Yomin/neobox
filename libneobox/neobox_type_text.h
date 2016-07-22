@@ -33,6 +33,7 @@ struct neobox_save_text
     int window;     // display text (rel value from text)
     int cursor;     // cursor pos (rel value from window)
     int max;        // max window size
+    int password;   // password mode
     
     int copysize;
     unsigned char *copy;
@@ -47,5 +48,6 @@ TYPE_FUNCTIONS(text);
 TYPE_FUNC_ACTION(text, set);
 TYPE_FUNC_ACTION(text, get);
 TYPE_FUNC_ACTION(text, reset);
+TYPE_FUNC_ACTION(text, password);
 
 #endif

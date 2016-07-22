@@ -62,7 +62,7 @@ static void text_insert(const char *str, int len, struct neobox_save_text *text)
     
     if(end)
     {
-        text->cursor = MIN(text->max-1, text->cursor+len);
+        text->cursor = MIN(text->max, text->cursor+len);
         text->window = text->fill-text->cursor;
     }
     else
@@ -115,9 +115,6 @@ static void text_cursor_left(struct neobox_save_text *text)
         text->window -= cursor-text->cursor+1;
         text->cursor = cursor;
     }
-    // move window 1 left if cursor at text end
-    else if(text->window+text->cursor == text->fill && text->window)
-        text->window--;
     else if(text->cursor)
         text->cursor--;
 }
@@ -133,9 +130,6 @@ static void text_cursor_right(struct neobox_save_text *text)
         text->window += text->cursor-cursor+1;
         text->cursor = cursor;
     }
-    // move window 1 right to put cursor at text end
-    else if(text->window+text->cursor == text->fill-1 && text->cursor == text->max-1)
-        text->window++;
     else if(text->window+text->cursor < text->fill)
         text->cursor++;
 }
@@ -237,19 +231,23 @@ TYPE_FUNC_INIT(text)
             p = vector_at(vector_size(connect)-1, connect);
             p2 = vector_at(0, connect);
             
-            text->max = neobox_string_size((p->x - p2->x +1)*width);
+            // subtract 2 places for left/right indicators
+            text->max = neobox_string_size((p->x - p2->x +1)*width)-2;
         }
     }
     else
     {
         text = save->data = calloc(1, sizeof(struct neobox_save_text));
-        text->max = neobox_string_size(width);
+        // subtract 2 places for left/right indicators
+        text->max = neobox_string_size(width)-2;
     }
     
     if(!text->size)
     {
         text->size = INITSIZE;
         text->text = malloc(INITSIZE+1);
+        text->password = elem->options&NEOBOX_LAYOUT_OPTION_PASSWORD ?
+            NEOBOX_PASSWORD_ALLBUTONE : NEOBOX_PASSWORD_OFF;
     }
 }
 
@@ -288,6 +286,7 @@ TYPE_FUNC_PRESS(text)
     control.text = text->text+text->window;
     control.cursor = text->cursor;
     control.left = text->window;
+    control.password = text->password;
     
     neobox_type_button_copy_set(text->copysize, text->copy, (char*)&control, save);
     TYPE_FUNC_PRESS_CALL(button);
@@ -345,6 +344,8 @@ TYPE_FUNC_FOCUS_OUT(text)
     control.text = text->text+text->window-left;
     control.cursor = -1;
     control.left = text->window-left;
+    control.password = text->password == NEOBOX_PASSWORD_OFF ?
+        NEOBOX_PASSWORD_OFF : NEOBOX_PASSWORD_ON;
     
     neobox_type_button_copy_set(text->copysize, text->copy, (char*)&control, save);
     TYPE_FUNC_FOCUS_OUT_CALL(button);
@@ -391,8 +392,10 @@ void neobox_text_set(int id, int mappos, char *text, int redraw)
 TYPE_FUNC_ACTION(text, reset)
 {
     struct neobox_save_text *text;
+    int password;
     
     text = save->partner ? save->partner->data : save->data;
+    password = text->password;
     
     text->text = realloc(text->text, INITSIZE);
     text->size = INITSIZE;
@@ -400,6 +403,7 @@ TYPE_FUNC_ACTION(text, reset)
     text->cursor = 0;
     text->fill = 0;
     text->text[0] = 0;
+    text->password = password;
     
     if(map)
         TYPE_FUNC_FOCUS_OUT_CALL(text);
@@ -426,4 +430,37 @@ char* neobox_text_get(int id, int mappos)
 {
     return neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
         0, 0, neobox_type_text_get);
+}
+
+TYPE_FUNC_ACTION(text, password)
+{
+    struct neobox_save_text *text
+        = save->partner ? save->partner->data : save->data;
+    const char *mode;
+    
+    if(neobox.verbose)
+    {
+        switch((text->password = *(int*)data))
+        {
+        case NEOBOX_PASSWORD_LAYOUT: mode = "layout"; break;
+        case NEOBOX_PASSWORD_OFF: mode = "off"; break;
+        case NEOBOX_PASSWORD_ON: mode = "on"; break;
+        case NEOBOX_PASSWORD_ALLBUTONE: mode = "allbutone"; break;
+        default: mode = "unknown";
+        }
+        
+        printf("[NEOBOX] text %i [%s] password %s\n",
+            elem->id, elem->name, mode);
+    }
+    
+    if(map)
+        TYPE_FUNC_FOCUS_OUT_CALL(text);
+    
+    return 0;
+}
+
+void neobox_text_password(int id, int mappos, int mode, int redraw)
+{
+    neobox_type_help_action(NEOBOX_LAYOUT_TYPE_TEXT, id, mappos,
+        (void*)&mode, redraw, neobox_type_text_password);
 }

@@ -23,8 +23,14 @@
 #ifndef __NEOBOX_TEXT_H__
 #define __NEOBOX_TEXT_H__
 
+#define NEOBOX_TEXT_PASSWORD_LAYOUT      0 // take from layout
+#define NEOBOX_TEXT_PASSWORD_OFF         1 // ignore layout, mode off
+#define NEOBOX_TEXT_PASSWORD_ON          2 // ignore layout, mode on
+#define NEOBOX_TEXT_PASSWORD_ALLBUTONE   3 // ignore layout, all characters but last *
+
 void neobox_text_set(int id, int map, char *text, int redraw);
 void neobox_text_reset(int id, int map, int redraw);
+void neobox_text_password(int id, int map, int mode, int redraw);
 
 char* neobox_text_get(int id, int map);
 
