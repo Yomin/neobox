@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 
+#include <stdio.h>
 #include <sys/socket.h>
 
 #include "neobox_def.h"
@@ -40,6 +41,8 @@ int neobox_type_help_find_type(int type_from, int type_to, int id, int mappos)
         if(elem->type >= type_from && elem->type <= type_to && elem->id == id)
             return i;
     }
+    
+    VERBOSE(printf("[NEOBOX] elem %i not found\n", id));
     
     return -1;
 }

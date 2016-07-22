@@ -373,6 +373,9 @@ TYPE_FUNC_ACTION(button, set_name)
     
     button->name = data;
     
+    VERBOSE(printf("[NEOBOX] button %i [%s] renamed to '%s'\n",
+        elem->id, elem->name, button->name));
+    
     if(map)
         TYPE_FUNC_DRAW_CALL(button);
     
@@ -386,6 +389,9 @@ TYPE_FUNC_ACTION(button, set_check)
     button = save->partner ? save->partner->data : save->data;
     
     button->check = sdata->check;
+    
+    VERBOSE(printf("[NEOBOX] button %i [%s] check func assigned\n",
+        elem->id, elem->name));
     
     if(map)
         TYPE_FUNC_DRAW_CALL(button);
