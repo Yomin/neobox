@@ -1,0 +1,5 @@
+%%encoding: US-ASCII
+section: main
+cmd: ../menu/menu -v --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod --neobox-config ../menu/config_sim
+brightness: /sys/class/backlight/intel_backlight/brightness
+password: test
