@@ -263,7 +263,7 @@ int rem_client(int pos, struct chain_socket *cs)
     DEBUG(int fd = cs->sock);
     DEBUG(pid_t pid = cs->pid);
     
-    memmove(pfds+pos, pfds+pos+1, client_count+4-pos-1);
+    memmove(pfds+pos, pfds+pos+1, (client_count-1)*sizeof(struct pollfd));
     CIRCLEQ_REMOVE(&client_list, cs, chain);
     free(cs);
     client_count--;
