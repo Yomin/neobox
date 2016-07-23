@@ -35,6 +35,7 @@
 #include <linux/fb.h>
 #include <unistd.h>
 #include <linux/input.h>
+#include <math.h>
 
 #ifdef NDEBUG
 #   define DEBUG
@@ -67,6 +68,13 @@ GtkWidget *window;
 cairo_surface_t *surface;
 int stride, width, height, landscape;
 int pressed_screen, pressed_aux, pressed_power;
+
+void swap(int *a, int *b)
+{
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
 
 void cleanup()
 {
@@ -122,37 +130,45 @@ void send_fb_info(int fd)
 
 gboolean on_draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 {
+    if(landscape)
+    {
+        cairo_translate(cr, 0, FB_VINFO_XRES);
+        cairo_rotate(cr, 3*M_PI/2);
+    }
+    
     cairo_set_source_surface(cr, surface, 0, 0);
-    cairo_rectangle(cr, 0, 0, width, height);
+    cairo_rectangle(cr, 0, 0, FB_VINFO_XRES, FB_VINFO_YRES);
     cairo_fill(cr);
+    
     return TRUE;
 }
 
 gboolean on_button_press(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     GdkEventButton *button_event = (GdkEventButton*)event;
-    int x = landscape ? button_event->y : button_event->x;
-    int y = landscape ? button_event->x : button_event->y;
-    
-    printf("Pressed\n");
+    int x = button_event->x, y = button_event->y;
     
     if(y >= 0 && y < height && x >= 0 && x < width)
     {
         if(landscape)
         {
-            x = SCREEN_YALIGN(button_event->y);
-            y = SCREEN_XALIGN(button_event->x);
+            x = SCREEN_XALIGN(FB_VINFO_XRES - button_event->y);
+            y = SCREEN_YALIGN(FB_VINFO_YRES - button_event->x);
         }
         else
         {
             x = SCREEN_XALIGN(button_event->x);
-            y = SCREEN_YALIGN(height - button_event->y);
+            y = SCREEN_YALIGN(FB_VINFO_YRES - button_event->y);
         }
         send_event(screen, EV_ABS, ABS_X, y);
         send_event(screen, EV_ABS, ABS_Y, x);
         send_event(screen, EV_KEY, BTN_TOUCH, 1);
         send_event(screen, EV_SYN, SYN_REPORT, 0);
+        
+        printf("Pressed (%i,%i)\n", y-PIXEL_OFFSET, x-PIXEL_OFFSET);
     }
+    else
+        printf("Pressed out of window\n");
     
     pressed_screen = 1;
     
@@ -197,6 +213,13 @@ gboolean on_key_press(GtkWidget *widget, GdkEvent *event, gpointer data)
         cairo_surface_mark_dirty(surface);
         gtk_widget_queue_draw(window);
         break;
+    case GDK_KEY_l:
+        landscape = !landscape;
+        printf("format: %s\n", landscape?"landscape":"portrait");
+        swap(&width, &height);
+        gtk_widget_set_size_request(widget, width, height);
+        gtk_window_resize(GTK_WINDOW(widget), width, height);
+        break;
     }
     
     return FALSE;
@@ -226,20 +249,19 @@ gboolean on_key_release(GtkWidget *widget, GdkEvent *event, gpointer data)
 gboolean on_move(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
     GdkEventButton *button_event = (GdkEventButton*)event;
-    int x = landscape ? button_event->y : button_event->x;
-    int y = landscape ? button_event->x : button_event->y;
+    int x = button_event->x, y = button_event->y;
     
     if(pressed_screen && y >= 0 && y < height && x >= 0 && x < width)
     {
         if(landscape)
         {
-            x = SCREEN_YALIGN(button_event->y);
-            y = SCREEN_XALIGN(button_event->x);
+            x = SCREEN_XALIGN(FB_VINFO_XRES - button_event->y);
+            y = SCREEN_YALIGN(FB_VINFO_YRES - button_event->x);
         }
         else
         {
             x = SCREEN_XALIGN(button_event->x);
-            y = SCREEN_YALIGN(height - button_event->y);
+            y = SCREEN_YALIGN(FB_VINFO_YRES - button_event->y);
         }
         send_event(screen, EV_ABS, ABS_X, y);
         send_event(screen, EV_ABS, ABS_Y, x);
@@ -385,9 +407,10 @@ int main(int argc, char* argv[])
     signal(SIGINT, signal_handler);
     signal(SIGPIPE, signal_handler);
     
-    stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB16_565, width);
-    surface = cairo_image_surface_create_for_data(
-        fb_ptr, CAIRO_FORMAT_RGB16_565, width, height, stride);
+    stride = cairo_format_stride_for_width(
+        CAIRO_FORMAT_RGB16_565, FB_VINFO_XRES);
+    surface = cairo_image_surface_create_for_data(fb_ptr,
+        CAIRO_FORMAT_RGB16_565, FB_VINFO_XRES, FB_VINFO_YRES, stride);
     
     pressed_screen = 0;
     pressed_aux = 0;
@@ -397,7 +420,8 @@ int main(int argc, char* argv[])
     
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Neobox Simulator");
-    gtk_window_set_default_size(GTK_WINDOW(window), width, height);
+    gtk_widget_set_size_request(window, width, height);
+    gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
     
     gtk_widget_set_events(window, GDK_POINTER_MOTION_MASK|
         GDK_BUTTON_PRESS_MASK|GDK_BUTTON_RELEASE_MASK);
