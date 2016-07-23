@@ -36,6 +36,7 @@
 #include <neobox_util.h>
 #include <neobox_button.h>
 #include <neobox_config.h>
+#include <neobox_log.h>
 
 #include "login_layout.h"
 
@@ -109,11 +110,11 @@ void login()
     switch((cmd_pid = fork()))
     {
     case -1:
-        perror("Failed to fork");
+        neobox_app_perror("Failed to fork");
         break;
     case 0:
         if(execvp(cmd[0], cmd) == -1)
-            perror("Failed to exec cmd");
+            neobox_app_perror("Failed to exec cmd");
         return;
     }
 }
@@ -124,14 +125,14 @@ void zero_brightness()
     
     if((fd = open(brightness_dev, O_RDWR)) == -1)
     {
-        perror("Failed to open brightness device");
+        neobox_app_perror("Failed to open brightness device");
         brightness_len = 0;
         return;
     }
     
     if((brightness_len = read(fd, brightness_value, 20)) <= 0)
     {
-        perror("Failed to read brightness");
+        neobox_app_perror("Failed to read brightness");
         brightness_len = 0;
         close(fd);
         return;
@@ -140,7 +141,7 @@ void zero_brightness()
     brightness_len--;
     
     if(write(fd, "0", 1) == -1)
-        perror("Failed to zero brightness");
+        neobox_app_perror("Failed to zero brightness");
     
     close(fd);
 }
@@ -154,12 +155,12 @@ void restore_brightness()
     
     if((fd = open(brightness_dev, O_RDWR)) == -1)
     {
-        perror("Failed to open brightness device");
+        neobox_app_perror("Failed to open brightness device");
         return;
     }
     
     if(write(fd, brightness_value, brightness_len) == -1)
-        perror("Failed to restore brightness");
+        neobox_app_perror("Failed to restore brightness");
     
     close(fd);
 }
@@ -202,7 +203,7 @@ int handler(struct neobox_event event, void *state)
 powersave:  if(!powersave)
             {
                 if(neobox_lock(1))
-                    printf("Failed to lock screen\n");
+                    neobox_app_printf("Failed to lock screen\n");
                 zero_brightness();
                 neobox_powersave(1);
                 powersave = 1;
@@ -210,7 +211,7 @@ powersave:  if(!powersave)
             else
             {
                 if(neobox_lock(0))
-                    printf("Failed to unlock screen\n");
+                    neobox_app_printf("Failed to unlock screen\n");
                 restore_brightness();
                 neobox_switch(0);
                 neobox_powersave(0);
@@ -256,21 +257,21 @@ int main(int argc, char* argv[])
     
     if(!(config_cmd = neobox_config("cmd", 0)))
     {
-        fprintf(stderr, "Cmd not configured\n");
+        neobox_app_fprintf(stderr, "Cmd not configured\n");
         neobox_finish();
         return 1;
     }
     
     if(!(brightness_dev = neobox_config("brightness", 0)))
     {
-        fprintf(stderr, "Brightness device not configured\n");
+        neobox_app_fprintf(stderr, "Brightness device not configured\n");
         neobox_finish();
         return 2;
     }
     
     if((ret = open(brightness_dev, O_RDWR)) == -1)
     {
-        perror("Failed to open brightness device");
+        neobox_app_perror("Failed to open brightness device");
         neobox_finish();
         return 3;
     }
@@ -279,7 +280,7 @@ int main(int argc, char* argv[])
     
     if(!(config_seed = neobox_config("seed", 0)))
     {
-        fprintf(stderr, "Seed not configured\n");
+        neobox_app_fprintf(stderr, "Seed not configured\n");
         neobox_finish();
         return 4;
     }

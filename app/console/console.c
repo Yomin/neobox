@@ -31,6 +31,7 @@
 
 #include <neobox.h>
 #include <neobox_config.h>
+#include <neobox_log.h>
 
 inline static int insert(int fd, char c)
 {
@@ -39,7 +40,7 @@ inline static int insert(int fd, char c)
     if(ioctl(fd, TIOCSTI, &c) < 0)
     {
         err = errno;
-        perror("Failed to insert byte into input queue");
+        neobox_app_perror("Failed to insert byte into input queue");
         return err;
     }
     return 0;
@@ -82,7 +83,7 @@ int handler(struct neobox_event event, void *state)
 
 void usage(char *name)
 {
-    printf("Usage: %s [-s] [tty]\n", name);
+    neobox_app_printf("Usage: %s [-s] [tty]\n", name);
 }
 
 int main(int argc, char* argv[])
@@ -119,7 +120,7 @@ int main(int argc, char* argv[])
     
     if(!tty && !(tty = neobox_config("tty", 0)))
     {
-        fprintf(stderr, "TTY not configured\n");
+        neobox_app_fprintf(stderr, "TTY not configured\n");
         neobox_finish();
         return 1;
     }
@@ -127,7 +128,7 @@ int main(int argc, char* argv[])
     if((fd = open(tty, O_RDONLY)) < 0)
     {
         err = errno;
-        perror("Failed to open tty");
+        neobox_app_perror("Failed to open tty");
         neobox_finish();
         return err;
     }

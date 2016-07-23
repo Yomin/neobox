@@ -25,8 +25,9 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#include "neobox_fb.h"
 #include "neobox_type_button.h"
+#include "neobox_fb.h"
+#include "neobox_log.h"
 #include "neobox_type_help.h"
 
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
@@ -208,65 +209,61 @@ TYPE_FUNC_RELEASE(button)
         else
             ret.value = elem->elem;
         neobox.parser.toggle = 0;
-        if(neobox.verbose)
-        {
-            if(elem->name)
-                printf("[NEOBOX] button %i [%s]\n", elem->id, elem->name);
-            else if(elem->elem.c.c[0])
-                printf("[NEOBOX] button %i [%c]\n", elem->id, elem->elem.c.c[0]);
-            else
-                printf("[NEOBOX] button %i\n", elem->id);
-        }
+        if(elem->name)
+            neobox_printf(1, "button %i [%s]\n", elem->id, elem->name);
+        else if(elem->elem.c.c[0])
+            neobox_printf(1, "button %i [%c]\n", elem->id, elem->elem.c.c[0]);
+        else
+            neobox_printf(1, "button %i\n", elem->id);
         break;
     case NEOBOX_LAYOUT_TYPE_GOTO:
         if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
             goto ret;
         if(!strcmp("Admn", elem->name) && !(neobox.options & NEOBOX_OPTION_ADMINMAP))
         {
-            VERBOSE(printf("[NEOBOX] adminmap disabled\n"));
+            neobox_printf(1, "adminmap disabled\n");
             goto ret;
         }
         nmap = elem->elem.i + map->offset;
         neobox.parser.hold = 0;
-        VERBOSE(printf("[NEOBOX] goto %s\n", elem->name));
+        neobox_printf(1, "goto %s\n", elem->name);
         goto ret;
     case NEOBOX_LAYOUT_TYPE_HOLD:
         if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
             goto ret;
         neobox.parser.hold = !neobox.parser.hold;
-        VERBOSE(printf("[NEOBOX] hold %s\n",
-            neobox.parser.hold ? "on" : "off"));
+        neobox_printf(1, "hold %s\n",
+            neobox.parser.hold ? "on" : "off");
         break;
     case NEOBOX_LAYOUT_TYPE_TOGGLE:
         if(button->check && button->check(elem->id) != NEOBOX_BUTTON_CHECK_SUCCESS)
             goto ret;
         neobox.parser.toggle ^= elem->elem.i;
-        VERBOSE(printf("[NEOBOX] %s %s\n", elem->name,
-            neobox.parser.toggle & elem->elem.i ? "on" : "off"));
+        neobox_printf(1, "%s %s\n", elem->name,
+            neobox.parser.toggle & elem->elem.i ? "on" : "off");
         break;
     case NEOBOX_LAYOUT_TYPE_SYSTEM:
         ret.type = NEOBOX_EVENT_SYSTEM;
         ret.value.i = elem->elem.i;
-        if(neobox.verbose)
-            switch(elem->elem.i)
-            {
-            case NEOBOX_SYSTEM_NEXT:
-                printf("[NEOBOX] app switch next\n");
-                break;
-            case NEOBOX_SYSTEM_PREV:
-                printf("[NEOBOX] app switch prev\n");
-                break;
-            case NEOBOX_SYSTEM_QUIT:
-                printf("[NEOBOX] app quit\n");
-                break;
-            case NEOBOX_SYSTEM_ACTIVATE:
-                printf("[NEOBOX] app activate\n");
-                break;
-            case NEOBOX_SYSTEM_MENU:
-                printf("[NEOBOX] app menu\n");
-                break;
-            }
-        break;
+        switch(elem->elem.i)
+        {
+        case NEOBOX_SYSTEM_NEXT:
+            neobox_printf(1, "app switch next\n");
+            break;
+        case NEOBOX_SYSTEM_PREV:
+            neobox_printf(1, "app switch prev\n");
+            break;
+        case NEOBOX_SYSTEM_QUIT:
+            neobox_printf(1, "app quit\n");
+            break;
+        case NEOBOX_SYSTEM_ACTIVATE:
+            neobox_printf(1, "app activate\n");
+            break;
+        case NEOBOX_SYSTEM_MENU:
+            neobox_printf(1, "app menu\n");
+            break;
+        }
+    break;
     }
     
     if(!neobox.parser.hold) // reset map to default if not on hold
@@ -374,8 +371,14 @@ TYPE_FUNC_ACTION(button, set_name)
     
     button->name = data;
     
-    VERBOSE(printf("[NEOBOX] button %i [%s] renamed to '%s'\n",
-        elem->id, elem->name, button->name));
+    if(button->name)
+        neobox_printf(1, "%s %i [%s] renamed to '%s'\n",
+            elem->type==NEOBOX_LAYOUT_TYPE_NOP?"label":"button",
+            elem->id, elem->name, button->name);
+    else
+        neobox_printf(1, "%s %i [%s] name removed\n",
+            elem->type==NEOBOX_LAYOUT_TYPE_NOP?"label":"button",
+            elem->id, elem->name);
     
     if(map)
         TYPE_FUNC_DRAW_CALL(button);
@@ -391,8 +394,8 @@ TYPE_FUNC_ACTION(button, set_check)
     
     button->check = sdata->check;
     
-    VERBOSE(printf("[NEOBOX] button %i [%s] check func assigned\n",
-        elem->id, elem->name));
+    neobox_printf(1, "button %i [%s] check func %s\n",
+        elem->id, elem->name, button->check?"assigned":"removed");
     
     if(map)
         TYPE_FUNC_DRAW_CALL(button);

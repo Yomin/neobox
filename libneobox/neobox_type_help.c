@@ -23,8 +23,9 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
-#include "neobox_def.h"
 #include "neobox_type_help.h"
+#include "neobox_def.h"
+#include "neobox_log.h"
 
 extern struct neobox_global neobox;
 
@@ -42,7 +43,7 @@ int neobox_type_help_find_type(int type_from, int type_to, int id, int mappos)
             return i;
     }
     
-    VERBOSE(printf("[NEOBOX] elem %i not found\n", id));
+    neobox_printf(1, "elem %i not found\n", id);
     
     return -1;
 }

@@ -91,7 +91,7 @@
 
 struct neobox_options
 {
-    char *fb, *iod, *config;
+    char *fb, *iod, *config, *appname;
     struct neobox_layout layout;
     int format;
     int options;

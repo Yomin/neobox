@@ -1,6 +1,6 @@
 %%encoding: US-ASCII
 section: main
-cmd: ../menu/menu -v --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod --neobox-config ../menu/config_sim
+cmd: ../menu/menu -v --neobox-fb ../../sim/fb.ipc --neobox-iod ../../sim/iod --neobox-config ../menu/config_sim --neobox-verbose
 brightness: /sys/class/backlight/intel_backlight/brightness
 seed: 42
 password: test

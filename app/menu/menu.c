@@ -36,6 +36,7 @@
 #include <neobox_util.h>
 #include <neobox_select.h>
 #include <neobox_config.h>
+#include <neobox_log.h>
 
 #include "menu_layout.h"
 
@@ -56,19 +57,19 @@ int exec(int id)
     switch((pid = fork()))
     {
     case -1:
-        perror("Failed to fork child\n");
+        neobox_app_perror("Failed to fork child\n");
         return 1;
         break;
     case 0:
         if(execvp(apps[id].cmd, apps[id].argv) == -1)
         {
-            perror("Failed to start app");
+            neobox_app_perror("Failed to start app");
             return 1;
         }
         break;
     default:
         if(verbose)
-            printf("'%s' started (%i)\n", apps[id].name, pid);
+            neobox_app_printf("'%s' started (%i)\n", apps[id].name, pid);
         apps[id].pid = pid;
         break;
     }
@@ -163,7 +164,7 @@ int handler(struct neobox_event event, void *state)
                 if(apps[i].pid == pid)
                 {
                     if(verbose)
-                        printf("'%s' terminated (%i)\n", apps[i].name, pid);
+                        neobox_app_printf("'%s' terminated (%i)\n", apps[i].name, pid);
                     apps[i].pid = 0;
                     if(i-apppos < 10)
                     {
@@ -186,7 +187,7 @@ int init_apps()
     
     if(neobox_config_list("apps"))
     {
-        fprintf(stderr, "Missing 'apps' config section\n");
+        neobox_app_fprintf(stderr, "Missing 'apps' config section\n");
         return 1;
     }
     
@@ -220,7 +221,7 @@ int init_apps()
 
 int usage(const char *name)
 {
-    printf("Usage: %s [-v]\n", name);
+    neobox_app_printf("Usage: %s [-v]\n", name);
     return 0;
 }
 

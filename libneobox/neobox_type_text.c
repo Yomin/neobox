@@ -24,11 +24,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "neobox_fb.h"
 #include "neobox_text.h"
 #include "neobox_type_text.h"
 #include "neobox_type_button.h"
 #include "neobox_type_help.h"
+#include "neobox_fb.h"
+#include "neobox_log.h"
 
 #define INITSIZE    20
 #define NOP         (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
@@ -153,12 +154,12 @@ static struct neobox_event finish(struct neobox_save *save, int evt)
         event.type = NEOBOX_EVENT_TEXT;
         event.id = text->click_elem->id;
         
-        VERBOSE(printf("[NEOBOX] text %i [%s] set \"%s\"\n",
-            text->click_elem->id, text->click_elem->name, text->text));
+        neobox_printf(1, "text %i [%s] set \"%s\"\n",
+            text->click_elem->id, text->click_elem->name, text->text);
     }
     else
-        VERBOSE(printf("[NEOBOX] text %i [%s] abort\n",
-            text->click_elem->id, text->click_elem->name));
+        neobox_printf(1, "text %i [%s] abort\n",
+            text->click_elem->id, text->click_elem->name);
     
     return event;
 }
@@ -306,7 +307,7 @@ TYPE_FUNC_RELEASE(text)
     
     text = save->partner ? save->partner->data : save->data;
     
-    VERBOSE(printf("[NEOBOX] text %i [%s] input\n", elem->id, elem->name));
+    neobox_printf(1, "text %i [%s] input\n", elem->id, elem->name);
     
     // save click info to draw field
     text->click_y = y;
@@ -438,20 +439,17 @@ TYPE_FUNC_ACTION(text, password)
         = save->partner ? save->partner->data : save->data;
     const char *mode;
     
-    if(neobox.verbose)
+    switch((text->password = *(int*)data))
     {
-        switch((text->password = *(int*)data))
-        {
-        case NEOBOX_PASSWORD_LAYOUT: mode = "layout"; break;
-        case NEOBOX_PASSWORD_OFF: mode = "off"; break;
-        case NEOBOX_PASSWORD_ON: mode = "on"; break;
-        case NEOBOX_PASSWORD_ALLBUTONE: mode = "allbutone"; break;
-        default: mode = "unknown";
-        }
-        
-        printf("[NEOBOX] text %i [%s] password %s\n",
-            elem->id, elem->name, mode);
+    case NEOBOX_PASSWORD_LAYOUT: mode = "layout"; break;
+    case NEOBOX_PASSWORD_OFF: mode = "off"; break;
+    case NEOBOX_PASSWORD_ON: mode = "on"; break;
+    case NEOBOX_PASSWORD_ALLBUTONE: mode = "allbutone"; break;
+    default: mode = "unknown";
     }
+    
+    neobox_printf(1, "text %i [%s] password %s\n",
+        elem->id, elem->name, mode);
     
     if(map)
         TYPE_FUNC_FOCUS_OUT_CALL(text);

@@ -42,6 +42,7 @@
 #include "neobox_def.h"
 #include "neobox_fb.h"
 #include "neobox_config.h"
+#include "neobox_log.h"
 
 #include "neobox_layout_default.h"
 
@@ -152,7 +153,7 @@ int neobox_catch_signal(int sig, int flags)
     default:
         if(sigaction(sig, &sa, 0) == -1)
         {
-            VERBOSE(perror("[NEOBOX] Failed to catch signal"));
+            neobox_perror(1, "Failed to catch signal");
             return NEOBOX_ERROR_SIGNAL;
         }
     }
@@ -344,7 +345,7 @@ int neobox_iod_connect(int tries)
     struct sockaddr_un addr;
     int reuse = 1;
     
-    VERBOSE(printf("[NEOBOX] Connecting to iod socket\n"));
+    neobox_printf(1, "Connecting to iod socket\n");
     
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, neobox.iod.usock, UNIX_PATH_MAX);
@@ -356,13 +357,13 @@ int neobox_iod_connect(int tries)
         
         if((neobox.iod.sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
         {
-            VERBOSE(perror("[NEOBOX] Failed to open iod socket"));
+            neobox_perror(1, "Failed to open iod socket");
             goto retry;
         }
         
         if(setsockopt(neobox.iod.sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int)) == -1)
         {
-            VERBOSE(perror("Failed to set SO_REUSEADDR"));
+            neobox_perror(1, "Failed to set SO_REUSEADDR");
             goto retry;
         }
         
@@ -370,7 +371,7 @@ int neobox_iod_connect(int tries)
         {
             if(errno == EINTR)
                 continue;
-            VERBOSE(perror("[NEOBOX] Failed to connect iod socket"));
+            neobox_perror(1, "Failed to connect iod socket");
             goto retry;
         }
         
@@ -378,11 +379,11 @@ int neobox_iod_connect(int tries)
         
 retry:  if(tries-- == 1)
         {
-            VERBOSE(perror("[NEOBOX] Unable to connect iod socket"));
+            neobox_perror(1, "Unable to connect iod socket");
             return NEOBOX_ERROR_IOD_OPEN;
         }
         
-        VERBOSE(printf("[NEOBOX] Retry connecting to iod socket in 1 second\n"));
+        neobox_printf(1, "Retry connecting to iod socket in 1 second\n");
         
         while(sleep(1));
     }
@@ -406,7 +407,7 @@ int neobox_iod_cmd(unsigned char cmd, pid_t pid, int value)
         {
             if((err = errno) == EINTR)
                 continue;
-            VERBOSE(perror("[NEOBOX] Failed to send iod cmd"));
+            neobox_perror(1, "Failed to send iod cmd");
             return err;
         }
         ptr += count;
@@ -425,12 +426,12 @@ int neobox_iod_recv(struct iod_event *event)
         switch(count)
         {
         case 0:
-            VERBOSE(perror("[NEOBOX] Failed to recv iod event"));
+            neobox_perror(1, "Failed to recv iod event");
             return 1;
         case -1:
             if((err = errno) == EINTR)
                 continue;
-            VERBOSE(perror("[NEOBOX] Failed to recv iod event"));
+            neobox_perror(1, "Failed to recv iod event");
             return err;
         default:
             ptr += count;
@@ -476,6 +477,7 @@ struct neobox_options neobox_args(int *argc, char *argv[], struct neobox_options
         { "neobox-format", 1, 0, 'r' },  // p: portrait, l: landscape
         { "neobox-config", 1, 0, 'c' },  // config path
         { "neobox-print", 1, 0, 'p'},    // n: no print, f: force print
+        { "neobox-name", 1, 0, 'n'},     // app name
         {0, 0, 0, 0}
     };
     int opt, x, y;
@@ -513,6 +515,9 @@ struct neobox_options neobox_args(int *argc, char *argv[], struct neobox_options
                 options.options |= NEOBOX_OPTION_FORCE_PRINT;
                 break;
             }
+            break;
+        case 'n':
+            options.appname = optarg;
             break;
         default:
             continue;
@@ -579,23 +584,22 @@ int neobox_init_custom(struct neobox_options options)
     struct sigaction sa;
     SIMV(struct sockaddr_un addr);
     
+    neobox.appname = options.appname;
     neobox.verbose = options.verbose;
     
-    if(options.verbose)
-    {
-        printf("[NEOBOX] init\n");
-        printf("[NEOBOX] fb: %s\n", options.fb);
-        printf("[NEOBOX] iod: %s\n", options.iod);
-        printf("[NEOBOX] format: %s\n", options.format
-            == NEOBOX_FORMAT_LANDSCAPE ? "landscape" : "portrait");
-        printf("[NEOBOX] options:\n");
-        printf("[NEOBOX]   print: %s\n",
-            options.options & NEOBOX_OPTION_FORCE_PRINT ? "forced" :
-            options.options & NEOBOX_OPTION_NO_PRINT ? "invisible" :
-            "normal");
-        printf("[NEOBOX]   adminmap: %s\n",
-            options.options & NEOBOX_OPTION_ADMINMAP ? "enabled" : "disabled");
-    }
+    neobox_printf(1, "init\n");
+    neobox_printf(1, "name: %s\n", options.appname);
+    neobox_printf(1, "fb: %s\n", options.fb);
+    neobox_printf(1, "iod: %s\n", options.iod);
+    neobox_printf(1, "format: %s\n", options.format
+        == NEOBOX_FORMAT_LANDSCAPE ? "landscape" : "portrait");
+    neobox_printf(1, "options:\n");
+    neobox_printf(1, "  print: %s\n",
+        options.options & NEOBOX_OPTION_FORCE_PRINT ? "forced" :
+        options.options & NEOBOX_OPTION_NO_PRINT ? "invisible" :
+        "normal");
+    neobox_printf(1, "  adminmap: %s\n",
+        options.options & NEOBOX_OPTION_ADMINMAP ? "enabled" : "disabled");
     
     neobox.iod.usock = options.iod;
     neobox.iod.sock = 0;
@@ -610,33 +614,33 @@ int neobox_init_custom(struct neobox_options options)
     
     // open framebuffer
 #ifndef SIM
-    VERBOSE(printf("[NEOBOX] Opening framebuffer\n"));
+    neobox_printf(1, "Opening framebuffer\n");
     if((neobox.fb.fd = open(options.fb, O_RDWR)) == -1)
     {
-        perror("[NEOBOX] Failed to open framebuffer");
+        neobox_perror(1, "Failed to open framebuffer");
         close(neobox.iod.sock);
         return NEOBOX_ERROR_FB_OPEN;
     }
     if(ioctl(neobox.fb.fd, FBIOGET_VSCREENINFO, &(neobox.fb.vinfo)) == -1)
     {
-        perror("[NEOBOX] Failed to get variable screeninfo");
+        neobox_perror(1, "Failed to get variable screeninfo");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_VINFO;
     }
     if(ioctl(neobox.fb.fd, FBIOGET_FSCREENINFO, &(neobox.fb.finfo)) == -1)
     {
-        perror("[NEOBOX] Failed to get fixed screeninfo");
+        neobox_perror(1, "Failed to get fixed screeninfo");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_FINFO;
     }
 #else
-    VERBOSE(printf("[NEOBOX] Simulating framebuffer\n"));
+    neobox_printf(1, "Simulating framebuffer\n");
     neobox.fb.sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if(neobox.fb.sock == -1)
     {
-        perror("[NEOBOX] Failed to open framebuffer socket");
+        neobox_perror(1, "Failed to open framebuffer socket");
         return NEOBOX_ERROR_FB_OPEN;
     }
     
@@ -645,7 +649,7 @@ int neobox_init_custom(struct neobox_options options)
     
     if(connect(neobox.fb.sock, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1)
     {
-        perror("[NEOBOX] Failed to connect framebuffer socket");
+        neobox_perror(1, "Failed to connect framebuffer socket");
         return NEOBOX_ERROR_FB_OPEN;
     }
     
@@ -655,7 +659,7 @@ int neobox_init_custom(struct neobox_options options)
     
     if((neobox.fb.fd = shm_open(neobox.fb.shm, O_CREAT|O_RDWR, 0644)) == -1)
     {
-        perror("[NEOBOX] Failed to open shared memory");
+        neobox_perror(1, "Failed to open shared memory");
         return NEOBOX_ERROR_FB_OPEN;
     }
 #endif
@@ -663,19 +667,15 @@ int neobox_init_custom(struct neobox_options options)
     neobox.fb.bpp = neobox.fb.vinfo.bits_per_pixel/8;
     neobox.fb.size = neobox.fb.vinfo.xres*neobox.fb.vinfo.yres*neobox.fb.bpp;
     
-    if(options.verbose)
-    {
-        printf("[NEOBOX] framebuffer info:\n");
-        printf("[NEOBOX]   size %i x %i\n", neobox.fb.vinfo.xres,neobox.fb.vinfo.yres);
-        printf("[NEOBOX]   bytes per pixel %i\n", neobox.fb.bpp);
-        printf("[NEOBOX]   line length %i\n", neobox.fb.finfo.line_length);
-    }
+    neobox_printf(1, "framebuffer info:\n");
+    neobox_printf(1, "  size %i x %i\n", neobox.fb.vinfo.xres,neobox.fb.vinfo.yres);
+    neobox_printf(1, "  bytes per pixel %i\n", neobox.fb.bpp);
+    neobox_printf(1, "  line length %i\n", neobox.fb.finfo.line_length);
     
-
 #ifdef SIM
     if(ftruncate(neobox.fb.fd, neobox.fb.size) == -1)
     {
-        perror("[NEOBOX] Failed to truncate shared memory");
+        neobox_perror(1, "Failed to truncate shared memory");
         return NEOBOX_ERROR_FB_OPEN;
     }
 #endif
@@ -683,7 +683,7 @@ int neobox_init_custom(struct neobox_options options)
     if((neobox.fb.ptr = (unsigned char*) mmap(0, neobox.fb.size,
         PROT_READ|PROT_WRITE, MAP_SHARED, neobox.fb.fd, 0)) == MAP_FAILED)
     {
-        perror("[NEOBOX] Failed to mmap framebuffer");
+        neobox_perror(1, "Failed to mmap framebuffer");
         close(neobox.iod.sock);
         close(neobox.fb.fd);
         return NEOBOX_ERROR_FB_MMAP;
@@ -715,16 +715,13 @@ int neobox_init_custom(struct neobox_options options)
     neobox.config.rj = 0;
     if((ret = neobox_config_open(options.config)) && (options.config || ret != ENOENT))
     {
-        fprintf(stderr, "Failed to open config: %s\n",
+        neobox_fprintf(1, stderr, "Failed to open config: %s\n",
             neobox_config_strerror(ret));
         return NEOBOX_ERROR_CONFIG;
     }
-    if(options.verbose)
-    {
-        printf("[NEOBOX] config:\n");
-        printf("[NEOBOX]   file: %s\n", neobox.config.file);
-        printf("[NEOBOX]   exists: %s\n", ret ? "no" : "yes");
-    }
+    neobox_printf(1, "config:\n");
+    neobox_printf(1, "  file: %s\n", neobox.config.file);
+    neobox_printf(1, "  exists: %s\n", ret ? "no" : "yes");
     
     // else
     neobox.pause = 0;
@@ -740,18 +737,18 @@ int neobox_init_custom(struct neobox_options options)
     sa.sa_flags = SA_RESTART;
     if(sigaction(SIGALRM, &sa, 0) == -1)
     {
-        perror("Failed to catch SIGARLM");
+        neobox_perror(1, "Failed to catch SIGARLM");
         return NEOBOX_ERROR_SIGNAL;
     }
     
     sa.sa_flags = 0;
     if(sigaction(SIGINT, &sa, 0) == -1)
     {
-        perror("Failed to catch SIGINT");
+        neobox_perror(1, "Failed to catch SIGINT");
         return NEOBOX_ERROR_SIGNAL;
     }
     
-    VERBOSE(printf("[NEOBOX] init done\n"));
+    neobox_printf(1, "init done\n");
     
     // return socket for manual polling
     return neobox.iod.sock;
@@ -760,6 +757,7 @@ int neobox_init_custom(struct neobox_options options)
 struct neobox_options neobox_options_default(int *argc, char *argv[])
 {
     struct neobox_options options;
+    
     options.fb = "/dev/fb0";
     options.iod = IOD_PWD "/" IOD_SOCK;
     options.config = NEOBOX_CONFIG_DEFAULT;
@@ -768,6 +766,8 @@ struct neobox_options neobox_options_default(int *argc, char *argv[])
     options.options = NEOBOX_OPTION_NORM_PRINT;
     options.verbose = 0;
     options.map = NEOBOX_MAP_DEFAULT;
+    options.appname = basename(argv[0]);
+    
     return neobox_args(argc, argv, options);
 }
 
@@ -795,7 +795,7 @@ void neobox_finish()
     struct neobox_chain_timer *ct;
     sigset_t set;
     
-    VERBOSE(printf("[NEOBOX] finish\n"));
+    neobox_printf(1, "[NEOBOX] finish\n");
     
     neobox_iod_cmd(IOD_CMD_REMOVE, 0, 0);
     close(neobox.iod.sock);
@@ -870,8 +870,8 @@ int neobox_add_timer(unsigned char id, unsigned char type, unsigned int sec, uns
     
     sigprocmask(SIG_BLOCK, &set, &oldset);
     
-    if(neobox.verbose && type == TIMER_USER)
-        printf("[NEOBOX] add timer %i [%u.%u]\n", id, sec, msec);
+    if(type == TIMER_USER)
+        neobox_printf(1, "add timer %i [%u.%u]\n", id, sec, msec);
     
     ct = neobox.timer.cqh_first;
     
@@ -890,9 +890,9 @@ int neobox_add_timer(unsigned char id, unsigned char type, unsigned int sec, uns
         it.it_value.tv_usec = msec*1000;
         if(setitimer(ITIMER_REAL, &it, 0) == -1)
         {
-            VERBOSE(fprintf(stderr, "[NEOBOX] Failed to set %s timer %i [%u.%u]: %s\n",
+            neobox_fprintf(1, stderr, "Failed to set %s timer %i [%u.%u]: %s\n",
                 type == TIMER_SYSTEM ? "system" : "user",
-                id, sec, msec, strerror(errno)));
+                id, sec, msec, strerror(errno));
             free(nct);
             sigprocmask(SIG_SETMASK, &oldset, 0);
             return -1;
@@ -932,7 +932,9 @@ int neobox_handle_timer(unsigned char *id, unsigned char *type)
     
     if(neobox.verbose && *type == TIMER_USER)
     {
-        WRITE_STR(0, "[NEOBOX] timer ");
+        WRITE_STR(0, "[");
+        WRITE_STR(0, neobox.appname);
+        WRITE_STR(0, "][NEOBOX] timer ");
         WRITE_INT_STR(0, i, x, buf, 10, " event\n");
     }
     
@@ -963,7 +965,9 @@ int neobox_handle_timer(unsigned char *id, unsigned char *type)
     {
         if(neobox.verbose)
         {
-            WRITE_STR(1, "[NEOBOX] Failed to set ");
+            WRITE_STR(0, "[");
+            WRITE_STR(0, neobox.appname);
+            WRITE_STR(1, "][NEOBOX] Failed to set ");
             WRITE_STR(1, ct->type == TIMER_SYSTEM ? "system timer " : "user timer ");
             WRITE_INT_STR(1, ct->id, x, buf, 10, " [");
             WRITE_INT_STR(1, tv->tv_sec, x, buf, 10, ".");
@@ -1000,27 +1004,27 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     switch(iod_event.event)
     {
     case IOD_EVENT_ACTIVATED:
-        VERBOSE(printf("[NEOBOX] activate\n"));
+        neobox_printf(1, "activate\n");
         event.type = NEOBOX_EVENT_ACTIVATE;
         return event;
     case IOD_EVENT_DEACTIVATED:
-        VERBOSE(printf("[NEOBOX] deactivate\n"));
+        neobox_printf(1, "deactivate\n");
         event.type = NEOBOX_EVENT_DEACTIVATE;
         return event;
     case IOD_EVENT_REMOVED:
-        VERBOSE(printf("[NEOBOX] removed\n"));
+        neobox_printf(1, "removed\n");
         event.type = NEOBOX_EVENT_REMOVE;
         return event;
     case IOD_EVENT_AUX:
-        VERBOSE(printf("[NEOBOX] AUX %s\n",
-            iod_event.value.status ? "pressed" : "released"));
+        neobox_printf(1, "AUX %s\n",
+            iod_event.value.status ? "pressed" : "released");
         event.type = NEOBOX_EVENT_BUTTON;
         event.id = NEOBOX_BUTTON_AUX;
         event.value.i = iod_event.value.status;
         return event;
     case IOD_EVENT_POWER:
-        VERBOSE(printf("[NEOBOX] Power %s\n",
-            iod_event.value.status ? "pressed" : "released"));
+        neobox_printf(1, "Power %s\n",
+            iod_event.value.status ? "pressed" : "released");
         event.type = NEOBOX_EVENT_BUTTON;
         event.id = NEOBOX_BUTTON_POWER;
         event.value.i = iod_event.value.status;
@@ -1030,8 +1034,8 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     case IOD_EVENT_GRAB:
         return event;
     case IOD_EVENT_POWERSAVE:
-        VERBOSE(printf("[NEOBOX] Powersave %s\n",
-            iod_event.value.status ? "on" : "off"));
+        neobox_printf(1, "Powersave %s\n",
+            iod_event.value.status ? "on" : "off");
         event.type = NEOBOX_EVENT_POWERSAVE;
         event.value.i = iod_event.value.status;
         return event;
@@ -1040,7 +1044,7 @@ struct neobox_event neobox_parse_iod_event(struct iod_event iod_event)
     case IOD_EVENT_PRESSED:
         break;
     default:
-        VERBOSE(printf("[NEOBOX] Unrecognized iod event 0x%02hhx\n", iod_event.event));
+        neobox_printf(1, "Unrecognized iod event 0x%02hhx\n", iod_event.event);
         return event;
     }
     
@@ -1246,7 +1250,7 @@ int neobox_handle_return(int ret, struct neobox_event event, neobox_handler *han
             break;
         else
         {
-            VERBOSE(printf("[NEOBOX] Unrecognized return code %i\n", ret));
+            neobox_printf(1, "Unrecognized return code %i\n", ret);
             return NEOBOX_HANDLER_SUCCESS;
         }
     }
@@ -1307,7 +1311,7 @@ int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, i
     pfds[0].fd = neobox.iod.sock;
     pfds[0].events = POLLIN;
     
-    VERBOSE(printf("[NEOBOX] run\n"));
+    neobox_printf(1, "run\n");
     
     while(1)
     {
@@ -1328,7 +1332,7 @@ int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, i
             if(errno == EINTR)
                 continue;
             
-            VERBOSE(perror("[NEOBOX] Failed to poll"));
+            neobox_perror(1, "Failed to poll");
             return NEOBOX_ERROR_POLL;
         }
         
@@ -1336,7 +1340,7 @@ int neobox_run_pfds(neobox_handler *handler, void *state, struct pollfd *pfds, i
         
         if(pfds[0].revents & POLLHUP || pfds[0].revents & POLLERR)
         {
-            VERBOSE(printf("[NEOBOX] Failed to poll iod socket\n"));
+            neobox_printf(1, "Failed to poll iod socket\n");
             neobox_iod_reconnect(-1);
         }
         else if(pfds[0].revents & POLLIN)
@@ -1435,12 +1439,12 @@ int neobox_lock(int lock)
         
         if(event.value.status & IOD_SUCCESS_MASK)
         {
-            VERBOSE(printf("[NEOBOX] %s success\n", lock ? "lock" : "unlock"));
+            neobox_printf(1, "%s success\n", lock ? "lock" : "unlock");
             return NEOBOX_SET_SUCCESS;
         }
         else
         {
-            VERBOSE(printf("[NEOBOX] %s failure\n", lock ? "lock" : "unlock"));
+            neobox_printf(1, "%s failure\n", lock ? "lock" : "unlock");
             neobox.iod.lock = 0;
             return NEOBOX_SET_FAILURE;
         }
@@ -1489,12 +1493,12 @@ int neobox_grab(int button, int grab)
         
         if(event.value.status & IOD_SUCCESS_MASK)
         {
-            VERBOSE(printf("[NEOBOX] %s success\n", grab ? "grab" : "ungrab"));
+            neobox_printf(1, "%s success\n", grab ? "grab" : "ungrab");
             return NEOBOX_SET_SUCCESS;
         }
         else
         {
-            VERBOSE(printf("[NEOBOX] %s failure\n", grab ? "grab" : "ungrab"));
+            neobox_printf(1, "%s failure\n", grab ? "grab" : "ungrab");
             neobox.iod.grab &= ~button;
             return NEOBOX_SET_FAILURE;
         }
@@ -1524,7 +1528,7 @@ void neobox_timer_remove(unsigned char id)
     
     if(ct != (void*)&neobox.timer)
     {
-        VERBOSE(printf("[NEOBOX] timer %i removed\n", id));
+        neobox_printf(1, "timer %i removed\n", id);
         CIRCLEQ_REMOVE(&neobox.timer, ct, chain);
         free(ct);
     }
@@ -1542,7 +1546,7 @@ int neobox_sleep(unsigned int sec, unsigned int msec)
     if((ret = neobox_add_timer(1, TIMER_SYSTEM, sec, msec)))
         return ret;
     
-    VERBOSE(printf("[NEOBOX] sleep %u.%u\n", sec, msec));
+    neobox_printf(1, "sleep %u.%u\n", sec, msec);
     
     sigfillset(&set);
     sigprocmask(SIG_BLOCK, &set, &oldset);

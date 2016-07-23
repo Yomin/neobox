@@ -45,8 +45,6 @@
 #   define FONTMULT 2   // fontmult pixel for 1 pixel
 #endif
 
-#define VERBOSE(x)  if(neobox.verbose) { x; }
-
 #define SCREENMAX   830     // screen size in pixel
 #define DENSITY     1       // button draw density in pixel
 #define INCREASE    33      // button size increase in percent
@@ -154,6 +152,7 @@ struct neobox_global
     int options;        // options from neobox init
     char *flagstat;     // last partner flag per map
     int sleep;          // sleep status
+    char *appname;      // basename(argv[0])
     
     neobox_filter *filter_fun;  // filter events
     void *filter_state;         // filter_fun state

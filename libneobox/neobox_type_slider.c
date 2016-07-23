@@ -23,10 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "neobox_fb.h"
-#include "neobox_slider.h"
 #include "neobox_type_slider.h"
 #include "neobox_type_help.h"
+#include "neobox_fb.h"
+#include "neobox_slider.h"
 
 #define BORDER(e)  ((e)->options & NEOBOX_LAYOUT_OPTION_BORDER)
 #define CONNECT(e) ((e)->options & NEOBOX_LAYOUT_OPTION_MASK_CONNECT)
@@ -370,8 +370,8 @@ TYPE_FUNC_MOVE(slider)
     if(slider->ticks)
     {
         ret.value.i = slider->pos_tmp;
-        VERBOSE(printf("[NEOBOX] slider %i: %i/%i\n",
-            ret.id, ret.value.i, slider->ticks));
+        neobox_printf(1, "slider %i: %i/%i\n",
+            ret.id, ret.value.i, slider->ticks);
     }
     else
     {
@@ -385,8 +385,8 @@ TYPE_FUNC_MOVE(slider)
             ret.value.i = (slider->start-slider->y_tmp)*100;
             ret.value.i /= slider->size;
         }
-        VERBOSE(printf("[NEOBOX] slider %i: %02i%%\n",
-            ret.id, ret.value.i));
+        neobox_printf(1, "slider %i: %02i%%\n",
+            ret.id, ret.value.i);
     }
     
     return ret;

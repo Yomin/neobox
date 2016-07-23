@@ -25,6 +25,7 @@
 #include <neobox_text.h>
 #include <neobox_button.h>
 #include <neobox_config.h>
+#include <neobox_log.h>
 
 #include <string.h>
 #include <stdint.h>
@@ -140,7 +141,7 @@ int set_value(const char *name, char **value, char *def)
 {
     if(strspn(*value, "1234567890") != strlen(*value))
     {
-        printf("malformed %s, default to %s\n", name, def);
+        neobox_app_printf("malformed %s, default to %s\n", name, def);
         *value = def;
         return atoi(def);
     }
@@ -160,7 +161,7 @@ const EVP_MD* set_hash(char **hash, char *def)
             return EVP_sha512();
         else
         {
-            printf("unknown hash algorithm, default to %s\n", def);
+            neobox_app_printf("unknown hash algorithm, default to %s\n", def);
             *hash = def;
         }
     }
@@ -180,7 +181,7 @@ void load_config()
     
     if(!base32_check(key))
     {
-        printf("malformed base32 key\n");
+        neobox_app_printf("malformed base32 key\n");
         key = 0;
     }
     

@@ -25,6 +25,7 @@
 #endif
 
 #include "neobox_config.h"
+#include "neobox_log.h"
 
 #include <rj_config.h>
 
@@ -111,7 +112,7 @@ int neobox_config_save()
         return 0;
     
 #ifdef NEOBOX
-    VERBOSE(printf("[NEOBOX] config saved\n"));
+    neobox_printf(1, "config saved\n");
 #endif
     
     return rj_save(*path, *config);

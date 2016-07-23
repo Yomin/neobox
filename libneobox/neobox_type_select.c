@@ -27,6 +27,7 @@
 #include "neobox_type_select.h"
 #include "neobox_type_button.h"
 #include "neobox_type_help.h"
+#include "neobox_log.h"
 
 #define NOP (struct neobox_event) { .type = NEOBOX_EVENT_NOP }
 
@@ -112,7 +113,7 @@ TYPE_FUNC_RELEASE(select)
     ret.id = elem->id;
     ret.value.i = select->status & NEOBOX_TYPE_SELECT_STATUS_ACTIVE;
     
-    VERBOSE(printf("[NEOBOX] select %s\n", ret.value.i ? "on" : "off"));
+    neobox_printf(1, "select %s\n", ret.value.i ? "on" : "off");
     
     return ret;
 }
